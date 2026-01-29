@@ -1,0 +1,125 @@
+version: "3"
+
+vars:
+  REG_NAME: kind-registry
+  REG_PORT: "5001"
+  LOCAL_OCI_REGISTRY: localhost:{{.REG_PORT}}
+  LOCAL_OCM_REPO: "http://{{.LOCAL_OCI_REGISTRY}}/ocm"
+  TMP_DIR: .tmp
+
+  OPENMCP_KUBECONFIG_DIR: "{{.TMP_DIR}}/kubeconfigs"
+  OPENMCP_PLATFORM_CLUSTER_KUBECONFIG: "{{.OPENMCP_KUBECONFIG_DIR}}/platform-int.kubeconfig"
+  OPENMCP_PLATFORM_CLUSTER_EXT_KUBECONFIG: "{{.OPENMCP_KUBECONFIG_DIR}}/platform-ext.kubeconfig"
+  OPENMCP_OCM_COMPONENT_NAME_OPENMCP_OPERATOR: "github.com/openmcp-project/openmcp-operator"
+  OPENMCP_OCM_COMPONENT_NAME_CP_KIND: "github.com/openmcp-project/cluster-provider-kind"
+  OPENMCP_OCM_COMPONENT_NAME_SP_CROSSPLANE: "github.com/openmcp-project/service-provider-crossplane"
+  OPENMCP_OCM_COMPONENT_NAME_CROSSPLANE: "github.tools.sap/openmcp/releasechannel/crossplane"
+
+tasks:
+  tmp-dir:
+    cmds:
+      - mkdir -p {{.TMP_DIR}}
+  local-registry:
+    desc: Spin up a local Docker registry in the kind network
+    cmds:
+      - |
+        if docker inspect {{.REG_NAME}} >/dev/null 2>&1; then
+          echo "Registry '{{.REG_NAME}}' already running"
+        else
+          docker run -d --restart=always -p "127.0.0.1:{{.REG_PORT}}:{{.REG_PORT}}" -e REGISTRY_HTTP_ADDR=0.0.0.0:{{.REG_PORT}} -v registry-data:/var/lib/registry --network kind --name {{.REG_NAME}} registry:2
+          echo "Docker registry '{{.REG_NAME}}' started on localhost:{{.REG_PORT}}"
+        fi
+
+  local-registry:delete:
+    desc: Delete the local Zot OCI registry and its data
+    cmds:
+      - docker rm -f {{.REG_NAME}} || true
+      - docker volume rm registry-data || true
+
+  openmcp:clone-distro:
+    desc: Clones the openmcp distro you want to install
+    deps:
+      - local-registry
+    vars:
+      OPENMCP_OCM_REPOSITORY:
+        sh: echo "${OPENMCP_OCM_REPOSITORY:-ghcr.io/openmcp-project/components}"
+      OPENMCP_OCM_COMPONENT_NAME:
+        sh: echo "${OPENMCP_OCM_COMPONENT_NAME:-github.com/openmcp-project/openmcp}"
+    cmds:
+      - |
+        ocm transfer component \
+          --latest --copy-resources --recursive \
+          {{.OPENMCP_OCM_REPOSITORY}}//{{.OPENMCP_OCM_COMPONENT_NAME}} \
+          {{.LOCAL_OCM_REPO}}
+
+  openmcp:create-platform-cluster:
+    desc: Creates the platform cluster for openmcp
+    cmds:
+      - |
+        if kind get clusters | grep -q '^platform$'; then
+          echo "Cluster 'platform' already exists"
+        else
+          kind create cluster --name platform --config ./openmcp/config/kind-config.yaml
+        fi
+      - |
+        for node in $(kind get nodes --name platform); do
+          docker exec "$node" mkdir -p /etc/containerd/certs.d/{{.REG_NAME}}:{{.REG_PORT}}
+          docker exec -i "$node" sh -c "cat > /etc/containerd/certs.d/{{.REG_NAME}}:{{.REG_PORT}}/hosts.toml" <<EOF
+        [host."http://{{.REG_NAME}}:{{.REG_PORT}}"]
+        EOF
+        done
+      - mkdir -p {{.OPENMCP_KUBECONFIG_DIR}}
+      - kind get kubeconfig --internal --name platform > {{.OPENMCP_PLATFORM_CLUSTER_KUBECONFIG}}
+      - kind get kubeconfig --name platform > {{.OPENMCP_PLATFORM_CLUSTER_EXT_KUBECONFIG}}
+
+  openmcp:local:
+    desc: Creates a local running openmcp platform in kind
+    deps:
+      - tmp-dir
+      - openmcp:create-platform-cluster
+    cmds:
+      - |
+        get_image_reference() {
+          local resource_name="$1"
+          yq '.component.resources[] | select(.name == "'"$resource_name"'") | .access.imageReference'
+        }
+
+        export OPENMCP_OPERATOR_IMAGE=$(ocm get component --latest {{.LOCAL_OCM_REPO}}//{{.OPENMCP_OCM_COMPONENT_NAME_OPENMCP_OPERATOR}} -oyaml | get_image_reference openmcp-operator-image | sed 's|http://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
+        export CLUSTER_PROVIDER_KIND_IMAGE=$(ocm get component --latest {{.LOCAL_OCM_REPO}}//{{.OPENMCP_OCM_COMPONENT_NAME_CP_KIND}} -oyaml | get_image_reference cluster-provider-kind-image | sed 's|http://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
+
+        export SERVICE_PROVIDER_CROSSPLANE_IMAGE=$(ocm get component --latest {{.LOCAL_OCM_REPO}}//{{.OPENMCP_OCM_COMPONENT_NAME_SP_CROSSPLANE}} -oyaml | get_image_reference service-provider-crossplane-image | sed 's|http://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
+        export CROSSPLANE_CHART_IMAGE=$(ocm get component --latest {{.LOCAL_OCM_REPO}}//{{.OPENMCP_OCM_COMPONENT_NAME_CROSSPLANE}} -oyaml | get_image_reference crossplane | sed 's|http://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
+        export CROSSPLANE_DOCKER_IMAGE=$(ocm get component --latest {{.LOCAL_OCM_REPO}}//{{.OPENMCP_OCM_COMPONENT_NAME_CROSSPLANE}} -oyaml | get_image_reference image-crossplane | sed 's|http://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
+
+        CROSSPLANE_PROVIDER_KUBERNETES_REF=$(ocm get component --latest {{.LOCAL_OCM_REPO}}//github.tools.sap/openmcp/releasechannel/provider-kubernetes -oyaml | get_image_reference provider-kubernetes | sed 's|http://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
+        export CROSSPLANE_PROVIDER_KUBERNETES_IMAGE=$(echo "$CROSSPLANE_PROVIDER_KUBERNETES_REF" | sed 's/[:@].*//')
+        export CROSSPLANE_PROVIDER_KUBERNETES_IMAGE_TAG=$(echo "$CROSSPLANE_PROVIDER_KUBERNETES_REF" | sed 's/.*:\([^@]*\).*/\1/')
+
+        CROSSPLANE_PROVIDER_GARDENER_AUTH_REF=$(ocm get component --latest {{.LOCAL_OCM_REPO}}//github.tools.sap/openmcp/releasechannel/provider-gardener-auth -oyaml | get_image_reference provider-gardener-auth | sed 's|http://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
+        export CROSSPLANE_PROVIDER_GARDENER_AUTH_IMAGE=$(echo "$CROSSPLANE_PROVIDER_GARDENER_AUTH_REF" | sed 's/[:@].*//')
+        export CROSSPLANE_PROVIDER_GARDENER_AUTH_IMAGE_TAG=$(echo "$CROSSPLANE_PROVIDER_GARDENER_AUTH_REF" | sed 's/.*:\([^@]*\).*/\1/')
+
+        kubectl kustomize ./openmcp/envs/local | envsubst > {{.TMP_DIR}}/openmcp-setup.yaml
+      - bash hack/apply-with-crds.sh {{.OPENMCP_PLATFORM_CLUSTER_EXT_KUBECONFIG}} {{.TMP_DIR}}/openmcp-setup.yaml
+
+  openmcp:create-mcp:
+    desc: Apply the MCP manifest to the onboarding cluster
+    cmds:
+      - |
+        ONBOARDING_CLUSTER=$(kind get clusters | grep '^onboarding\.' | head -1)
+        if [ -z "$ONBOARDING_CLUSTER" ]; then
+          echo "No onboarding cluster found"
+          exit 1
+        fi
+        echo "Applying MCP manifest to cluster '$ONBOARDING_CLUSTER'"
+        kubectl apply --kubeconfig <(kind get kubeconfig --name "$ONBOARDING_CLUSTER") -f ./openmcp/manifests/mcp.yaml
+
+  openmcp:delete-clusters:
+    desc: Delete the platform, onboarding, and mcp-worker kind clusters
+    cmds:
+      - kind delete cluster --name platform || true
+      - |
+        for cluster in $(kind get clusters | grep -E '^(onboarding\.|mcp-worker-)'); do
+          kind delete cluster --name "$cluster"
+        done
+      - rm -rf {{.OPENMCP_KUBECONFIG_DIR}}

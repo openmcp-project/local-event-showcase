@@ -1,0 +1,12 @@
+apiVersion: core.openmcp.cloud/v2alpha1
+kind: ManagedControlPlaneV2
+metadata:
+  name: local-mcp
+  namespace: default
+spec:
+  iam:
+    tokens:
+      - name: admin
+        roleRefs:
+          - kind: ClusterRole
+            name: cluster-admin

@@ -1,0 +1,14 @@
+apiVersion: openmcp.cloud/v1alpha1
+kind: ClusterProvider
+metadata:
+  name: "kind"
+spec:
+  image: $CLUSTER_PROVIDER_KIND_IMAGE
+  extraVolumeMounts:
+    - mountPath: /var/run/docker.sock
+      name: docker
+  extraVolumes:
+    - hostPath:
+        path: /var/run/host-docker.sock
+        type: Socket
+      name: docker

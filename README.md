@@ -4,11 +4,11 @@
 
 ## About this project
 
-Everything for the local showcase of using Gardener, OpenMCP & Platform Mesh together.
+This repo contains scripts and documentation on how to setup a local platform of Gardener, OpenMCP and Platform Mesh to use in a showcase on conferences or events.
 
-## Requirements and Setup
+## Requirements
 
-*Insert a short description what is required to get your project running...*
+A machine with at least 8 CPU Cores and 32 GB RAM.
 
 ## Support, Feedback, Contributing
 
