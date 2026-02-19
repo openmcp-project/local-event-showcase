@@ -92,12 +92,12 @@ tasks:
         export CROSSPLANE_DOCKER_IMAGE=$(ocm get component --latest {{.LOCAL_OCM_REPO}}//{{.OPENMCP_OCM_COMPONENT_NAME_CROSSPLANE}} -oyaml | get_image_reference image-crossplane | sed 's|http://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
 
         CROSSPLANE_PROVIDER_KUBERNETES_REF=$(ocm get component --latest {{.LOCAL_OCM_REPO}}//github.tools.sap/openmcp/releasechannel/provider-kubernetes -oyaml | get_image_reference provider-kubernetes | sed 's|http://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
-        export CROSSPLANE_PROVIDER_KUBERNETES_IMAGE=$(echo "$CROSSPLANE_PROVIDER_KUBERNETES_REF" | sed 's/[:@].*//')
-        export CROSSPLANE_PROVIDER_KUBERNETES_IMAGE_TAG=$(echo "$CROSSPLANE_PROVIDER_KUBERNETES_REF" | sed 's/.*:\([^@]*\).*/\1/')
+        export CROSSPLANE_PROVIDER_KUBERNETES_IMAGE=$(echo "$CROSSPLANE_PROVIDER_KUBERNETES_REF" | sed 's/:[^/:]*@.*//')
+        export CROSSPLANE_PROVIDER_KUBERNETES_IMAGE_TAG=$(echo "$CROSSPLANE_PROVIDER_KUBERNETES_REF" | sed 's/.*:\([^@:]*\)@.*/\1/')
 
         CROSSPLANE_PROVIDER_GARDENER_AUTH_REF=$(ocm get component --latest {{.LOCAL_OCM_REPO}}//github.tools.sap/openmcp/releasechannel/provider-gardener-auth -oyaml | get_image_reference provider-gardener-auth | sed 's|http://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
-        export CROSSPLANE_PROVIDER_GARDENER_AUTH_IMAGE=$(echo "$CROSSPLANE_PROVIDER_GARDENER_AUTH_REF" | sed 's/[:@].*//')
-        export CROSSPLANE_PROVIDER_GARDENER_AUTH_IMAGE_TAG=$(echo "$CROSSPLANE_PROVIDER_GARDENER_AUTH_REF" | sed 's/.*:\([^@]*\).*/\1/')
+        export CROSSPLANE_PROVIDER_GARDENER_AUTH_IMAGE=$(echo "$CROSSPLANE_PROVIDER_GARDENER_AUTH_REF" | sed 's/:[^/:]*@.*//')
+        export CROSSPLANE_PROVIDER_GARDENER_AUTH_IMAGE_TAG=$(echo "$CROSSPLANE_PROVIDER_GARDENER_AUTH_REF" | sed 's/.*:\([^@:]*\)@.*/\1/')
 
         kubectl kustomize ./openmcp/envs/local | envsubst > {{.TMP_DIR}}/openmcp-setup.yaml
       - bash hack/apply-with-crds.sh {{.OPENMCP_PLATFORM_CLUSTER_EXT_KUBECONFIG}} {{.TMP_DIR}}/openmcp-setup.yaml
