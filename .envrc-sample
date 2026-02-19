@@ -1,0 +1,2 @@
+# export OPENMCP_OCM_REPOSITORY=<OCM Repo>
+# export OPENMCP_OCM_COMPONENT_NAME=<OCM Component Name>

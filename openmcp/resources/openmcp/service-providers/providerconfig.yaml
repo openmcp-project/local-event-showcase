@@ -1,0 +1,21 @@
+apiVersion: crossplane.services.openmcp.cloud/v1alpha1
+kind: ProviderConfig
+metadata:
+  name: default
+spec:
+  versions:
+    - version: v2.0.2
+      chart:
+        url: $CROSSPLANE_CHART_IMAGE
+      image:
+        url: $CROSSPLANE_DOCKER_IMAGE
+  providers:
+    availableProviders:
+      - name: provider-kubernetes
+        package: $CROSSPLANE_PROVIDER_KUBERNETES_IMAGE
+        versions:
+          - $CROSSPLANE_PROVIDER_KUBERNETES_IMAGE_TAG
+      - name: provider-gardener-auth
+        package: $CROSSPLANE_PROVIDER_GARDENER_AUTH_IMAGE
+        versions:
+          - $CROSSPLANE_PROVIDER_GARDENER_AUTH_IMAGE_TAG

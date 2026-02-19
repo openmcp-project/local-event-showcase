@@ -1,0 +1,45 @@
+region: test-region
+environment: test-environment
+
+image:
+  name: test-image
+  tag: test-image-tag
+  imagePullSecret: test-pull-secret
+
+kcp:
+  operatorApiExportEndpointSliceName: test-api-export
+  initializingVirtualWorkspaceUrl: https://kcp.test.example.com:443/services/initializingworkspaces/root:openmcp
+
+mcp:
+  issuerURL: https://issuer.test.example.com
+  serviceAccount: test-sa
+
+runtime:
+  namespace: test-namespace
+
+health:
+  port: 8081
+
+log:
+  level: debug
+
+deployment:
+  resources:
+    limits:
+      memory: 512Mi
+    requests:
+      cpu: 50m
+      memory: 256Mi
+
+operator:
+  deployment:
+    replicas: 1
+
+initializer:
+  initializingVirtualWorkspaceURL: https://kcp.test.example.com:443/services/initializingworkspaces/root:openmcp
+  initializerName: test-init
+  deployment:
+    replicas: 1
+
+externalSecrets:
+  enabled: false

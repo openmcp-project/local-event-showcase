@@ -1,0 +1,108 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: openmcp-operator
+  name: openmcp-operator
+  namespace: openmcp-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openmcp-operator
+  template:
+    metadata:
+      labels:
+        app: openmcp-operator
+    spec:
+      serviceAccountName: openmcp-operator
+      initContainers:
+        - name: openmcp-operator-init
+          image: $OPENMCP_OPERATOR_IMAGE
+          args:
+            - init
+            - --environment=local
+            - --config=/etc/secret/openmcp-operator-config/config
+            - --provider-name=managedcontrolplane
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.podIP
+            - name: POD_SERVICE_ACCOUNT_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: spec.serviceAccountName
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 1000m
+              memory: 1024Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+            - mountPath: /etc/secret/openmcp-operator-config
+              name: openmcp-operator-config
+              readOnly: true
+      containers:
+        - name: openmcp-operator
+          image: $OPENMCP_OPERATOR_IMAGE
+          args:
+            - run
+            - --environment=local
+            - --config=/etc/secret/openmcp-operator-config/config
+            - --provider-name=managedcontrolplane
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.podIP
+            - name: POD_SERVICE_ACCOUNT_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: spec.serviceAccountName
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 1000m
+              memory: 1024Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+            - mountPath: /etc/secret/openmcp-operator-config
+              name: openmcp-operator-config
+              readOnly: true
+      volumes:
+        - name: openmcp-operator-config
+          secret:
+            defaultMode: 420
+            secretName: openmcp-operator-config

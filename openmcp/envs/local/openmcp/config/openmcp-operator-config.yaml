@@ -1,0 +1,38 @@
+managedControlPlane:
+  mcpClusterPurpose: mcp-worker
+  reconcileMCPEveryXDays: 7
+scheduler:
+  purposeMappings:
+    mcp:
+      template:
+        spec:
+          profile: kind
+          tenancy: Exclusive
+    mcp-worker:
+      template:
+        spec:
+          profile: kind
+          tenancy: Exclusive
+    onboarding:
+      template:
+        metadata:
+          labels:
+            clusters.openmcp.cloud/delete-without-requests: "false"
+        spec:
+          profile: kind
+          tenancy: Shared
+    platform:
+      template:
+        metadata:
+          labels:
+            clusters.openmcp.cloud/delete-without-requests: "false"
+        spec:
+          profile: kind
+          tenancy: Shared
+    workload:
+      template:
+        spec:
+          profile: kind
+          tenancy: Shared
+      tenancyCount: 20
+  scope: Cluster
