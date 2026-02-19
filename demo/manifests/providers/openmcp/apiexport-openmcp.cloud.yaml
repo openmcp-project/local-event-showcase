@@ -1,0 +1,19 @@
+apiVersion: apis.kcp.io/v1alpha1
+kind: APIExport
+metadata:
+  creationTimestamp: null
+  name: openmcp.cloud
+  labels:
+    ui.platform-mesh.io/content-for: openmcp.cloud
+spec:
+  latestResourceSchemas:
+    - v260218-a16964f.crossplanes.crossplane.services.openmcp.cloud
+  permissionClaims:
+    - group: apis.kcp.io
+      resource: apiexports
+      all: true
+    - group: ui.platform-mesh.io
+      resource: contentconfigurations
+      all: true
+      identityHash: 6921c3945fce030270f2d67057e1a268388bff57f806b03d9dec909c40ff0ffd
+status: {}

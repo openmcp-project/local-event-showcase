@@ -123,3 +123,48 @@ tasks:
           kind delete cluster --name "$cluster"
         done
       - rm -rf {{.OPENMCP_KUBECONFIG_DIR}}
+
+  integrate:
+    desc: Run the openmcp platform-mesh integration script
+    cmds:
+      - bash hack/integrate-openmcp-platform-mesh.sh
+
+  install-flux:
+    desc: Install Flux on all mcp-worker kind clusters
+    cmds:
+      - bash hack/install-flux-mcp-clusters.sh
+
+  delete-clusters:
+    desc: Delete all kind clusters
+    cmds:
+      - |
+        for cluster in $(kind get clusters 2>/dev/null); do
+          echo "Deleting kind cluster: $cluster"
+          kind delete cluster --name "$cluster"
+        done
+
+  platform-mesh:local:
+    desc: Checkout platform-mesh helm-charts and run local-setup:cached:showcase
+    cmds:
+      - |
+        if [ -d demo/external/platform-mesh/helm-charts/.git ]; then
+          cd demo/external/platform-mesh/helm-charts && git fetch origin && git checkout feat/local-event-showcase && git pull origin feat/local-event-showcase
+        else
+          rm -rf demo/external/platform-mesh/helm-charts
+          mkdir -p demo/external/platform-mesh
+          git clone -b feat/local-event-showcase https://github.com/platform-mesh/helm-charts.git demo/external/platform-mesh/helm-charts
+        fi
+      - task --dir demo/external/platform-mesh/helm-charts local-setup:cached:showcase
+
+  platform-mesh:local:iterate:
+    desc: Checkout platform-mesh helm-charts and run local-setup:cached:showcase:iterate
+    cmds:
+      - |
+        if [ -d demo/external/platform-mesh/helm-charts/.git ]; then
+          cd demo/external/platform-mesh/helm-charts && git fetch origin && git checkout feat/local-event-showcase && git pull origin feat/local-event-showcase
+        else
+          rm -rf demo/external/platform-mesh/helm-charts
+          mkdir -p demo/external/platform-mesh
+          git clone -b feat/local-event-showcase https://github.com/platform-mesh/helm-charts.git demo/external/platform-mesh/helm-charts
+        fi
+      - task --dir demo/external/platform-mesh/helm-charts local-setup:cached:showcase:iterate
