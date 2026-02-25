@@ -6,5 +6,5 @@ CLAUDE.md
 CLAUDE.local.md
 bin
 .idea
-demo/external/helm-charts
+demo/external
 .envrc
