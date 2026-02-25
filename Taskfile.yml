@@ -1,5 +1,8 @@
 version: "3"
 
+dotenv:
+  - .env
+
 vars:
   REG_NAME: kind-registry
   REG_PORT: "5001"
@@ -79,6 +82,7 @@ tasks:
       - openmcp:create-platform-cluster
     cmds:
       - |
+        set -x
         get_image_reference() {
           local resource_name="$1"
           yq '.component.resources[] | select(.name == "'"$resource_name"'") | .access.imageReference'

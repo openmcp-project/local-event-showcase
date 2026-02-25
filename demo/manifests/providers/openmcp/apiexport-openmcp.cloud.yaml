@@ -15,5 +15,5 @@ spec:
     - group: ui.platform-mesh.io
       resource: contentconfigurations
       all: true
-      identityHash: 6921c3945fce030270f2d67057e1a268388bff57f806b03d9dec909c40ff0ffd
+      identityHash: f4c5f7f3e49e8afbe23a635cdbe916ba45fa557161d1f6b3c94029157b49766e
 status: {}
