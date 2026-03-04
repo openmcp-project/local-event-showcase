@@ -51,15 +51,47 @@ tasks:
           --latest --copy-resources --recursive \
           {{.OPENMCP_OCM_REPOSITORY}}//{{.OPENMCP_OCM_COMPONENT_NAME}} \
           {{.LOCAL_OCM_REPO}}
+      - |
+        ocm transfer components \
+        --latest --copy-resources --recursive \
+        ghcr.io/openmcp-project/components//github.com/openmcp-project/cluster-provider-kind \
+        {{.LOCAL_OCM_REPO}}
 
   openmcp:create-platform-cluster:
     desc: Creates the platform cluster for openmcp
     cmds:
+      - mkdir -p {{.TMP_DIR}}/containerd/certs.d/{{.REG_NAME}}:{{.REG_PORT}}
+      - |
+        cat > {{.TMP_DIR}}/containerd/certs.d/{{.REG_NAME}}:{{.REG_PORT}}/hosts.toml <<EOF
+        [host."http://{{.REG_NAME}}:{{.REG_PORT}}"]
+        EOF
+      - |
+        cat > {{.TMP_DIR}}/kind-config.yaml <<EOF
+        apiVersion: kind.x-k8s.io/v1alpha4
+        kind: Cluster
+        containerdConfigPatches:
+          - |-
+            [plugins."io.containerd.grpc.v1.cri".registry]
+              config_path = "/etc/containerd/certs.d"
+        nodes:
+          - role: control-plane
+            extraMounts:
+              - hostPath: /var/run/docker.sock
+                containerPath: /var/run/host-docker.sock
+              - hostPath: $(pwd)/{{.TMP_DIR}}/containerd/certs.d
+                containerPath: /etc/containerd/certs.d
+              - hostPath: $(pwd)/{{.TMP_DIR}}/kind-config.yaml
+                containerPath: /etc/kind/config.yaml
+                readOnly: true
+              - hostPath: $(pwd)/{{.TMP_DIR}}/containerd
+                containerPath: /tmp/containerd
+                readOnly: true
+        EOF
       - |
         if kind get clusters | grep -q '^platform$'; then
           echo "Cluster 'platform' already exists"
         else
-          kind create cluster --name platform --config ./openmcp/config/kind-config.yaml
+          kind create cluster --name platform --config {{.TMP_DIR}}/kind-config.yaml
         fi
       - |
         for node in $(kind get nodes --name platform); do
@@ -99,6 +131,9 @@ tasks:
         export CROSSPLANE_PROVIDER_GARDENER_AUTH_IMAGE=$(echo "$CROSSPLANE_PROVIDER_GARDENER_AUTH_REF" | sed 's/:[^/:]*@.*//')
         export CROSSPLANE_PROVIDER_GARDENER_AUTH_IMAGE_TAG=$(echo "$CROSSPLANE_PROVIDER_GARDENER_AUTH_REF" | sed 's/.*:\([^@:]*\)@.*/\1/')
 
+        export OPENMCP_KIND_CONFIG_PATH=$(pwd)/{{.TMP_DIR}}/kind-config.yaml
+        export OPENMCP_CONTAINERD_CONFIG_PATH=$(pwd)/{{.TMP_DIR}}/containerd/certs.d
+
         kubectl kustomize ./openmcp/envs/local | envsubst > {{.TMP_DIR}}/openmcp-setup.yaml
       - bash hack/apply-with-crds.sh {{.OPENMCP_PLATFORM_CLUSTER_EXT_KUBECONFIG}} {{.TMP_DIR}}/openmcp-setup.yaml
 
@@ -113,6 +148,7 @@ tasks:
         fi
         echo "Applying MCP manifest to cluster '$ONBOARDING_CLUSTER'"
         kubectl apply --kubeconfig <(kind get kubeconfig --name "$ONBOARDING_CLUSTER") -f ./openmcp/manifests/mcp.yaml
+        kubectl apply --kubeconfig <(kind get kubeconfig --name "$ONBOARDING_CLUSTER") -f ./openmcp/manifests/crossplane.yaml
 
   openmcp:delete-clusters:
     desc: Delete the platform, onboarding, and mcp-worker kind clusters

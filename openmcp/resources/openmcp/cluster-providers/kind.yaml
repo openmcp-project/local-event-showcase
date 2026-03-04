@@ -4,11 +4,27 @@ metadata:
   name: "kind"
 spec:
   image: $CLUSTER_PROVIDER_KIND_IMAGE
+  env:
+    - name: KIND_CONFIG_FILE
+      value: /etc/kind/config.yaml
   extraVolumeMounts:
     - mountPath: /var/run/docker.sock
       name: docker
+    - mountPath: /etc/kind/config.yaml
+      name: kindconfig
+      subPath: kind-config.yaml
+    - mountPath: /etc/containerd/certs.d
+      name: registryconfig
   extraVolumes:
     - hostPath:
         path: /var/run/host-docker.sock
         type: Socket
       name: docker
+    - hostPath:
+        path: $OPENMCP_KIND_CONFIG_PATH
+        type: File
+      name: kindconfig
+    - hostPath:
+        path: $OPENMCP_CONTAINERD_CONFIG_PATH
+        type: Directory
+      name: registryconfig

@@ -1,0 +1,1 @@
+[host."http://{{.REG_NAME}}:{{.REG_PORT}}"]
