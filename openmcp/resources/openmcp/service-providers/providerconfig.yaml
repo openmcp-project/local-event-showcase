@@ -11,11 +11,10 @@ spec:
         url: $CROSSPLANE_DOCKER_IMAGE
   providers:
     availableProviders:
-      # - name: provider-kubernetes
-      #   package: $CROSSPLANE_PROVIDER_KUBERNETES_IMAGE
-      #   versions:
-      #     - $CROSSPLANE_PROVIDER_KUBERNETES_IMAGE_TAG
       - name: provider-kubernetes
-        package: xpkg.crossplane.io/crossplane-contrib/provider-kubernetes
+        package: $CROSSPLANE_PROVIDER_KUBERNETES_IMAGE
         versions:
-          - v1.2.1
+          - $CROSSPLANE_PROVIDER_KUBERNETES_IMAGE_TAG
+  caBundleRef:
+    name: custom-ca-bundle # Name of the ConfigMap
+    key: ca-bundle.crt # Key within the ConfigMap containing the certificate bundle
