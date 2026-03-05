@@ -80,11 +80,9 @@ tasks:
                 containerPath: /var/run/host-docker.sock
               - hostPath: $(pwd)/{{.TMP_DIR}}/containerd/certs.d
                 containerPath: /etc/containerd/certs.d
+                readOnly: true
               - hostPath: $(pwd)/{{.TMP_DIR}}/kind-config.yaml
                 containerPath: /etc/kind/config.yaml
-                readOnly: true
-              - hostPath: $(pwd)/{{.TMP_DIR}}/containerd
-                containerPath: /tmp/containerd
                 readOnly: true
         EOF
       - |
@@ -93,13 +91,13 @@ tasks:
         else
           kind create cluster --name platform --config {{.TMP_DIR}}/kind-config.yaml
         fi
-      - |
-        for node in $(kind get nodes --name platform); do
-          docker exec "$node" mkdir -p /etc/containerd/certs.d/{{.REG_NAME}}:{{.REG_PORT}}
-          docker exec -i "$node" sh -c "cat > /etc/containerd/certs.d/{{.REG_NAME}}:{{.REG_PORT}}/hosts.toml" <<EOF
-        [host."http://{{.REG_NAME}}:{{.REG_PORT}}"]
-        EOF
-        done
+      # - |
+      #   for node in $(kind get nodes --name platform); do
+      #     docker exec "$node" mkdir -p /etc/containerd/certs.d/{{.REG_NAME}}:{{.REG_PORT}}
+      #     docker exec -i "$node" sh -c "cat > /etc/containerd/certs.d/{{.REG_NAME}}:{{.REG_PORT}}/hosts.toml" <<EOF
+      #   [host."http://{{.REG_NAME}}:{{.REG_PORT}}"]
+      #   EOF
+      #   done
       - mkdir -p {{.OPENMCP_KUBECONFIG_DIR}}
       - kind get kubeconfig --internal --name platform > {{.OPENMCP_PLATFORM_CLUSTER_KUBECONFIG}}
       - kind get kubeconfig --name platform > {{.OPENMCP_PLATFORM_CLUSTER_EXT_KUBECONFIG}}
