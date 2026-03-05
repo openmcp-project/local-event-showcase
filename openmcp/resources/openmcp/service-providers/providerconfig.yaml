@@ -4,7 +4,7 @@ metadata:
   name: default
 spec:
   versions:
-    - version: v2.0.2
+    - version: $CROSSPLANE_DOCKER_IMAGE_TAG
       chart:
         url: $CROSSPLANE_CHART_IMAGE
       image:

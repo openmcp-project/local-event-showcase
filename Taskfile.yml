@@ -16,6 +16,7 @@ vars:
   OPENMCP_OCM_COMPONENT_NAME_CP_KIND: "github.com/openmcp-project/cluster-provider-kind"
   OPENMCP_OCM_COMPONENT_NAME_SP_CROSSPLANE: "github.com/openmcp-project/service-provider-crossplane"
   OPENMCP_OCM_COMPONENT_NAME_CROSSPLANE: "github.tools.sap/openmcp/releasechannel/crossplane"
+  OPENMCP_OCM_COMPONENT_VERSION_CROSSPLANE: "v1.20.1-1"
 
 tasks:
   tmp-dir:
@@ -93,13 +94,6 @@ tasks:
         else
           kind create cluster --name platform --config {{.TMP_DIR}}/kind-config.yaml
         fi
-      # - |
-      #   for node in $(kind get nodes --name platform); do
-      #     docker exec "$node" mkdir -p /etc/containerd/certs.d/{{.REG_NAME}}:{{.REG_PORT}}
-      #     docker exec -i "$node" sh -c "cat > /etc/containerd/certs.d/{{.REG_NAME}}:{{.REG_PORT}}/hosts.toml" <<EOF
-      #   [host."http://{{.REG_NAME}}:{{.REG_PORT}}"]
-      #   EOF
-      #   done
       - mkdir -p {{.OPENMCP_KUBECONFIG_DIR}}
       - kind get kubeconfig --internal --name platform > {{.OPENMCP_PLATFORM_CLUSTER_KUBECONFIG}}
       - kind get kubeconfig --name platform > {{.OPENMCP_PLATFORM_CLUSTER_EXT_KUBECONFIG}}
@@ -120,9 +114,10 @@ tasks:
         export OPENMCP_OPERATOR_IMAGE=$(ocm get component --latest {{.LOCAL_OCM_REPO}}//{{.OPENMCP_OCM_COMPONENT_NAME_OPENMCP_OPERATOR}} -oyaml | get_image_reference openmcp-operator-image | sed 's|http://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
         export CLUSTER_PROVIDER_KIND_IMAGE=$(ocm get component --latest {{.LOCAL_OCM_REPO}}//{{.OPENMCP_OCM_COMPONENT_NAME_CP_KIND}} -oyaml | get_image_reference cluster-provider-kind-image | sed 's|http://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
 
-        export SERVICE_PROVIDER_CROSSPLANE_IMAGE=$(ocm get component --latest {{.LOCAL_OCM_REPO}}//{{.OPENMCP_OCM_COMPONENT_NAME_SP_CROSSPLANE}} -oyaml | get_image_reference service-provider-crossplane-image | sed 's|http://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
-        export CROSSPLANE_CHART_IMAGE=$(ocm get component --latest {{.LOCAL_OCM_REPO}}//{{.OPENMCP_OCM_COMPONENT_NAME_CROSSPLANE}} -oyaml | get_image_reference crossplane | sed 's|http://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
-        export CROSSPLANE_DOCKER_IMAGE=$(ocm get component --latest {{.LOCAL_OCM_REPO}}//{{.OPENMCP_OCM_COMPONENT_NAME_CROSSPLANE}} -oyaml | get_image_reference image-crossplane | sed 's|http://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
+        export SERVICE_PROVIDER_CROSSPLANE_IMAGE=$(ocm get component {{.LOCAL_OCM_REPO}}//{{.OPENMCP_OCM_COMPONENT_NAME_SP_CROSSPLANE}} -oyaml | get_image_reference service-provider-crossplane-image | sed 's|http://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
+        export CROSSPLANE_CHART_IMAGE=$(ocm get component {{.LOCAL_OCM_REPO}}//{{.OPENMCP_OCM_COMPONENT_NAME_CROSSPLANE}}:{{.OPENMCP_OCM_COMPONENT_VERSION_CROSSPLANE}} -oyaml | get_image_reference crossplane | sed 's|http://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
+        export CROSSPLANE_DOCKER_IMAGE=$(ocm get component {{.LOCAL_OCM_REPO}}//{{.OPENMCP_OCM_COMPONENT_NAME_CROSSPLANE}}:{{.OPENMCP_OCM_COMPONENT_VERSION_CROSSPLANE}} -oyaml | get_image_reference image-crossplane | sed 's|http://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
+        export CROSSPLANE_DOCKER_IMAGE_TAG=$(echo "$CROSSPLANE_DOCKER_IMAGE" | sed 's/.*:\([^@:]*\)@.*/\1/')
 
         CROSSPLANE_PROVIDER_KUBERNETES_REF=$(ocm get component --latest {{.LOCAL_OCM_REPO}}//github.tools.sap/openmcp/releasechannel/provider-kubernetes -oyaml | get_image_reference provider-kubernetes | sed 's|http://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
         export CROSSPLANE_PROVIDER_KUBERNETES_IMAGE=$(echo "$CROSSPLANE_PROVIDER_KUBERNETES_REF" | sed 's/:[^/:]*@.*//')
