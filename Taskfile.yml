@@ -108,6 +108,7 @@ tasks:
       - tmp-dir
       - openmcp:create-platform-cluster
     cmds:
+      - flux install --kubeconfig {{.OPENMCP_PLATFORM_CLUSTER_EXT_KUBECONFIG}}
       - |
         get_image_reference() {
           local resource_name="$1"
