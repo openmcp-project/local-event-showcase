@@ -10,6 +10,8 @@ vars:
   OPENMCP_KUBECONFIG_DIR: "{{.TMP_DIR}}/kubeconfigs"
   OPENMCP_PLATFORM_CLUSTER_KUBECONFIG: "{{.OPENMCP_KUBECONFIG_DIR}}/platform-int.kubeconfig"
   OPENMCP_PLATFORM_CLUSTER_EXT_KUBECONFIG: "{{.OPENMCP_KUBECONFIG_DIR}}/platform-ext.kubeconfig"
+  OPENMCP_ONBOARDING_CLUSTER_EXT_KUBECONFIG: "{{.OPENMCP_KUBECONFIG_DIR}}/onboarding-ext.kubeconfig"
+  OPENMCP_MCP_WORKERS_CLUSTER_EXT_KUBECONFIG: "{{.OPENMCP_KUBECONFIG_DIR}}/mcp-workers-ext.kubeconfig"
   OPENMCP_OCM_COMPONENT_NAME_OPENMCP_OPERATOR: "github.com/openmcp-project/openmcp-operator"
   OPENMCP_OCM_COMPONENT_NAME_CP_KIND: "github.com/openmcp-project/cluster-provider-kind"
   OPENMCP_OCM_COMPONENT_NAME_SP_CROSSPLANE: "github.com/openmcp-project/service-provider-crossplane"
@@ -136,6 +138,34 @@ tasks:
         kubectl kustomize ./openmcp/envs/local | envsubst > {{.TMP_DIR}}/openmcp-setup.yaml
       - bash hack/apply-with-crds.sh {{.OPENMCP_PLATFORM_CLUSTER_EXT_KUBECONFIG}} {{.TMP_DIR}}/openmcp-setup.yaml
 
+  openmcp:export-onboarding-kubeconfig:
+    desc: Export the onboarding cluster kubeconfig to the tmp folder
+    cmds:
+      - mkdir -p {{.OPENMCP_KUBECONFIG_DIR}}
+      - |
+        ONBOARDING_CLUSTER=$(kind get clusters | grep '^onboarding\.' | head -1)
+        if [ -z "$ONBOARDING_CLUSTER" ]; then
+          echo "No onboarding cluster found"
+          exit 1
+        fi
+        echo "Exporting kubeconfig for onboarding cluster '$ONBOARDING_CLUSTER'"
+        kind get kubeconfig --name "$ONBOARDING_CLUSTER" > {{.OPENMCP_ONBOARDING_CLUSTER_EXT_KUBECONFIG}}
+        echo "Kubeconfig exported to {{.OPENMCP_ONBOARDING_CLUSTER_EXT_KUBECONFIG}}"
+
+  openmcp:export-mcp-kubeconfig:
+    desc: Export the mcp-workers cluster kubeconfig to the tmp folder
+    cmds:
+      - mkdir -p {{.OPENMCP_KUBECONFIG_DIR}}
+      - |
+        MCP_WORKERS_CLUSTER=$(kind get clusters | grep '^mcp-worker-' | head -1)
+        if [ -z "$MCP_WORKERS_CLUSTER" ]; then
+          echo "No mcp-workers cluster found"
+          exit 1
+        fi
+        echo "Exporting kubeconfig for mcp-workers cluster '$MCP_WORKERS_CLUSTER'"
+        kind get kubeconfig --name "$MCP_WORKERS_CLUSTER" > {{.OPENMCP_MCP_WORKERS_CLUSTER_EXT_KUBECONFIG}}
+        echo "Kubeconfig exported to {{.OPENMCP_MCP_WORKERS_CLUSTER_EXT_KUBECONFIG}}"
+
   openmcp:create-mcp:
     desc: Apply the MCP manifest to the onboarding cluster
     cmds:
@@ -148,6 +178,7 @@ tasks:
         echo "Applying MCP manifest to cluster '$ONBOARDING_CLUSTER'"
         kubectl apply --kubeconfig <(kind get kubeconfig --name "$ONBOARDING_CLUSTER") -f ./openmcp/manifests/mcp.yaml
         kubectl apply --kubeconfig <(kind get kubeconfig --name "$ONBOARDING_CLUSTER") -f ./openmcp/manifests/crossplane.yaml
+      - task: openmcp:export-mcp-kubeconfig
 
   openmcp:delete-clusters:
     desc: Delete the platform, onboarding, and mcp-worker kind clusters
