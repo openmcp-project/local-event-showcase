@@ -238,10 +238,6 @@ tasks:
         export CROSSPLANE_PROVIDER_KUBERNETES_IMAGE=$(echo "$CROSSPLANE_PROVIDER_KUBERNETES_REF" | sed 's/:[^/:]*@.*//')
         export CROSSPLANE_PROVIDER_KUBERNETES_IMAGE_TAG=$(echo "$CROSSPLANE_PROVIDER_KUBERNETES_REF" | sed 's/.*:\([^@:]*\)@.*/\1/')
 
-        CROSSPLANE_PROVIDER_GARDENER_AUTH_REF=$(ocm --config $(pwd)/{{.OCM_CONFIG}} get component --latest {{.LOCAL_OCM_REPO}}//github.tools.sap/openmcp/releasechannel/provider-gardener-auth -oyaml | get_image_reference provider-gardener-auth | sed 's|https://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
-        export CROSSPLANE_PROVIDER_GARDENER_AUTH_IMAGE=$(echo "$CROSSPLANE_PROVIDER_GARDENER_AUTH_REF" | sed 's/:[^/:]*@.*//')
-        export CROSSPLANE_PROVIDER_GARDENER_AUTH_IMAGE_TAG=$(echo "$CROSSPLANE_PROVIDER_GARDENER_AUTH_REF" | sed 's/.*:\([^@:]*\)@.*/\1/')
-
         export OPENMCP_KIND_CONFIG_PATH=$(pwd)/{{.TMP_DIR}}/kind-config.yaml
         export OPENMCP_CONTAINERD_CONFIG_PATH=$(pwd)/{{.TMP_DIR}}/containerd/certs.d
 
