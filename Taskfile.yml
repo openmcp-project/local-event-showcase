@@ -4,8 +4,9 @@ vars:
   REG_NAME: kind-registry
   REG_PORT: "5001"
   LOCAL_OCI_REGISTRY: localhost:{{.REG_PORT}}
-  LOCAL_OCM_REPO: "http://{{.LOCAL_OCI_REGISTRY}}/ocm"
+  LOCAL_OCM_REPO: "https://{{.LOCAL_OCI_REGISTRY}}/ocm"
   TMP_DIR: .tmp
+  OCM_CONFIG: "{{.TMP_DIR}}/ocm-config.yaml"
 
   OPENMCP_KUBECONFIG_DIR: "{{.TMP_DIR}}/kubeconfigs"
   OPENMCP_PLATFORM_CLUSTER_KUBECONFIG: "{{.OPENMCP_KUBECONFIG_DIR}}/platform-int.kubeconfig"
@@ -22,16 +23,77 @@ tasks:
   tmp-dir:
     cmds:
       - mkdir -p {{.TMP_DIR}}
+
+  certs:generate:
+    desc: Generate CA and registry TLS certificates for HTTPS registry, plus OCM config for registry trust
+    deps:
+      - tmp-dir
+    cmds:
+      - mkdir -p {{.TMP_DIR}}/certs
+      - |
+        openssl req -x509 -newkey rsa:2048 -noenc \
+          -subj "/CN=local-registry-ca" \
+          -addext "basicConstraints=critical,CA:TRUE" \
+          -addext "keyUsage=critical,keyCertSign,cRLSign" \
+          -days 365 \
+          -keyout {{.TMP_DIR}}/certs/ca.key \
+          -out {{.TMP_DIR}}/certs/ca.crt
+      - |
+        openssl req -x509 -newkey rsa:2048 -noenc \
+          -subj "/CN=kind-registry" \
+          -addext "subjectAltName=DNS:localhost,DNS:kind-registry,IP:127.0.0.1" \
+          -CA {{.TMP_DIR}}/certs/ca.crt \
+          -CAkey {{.TMP_DIR}}/certs/ca.key \
+          -days 365 \
+          -keyout {{.TMP_DIR}}/certs/registry.key \
+          -out {{.TMP_DIR}}/certs/registry.crt
+      - |
+        cat > $(pwd)/{{.TMP_DIR}}/ocm-config.yaml << EOF
+        type: generic.config.ocm.software/v1
+        configurations:
+          - type: rootcerts.config.ocm.software
+            rootCertificates:
+              - path: $(pwd)/{{.TMP_DIR}}/certs/ca.crt
+          - type: credentials.config.ocm.software
+            repositories:
+              - repository:
+                  type: DockerConfig/v1
+                  dockerConfigFile: "~/.docker/config.json"
+                  propagateConsumerIdentity: true
+        EOF
+        echo "OCM config written to {{.TMP_DIR}}/ocm-config.yaml"
+      - |
+        echo "Certificates generated:"
+        openssl x509 -in {{.TMP_DIR}}/certs/registry.crt -text -noout | grep -A2 "Subject Alternative Name" || true
+      - |
+        mkdir -p {{.TMP_DIR}}/containerd/certs.d/{{.REG_NAME}}:{{.REG_PORT}}
+        cp {{.TMP_DIR}}/certs/ca.crt {{.TMP_DIR}}/containerd/certs.d/{{.REG_NAME}}:{{.REG_PORT}}/ca.crt
+        echo "CA cert copied to certs.d: {{.TMP_DIR}}/containerd/certs.d/{{.REG_NAME}}:{{.REG_PORT}}/ca.crt"
+    status:
+      - test -z "${FORCE}" && test -f {{.TMP_DIR}}/certs/ca.crt && test -f {{.TMP_DIR}}/certs/registry.crt && test -f {{.TMP_DIR}}/ocm-config.yaml && test -f {{.TMP_DIR}}/containerd/certs.d/{{.REG_NAME}}:{{.REG_PORT}}/ca.crt
+
   local-registry:
-    desc: Spin up a local Docker registry in the kind network
+    desc: Spin up a local Docker registry with HTTPS in the kind network
+    deps:
+      - certs:generate
     cmds:
       - |
         if docker inspect {{.REG_NAME}} >/dev/null 2>&1; then
-          echo "Registry '{{.REG_NAME}}' already running"
-        else
-          docker run -d --restart=always -p "127.0.0.1:{{.REG_PORT}}:{{.REG_PORT}}" -e REGISTRY_HTTP_ADDR=0.0.0.0:{{.REG_PORT}} -v registry-data:/var/lib/registry --network kind --name {{.REG_NAME}} registry:2
-          echo "Docker registry '{{.REG_NAME}}' started on localhost:{{.REG_PORT}}"
+          echo "Registry '{{.REG_NAME}}' already running, removing for HTTPS reconfigure..."
+          docker rm -f {{.REG_NAME}}
         fi
+        docker run -d \
+          --restart=always \
+          -p "127.0.0.1:{{.REG_PORT}}:{{.REG_PORT}}" \
+          -e REGISTRY_HTTP_ADDR=0.0.0.0:{{.REG_PORT}} \
+          -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/registry.crt \
+          -e REGISTRY_HTTP_TLS_KEY=/certs/registry.key \
+          -v "$(pwd)/{{.TMP_DIR}}/certs:/certs:ro" \
+          -v registry-data:/var/lib/registry \
+          --network kind \
+          --name {{.REG_NAME}} \
+          registry:2
+        echo "HTTPS registry '{{.REG_NAME}}' started on https://localhost:{{.REG_PORT}}"
 
   local-registry:delete:
     desc: Delete the local Zot OCI registry and its data
@@ -50,12 +112,12 @@ tasks:
         sh: echo "${OPENMCP_OCM_COMPONENT_NAME:-github.com/openmcp-project/openmcp}"
     cmds:
       - |
-        ocm transfer component \
+        ocm --config $(pwd)/{{.OCM_CONFIG}} transfer component \
           --latest --copy-resources --recursive \
           {{.OPENMCP_OCM_REPOSITORY}}//{{.OPENMCP_OCM_COMPONENT_NAME}} \
           {{.LOCAL_OCM_REPO}}
       - |
-        ocm transfer components \
+        ocm --config $(pwd)/{{.OCM_CONFIG}} transfer components \
         --latest --copy-resources --recursive \
         ghcr.io/openmcp-project/components//github.com/openmcp-project/cluster-provider-kind \
         {{.LOCAL_OCM_REPO}}
@@ -66,7 +128,9 @@ tasks:
       - mkdir -p {{.TMP_DIR}}/containerd/certs.d/{{.REG_NAME}}:{{.REG_PORT}}
       - |
         cat > {{.TMP_DIR}}/containerd/certs.d/{{.REG_NAME}}:{{.REG_PORT}}/hosts.toml <<EOF
-        [host."http://{{.REG_NAME}}:{{.REG_PORT}}"]
+        [host."https://{{.REG_NAME}}:{{.REG_PORT}}"]
+          capabilities = ["pull", "resolve"]
+          ca = ["/etc/containerd/certs.d/{{.REG_NAME}}:{{.REG_PORT}}/ca.crt"]
         EOF
       - |
         cat > {{.TMP_DIR}}/kind-config.yaml <<EOF
@@ -111,19 +175,19 @@ tasks:
           yq '.component.resources[] | select(.name == "'"$resource_name"'") | .access.imageReference'
         }
 
-        export OPENMCP_OPERATOR_IMAGE=$(ocm get component --latest {{.LOCAL_OCM_REPO}}//{{.OPENMCP_OCM_COMPONENT_NAME_OPENMCP_OPERATOR}} -oyaml | get_image_reference openmcp-operator-image | sed 's|http://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
-        export CLUSTER_PROVIDER_KIND_IMAGE=$(ocm get component --latest {{.LOCAL_OCM_REPO}}//{{.OPENMCP_OCM_COMPONENT_NAME_CP_KIND}} -oyaml | get_image_reference cluster-provider-kind-image | sed 's|http://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
+        export OPENMCP_OPERATOR_IMAGE=$(ocm --config $(pwd)/{{.OCM_CONFIG}} get component --latest {{.LOCAL_OCM_REPO}}//{{.OPENMCP_OCM_COMPONENT_NAME_OPENMCP_OPERATOR}} -oyaml | get_image_reference openmcp-operator-image | sed 's|https://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
+        export CLUSTER_PROVIDER_KIND_IMAGE=$(ocm --config $(pwd)/{{.OCM_CONFIG}} get component --latest {{.LOCAL_OCM_REPO}}//{{.OPENMCP_OCM_COMPONENT_NAME_CP_KIND}} -oyaml | get_image_reference cluster-provider-kind-image | sed 's|https://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
 
-        export SERVICE_PROVIDER_CROSSPLANE_IMAGE=$(ocm get component {{.LOCAL_OCM_REPO}}//{{.OPENMCP_OCM_COMPONENT_NAME_SP_CROSSPLANE}} -oyaml | get_image_reference service-provider-crossplane-image | sed 's|http://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
-        export CROSSPLANE_CHART_IMAGE=$(ocm get component {{.LOCAL_OCM_REPO}}//{{.OPENMCP_OCM_COMPONENT_NAME_CROSSPLANE}}:{{.OPENMCP_OCM_COMPONENT_VERSION_CROSSPLANE}} -oyaml | get_image_reference crossplane | sed 's|http://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
-        export CROSSPLANE_DOCKER_IMAGE=$(ocm get component {{.LOCAL_OCM_REPO}}//{{.OPENMCP_OCM_COMPONENT_NAME_CROSSPLANE}}:{{.OPENMCP_OCM_COMPONENT_VERSION_CROSSPLANE}} -oyaml | get_image_reference image-crossplane | sed 's|http://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
+        export SERVICE_PROVIDER_CROSSPLANE_IMAGE=$(ocm --config $(pwd)/{{.OCM_CONFIG}} get component {{.LOCAL_OCM_REPO}}//{{.OPENMCP_OCM_COMPONENT_NAME_SP_CROSSPLANE}} -oyaml | get_image_reference service-provider-crossplane-image | sed 's|https://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
+        export CROSSPLANE_CHART_IMAGE=$(ocm --config $(pwd)/{{.OCM_CONFIG}} get component {{.LOCAL_OCM_REPO}}//{{.OPENMCP_OCM_COMPONENT_NAME_CROSSPLANE}}:{{.OPENMCP_OCM_COMPONENT_VERSION_CROSSPLANE}} -oyaml | get_image_reference crossplane | sed 's|https://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
+        export CROSSPLANE_DOCKER_IMAGE=$(ocm --config $(pwd)/{{.OCM_CONFIG}} get component {{.LOCAL_OCM_REPO}}//{{.OPENMCP_OCM_COMPONENT_NAME_CROSSPLANE}}:{{.OPENMCP_OCM_COMPONENT_VERSION_CROSSPLANE}} -oyaml | get_image_reference image-crossplane | sed 's|https://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
         export CROSSPLANE_DOCKER_IMAGE_TAG=$(echo "$CROSSPLANE_DOCKER_IMAGE" | sed 's/.*:\([^@:]*\)@.*/\1/')
 
-        CROSSPLANE_PROVIDER_KUBERNETES_REF=$(ocm get component --latest {{.LOCAL_OCM_REPO}}//github.tools.sap/openmcp/releasechannel/provider-kubernetes -oyaml | get_image_reference provider-kubernetes | sed 's|http://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
+        CROSSPLANE_PROVIDER_KUBERNETES_REF=$(ocm --config $(pwd)/{{.OCM_CONFIG}} get component --latest {{.LOCAL_OCM_REPO}}//github.tools.sap/openmcp/releasechannel/provider-kubernetes -oyaml | get_image_reference provider-kubernetes | sed 's|https://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
         export CROSSPLANE_PROVIDER_KUBERNETES_IMAGE=$(echo "$CROSSPLANE_PROVIDER_KUBERNETES_REF" | sed 's/:[^/:]*@.*//')
         export CROSSPLANE_PROVIDER_KUBERNETES_IMAGE_TAG=$(echo "$CROSSPLANE_PROVIDER_KUBERNETES_REF" | sed 's/.*:\([^@:]*\)@.*/\1/')
 
-        CROSSPLANE_PROVIDER_GARDENER_AUTH_REF=$(ocm get component --latest {{.LOCAL_OCM_REPO}}//github.tools.sap/openmcp/releasechannel/provider-gardener-auth -oyaml | get_image_reference provider-gardener-auth | sed 's|http://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
+        CROSSPLANE_PROVIDER_GARDENER_AUTH_REF=$(ocm --config $(pwd)/{{.OCM_CONFIG}} get component --latest {{.LOCAL_OCM_REPO}}//github.tools.sap/openmcp/releasechannel/provider-gardener-auth -oyaml | get_image_reference provider-gardener-auth | sed 's|https://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|')
         export CROSSPLANE_PROVIDER_GARDENER_AUTH_IMAGE=$(echo "$CROSSPLANE_PROVIDER_GARDENER_AUTH_REF" | sed 's/:[^/:]*@.*//')
         export CROSSPLANE_PROVIDER_GARDENER_AUTH_IMAGE_TAG=$(echo "$CROSSPLANE_PROVIDER_GARDENER_AUTH_REF" | sed 's/.*:\([^@:]*\)@.*/\1/')
 
