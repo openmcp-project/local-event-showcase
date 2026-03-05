@@ -162,6 +162,56 @@ tasks:
       - kind get kubeconfig --internal --name platform > {{.OPENMCP_PLATFORM_CLUSTER_KUBECONFIG}}
       - kind get kubeconfig --name platform > {{.OPENMCP_PLATFORM_CLUSTER_EXT_KUBECONFIG}}
 
+  openmcp:flux-trust-registry-ca:
+    desc: "Configure Flux source-controller to trust the local registry CA cert"
+    cmds:
+      - |
+        kubectl create secret generic registry-ca \
+          --namespace flux-system \
+          --from-file=ca.crt={{.TMP_DIR}}/certs/ca.crt \
+          --kubeconfig {{.OPENMCP_PLATFORM_CLUSTER_EXT_KUBECONFIG}} \
+          --dry-run=client -o yaml \
+          | kubectl apply --kubeconfig {{.OPENMCP_PLATFORM_CLUSTER_EXT_KUBECONFIG}} -f -
+      - |
+        kubectl patch deployment source-controller \
+          --namespace flux-system \
+          --kubeconfig {{.OPENMCP_PLATFORM_CLUSTER_EXT_KUBECONFIG}} \
+          --type strategic \
+          --patch '{
+            "spec": {
+              "template": {
+                "spec": {
+                  "volumes": [
+                    {
+                      "name": "registry-ca",
+                      "secret": {
+                        "secretName": "registry-ca"
+                      }
+                    }
+                  ],
+                  "containers": [
+                    {
+                      "name": "manager",
+                      "volumeMounts": [
+                        {
+                          "name": "registry-ca",
+                          "mountPath": "/etc/ssl/certs/registry-ca.crt",
+                          "subPath": "ca.crt",
+                          "readOnly": true
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }'
+      - |
+        kubectl rollout status deployment/source-controller \
+          --namespace flux-system \
+          --kubeconfig {{.OPENMCP_PLATFORM_CLUSTER_EXT_KUBECONFIG}} \
+          --timeout=120s
+
   openmcp:local:
     desc: Creates a local running openmcp platform in kind
     deps:
@@ -169,6 +219,7 @@ tasks:
       - openmcp:create-platform-cluster
     cmds:
       - flux install --kubeconfig {{.OPENMCP_PLATFORM_CLUSTER_EXT_KUBECONFIG}}
+      - task: openmcp:flux-trust-registry-ca
       - |
         get_image_reference() {
           local resource_name="$1"
