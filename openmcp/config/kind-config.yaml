@@ -9,3 +9,6 @@ nodes:
     extraMounts:
       - hostPath: /var/run/docker.sock
         containerPath: /var/run/host-docker.sock
+      - hostPath: $OPENMCP_CONTAINERD_CONFIG_PATH
+        containerPath: /etc/containerd/certs.d
+        readOnly: true

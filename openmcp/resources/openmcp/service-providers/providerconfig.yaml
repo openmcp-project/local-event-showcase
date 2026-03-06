@@ -4,7 +4,7 @@ metadata:
   name: default
 spec:
   versions:
-    - version: v2.0.2
+    - version: $CROSSPLANE_DOCKER_IMAGE_TAG
       chart:
         url: $CROSSPLANE_CHART_IMAGE
       image:
@@ -15,7 +15,6 @@ spec:
         package: $CROSSPLANE_PROVIDER_KUBERNETES_IMAGE
         versions:
           - $CROSSPLANE_PROVIDER_KUBERNETES_IMAGE_TAG
-      - name: provider-gardener-auth
-        package: $CROSSPLANE_PROVIDER_GARDENER_AUTH_IMAGE
-        versions:
-          - $CROSSPLANE_PROVIDER_GARDENER_AUTH_IMAGE_TAG
+  caBundleRef:
+    name: custom-ca-bundle # Name of the ConfigMap
+    key: ca-bundle.crt # Key within the ConfigMap containing the certificate bundle

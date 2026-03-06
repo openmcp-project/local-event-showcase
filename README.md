@@ -10,6 +10,32 @@ This repo contains scripts and documentation on how to setup a local platform of
 
 A machine with at least 8 CPU Cores and 32 GB RAM.
 
+### OpenMCP
+
+First you need to setup the local-registry:
+
+```bash
+task local-registry
+```
+
+Then you need to clone the distro for openmcp
+
+```bash
+task openmcp:clone-distro
+```
+
+After thats finished, you can run the local installation:
+
+```bash
+task openmcp:local
+```
+
+Now you have the running openmcp platform. To create an mcp with crossplane and the kubernetes provider installed:
+
+```bash
+task openmcp:create-mcp
+```
+
 ## Support, Feedback, Contributing
 
 This project is open to feature requests/suggestions, bug reports etc. via [GitHub issues](https://github.com/openmcp-project/local-event-showcase/issues). Contribution and feedback are encouraged and always welcome. For more information about how to contribute, the project structure, as well as additional contribution information, see our [Contribution Guidelines](CONTRIBUTING.md).
