@@ -228,6 +228,7 @@ tasks:
     cmds:
       - flux install --kubeconfig {{.OPENMCP_PLATFORM_CLUSTER_EXT_KUBECONFIG}}
       - task: openmcp:flux-trust-registry-ca
+      - kubectl create namespace openmcp-system --kubeconfig {{.OPENMCP_PLATFORM_CLUSTER_EXT_KUBECONFIG}} --dry-run=client -o yaml | kubectl apply --kubeconfig {{.OPENMCP_PLATFORM_CLUSTER_EXT_KUBECONFIG}} -f -
       - |
         kubectl create secret generic registry-ca \
           --namespace=openmcp-system \
