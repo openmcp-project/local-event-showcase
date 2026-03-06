@@ -16,5 +16,5 @@ spec:
         versions:
           - $CROSSPLANE_PROVIDER_KUBERNETES_IMAGE_TAG
   caBundleRef:
-    name: custom-ca-bundle # Name of the ConfigMap
-    key: ca-bundle.crt # Key within the ConfigMap containing the certificate bundle
+    name: registry-ca
+    key: ca-bundle.crt

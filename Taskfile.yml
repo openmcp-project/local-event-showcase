@@ -237,6 +237,13 @@ tasks:
           --dry-run=client -o yaml \
           | kubectl apply --kubeconfig {{.OPENMCP_PLATFORM_CLUSTER_EXT_KUBECONFIG}} -f -
       - |
+        kubectl create configmap registry-ca \
+          --namespace=openmcp-system \
+          --from-file=ca-bundle.crt={{.TMP_DIR}}/certs/ca.crt \
+          --kubeconfig {{.OPENMCP_PLATFORM_CLUSTER_EXT_KUBECONFIG}} \
+          --dry-run=client -o yaml \
+          | kubectl apply --kubeconfig {{.OPENMCP_PLATFORM_CLUSTER_EXT_KUBECONFIG}} -f -
+      - |
         set -x
         get_image_reference() {
           local resource_name="$1"
