@@ -136,9 +136,9 @@ log "Applied provider manifests to ${OPENMCP_WORKSPACE_URL} ✓"
 # Apply init-agent manifests (InitTemplate + InitTarget) to the config workspace
 # The KCP init-agent reads these to know what resources to create in new workspaces
 INIT_AGENT_MANIFESTS_DIR="${MANIFESTS_DIR}/init-agent"
-log "Applying init-agent manifests to config workspace..."
-KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${INIT_AGENT_MANIFESTS_DIR}" --server="${OPENMCP_WORKSPACE_URL}"
-log "Applied init-agent manifests ✓"
+log "Applying init-agent manifests to platform-mesh-system workspace..."
+KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${INIT_AGENT_MANIFESTS_DIR}" --server="${PLATFORM_MESH_SYSTEM_URL}"
+log "Applied init-agent manifests to ${PLATFORM_MESH_SYSTEM_URL} ✓"
 
 # Create operator kubeconfig pointing to the openmcp workspace
 OPERATOR_KUBECONFIG="${KUBECONFIGS_DIR}/operator.kubeconfig"

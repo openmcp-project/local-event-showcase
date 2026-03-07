@@ -8,6 +8,7 @@ metadata:
 spec:
   latestResourceSchemas:
     - v260218-a16964f.crossplanes.crossplane.services.openmcp.cloud
+    - v260307-567f630.managedcontrolplanes.crossplane.services.openmcp.cloud
   permissionClaims:
     - group: apis.kcp.io
       resource: apiexports
@@ -15,5 +16,5 @@ spec:
     - group: ui.platform-mesh.io
       resource: contentconfigurations
       all: true
-      identityHash: 13c5a3e2dece720df31a0d8790a08e58ca258d7eb91982dc791ec755c017d1a4
+      identityHash: 0417e3911886a32df2ce5ca4e6135ad7fa7130e8ab61966214b93a555ca5e9f2
 status: {}
