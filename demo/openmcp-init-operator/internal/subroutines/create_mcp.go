@@ -95,6 +95,8 @@ func (r *CreateMCPSubroutine) Process(ctx context.Context, runtimeObj runtimeobj
 	log := logger.LoadLoggerFromContext(ctx)
 	managedCP := runtimeObj.(*crossplanev1alpha1.ManagedControlPlane)
 
+	managedCP.Status.Phase = crossplanev1alpha1.ManagedControlPlanePhaseProvisioning
+
 	// Get cluster ID from multicluster context
 	clusterID, ok := mccontext.ClusterFrom(ctx)
 	if !ok {

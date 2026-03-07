@@ -47,7 +47,6 @@ func NewManagedControlPlaneReconciler(cfg config.OperatorConfig, mgr mcmanager.M
 
 	return &ManagedControlPlaneReconciler{
 		lifecycle: builder.NewBuilder(operatorName, managedControlPlaneReconcilerName, subs, log).
-			WithReadOnly().
 			BuildMultiCluster(mgr),
 		log: log,
 	}

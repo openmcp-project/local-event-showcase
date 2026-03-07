@@ -31,9 +31,7 @@ rules:
   - "crossplane.services.openmcp.cloud"
   resources:
   - crossplanes
-  - crossplanes/status
   - managedcontrolplanes
-  - managedcontrolplanes/status
   verbs:
   - "get"
   - "list"
@@ -42,6 +40,14 @@ rules:
   - "update"
   - "patch"
   - "delete"
+- apiGroups:
+  - "crossplane.services.openmcp.cloud"
+  resources:
+  - crossplanes/status
+  - managedcontrolplanes/status
+  verbs:
+  - "update"
+  - "patch"
 - apiGroups:
   - "syncagent.kcp.io"
   resources:
