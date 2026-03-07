@@ -9,14 +9,8 @@ type OperatorConfig struct {
 		SetupSyncAgent struct {
 			Enabled bool `mapstructure:"subroutines-setup-sync-agent-enabled" default:"true"`
 		} `mapstructure:",squash"`
-		SetupFlux struct {
-			Enabled bool `mapstructure:"subroutines-setup-flux-enabled" default:"false"`
-		} `mapstructure:",squash"`
 		InitializePublishedResources struct {
 			Enabled bool `mapstructure:"subroutines-initialize-published-resources-enabled" default:"true"`
-		} `mapstructure:",squash"`
-		DeployAPIExportBinding struct {
-			Enabled bool `mapstructure:"subroutines-deploy-api-export-binding-enabled" default:"false"`
 		} `mapstructure:",squash"`
 		InitializeWorkspace struct {
 			Enabled bool `mapstructure:"subroutines-initialize-workspace-enabled" default:"true"`

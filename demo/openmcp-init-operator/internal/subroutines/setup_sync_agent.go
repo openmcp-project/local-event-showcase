@@ -6,15 +6,12 @@ import (
 	"net/url"
 
 	apisv1alpha1 "github.com/kcp-dev/sdk/apis/apis/v1alpha1"
-	"github.com/kcp-dev/sdk/apis/apis/v1alpha2"
 	goHelm "github.com/mittwald/go-helm-client"
 	"github.com/platform-mesh/golang-commons/controller/lifecycle/runtimeobject"
 	"github.com/platform-mesh/golang-commons/errors"
 	"github.com/platform-mesh/golang-commons/logger"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -23,12 +20,13 @@ import (
 	mccontext "sigs.k8s.io/multicluster-runtime/pkg/context"
 	mcmanager "sigs.k8s.io/multicluster-runtime/pkg/manager"
 
+	crossplanev1alpha1 "github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/api/v1alpha1"
 	"github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/internal/config"
 )
 
 const (
 	DeploySyncSubroutineName = "DeploySyncAgent"
-	apiExportName            = "crossplane.openmcp.cloud"
+	apiExportName            = "crossplane.services.openmcp.cloud"
 	kcpPathAnnotation        = "kcp.io/path"
 )
 
@@ -56,21 +54,21 @@ func (r *SetupSyncAgentSubroutine) Finalizers(_ runtimeobject.RuntimeObject) []s
 
 func (r *SetupSyncAgentSubroutine) Process(ctx context.Context, runtimeObj runtimeobject.RuntimeObject) (ctrl.Result, errors.OperatorError) {
 	log := logger.LoadLoggerFromContext(ctx)
-	apiBinding := runtimeObj.(*v1alpha2.APIBinding)
+	managedCP := runtimeObj.(*crossplanev1alpha1.ManagedControlPlane)
 
 	clusterID, _ := mccontext.ClusterFrom(ctx)
 	log.Info().
-		Str("apiBinding", apiBinding.Name).
+		Str("managedControlPlane", managedCP.Name).
 		Str("clusterID", clusterID).
 		Msg("SetupSyncAgent: starting Process")
 
-	kcpPath := apiBinding.GetAnnotations()[kcpPathAnnotation]
+	kcpPath := managedCP.GetAnnotations()[kcpPathAnnotation]
 	if kcpPath == "" {
 		log.Error().
-			Str("apiBinding", apiBinding.Name).
+			Str("managedControlPlane", managedCP.Name).
 			Msg("SetupSyncAgent: missing kcp.io/path annotation")
 		return ctrl.Result{}, errors.NewOperatorError(
-			fmt.Errorf("APIBinding %s is missing required annotation %s", apiBinding.Name, kcpPathAnnotation),
+			fmt.Errorf("ManagedControlPlane %s is missing required annotation %s", managedCP.Name, kcpPathAnnotation),
 			false, true)
 	}
 	log.Info().Str("kcpPath", kcpPath).Msg("SetupSyncAgent: resolved KCP path")
@@ -82,22 +80,6 @@ func (r *SetupSyncAgentSubroutine) Process(ctx context.Context, runtimeObj runti
 		return ctrl.Result{}, errors.NewOperatorError(err, true, true)
 	}
 	log.Info().Msg("SetupSyncAgent: workspace APIExport ensured successfully")
-
-	// Ensure ContentConfiguration for the Crossplane UI
-	log.Info().Msg("SetupSyncAgent: ensuring ContentConfiguration")
-	if err := r.ensureContentConfiguration(ctx); err != nil {
-		log.Error().Err(err).Msg("SetupSyncAgent: failed to ensure ContentConfiguration")
-		return ctrl.Result{}, errors.NewOperatorError(err, true, true)
-	}
-	log.Info().Msg("SetupSyncAgent: ContentConfiguration ensured successfully")
-
-	// Ensure ProviderMetadata for the marketplace
-	log.Info().Msg("SetupSyncAgent: ensuring ProviderMetadata")
-	if err := r.ensureProviderMetadata(ctx); err != nil {
-		log.Error().Err(err).Msg("SetupSyncAgent: failed to ensure ProviderMetadata")
-		return ctrl.Result{}, errors.NewOperatorError(err, true, true)
-	}
-	log.Info().Msg("SetupSyncAgent: ProviderMetadata ensured successfully")
 
 	log.Info().Msg("SetupSyncAgent: retrieving MCP kubeconfig")
 	mcpKubeconfig, result, operatorError := getMcpKubeconfig(ctx, r.onboardingClient, defaultMCPNamespace, r.cfg.MCP.HostOverride)
@@ -208,6 +190,7 @@ hostAliases:
 		return ctrl.Result{}, errors.NewOperatorError(err, true, true)
 	}
 
+	managedCP.Status.Phase = crossplanev1alpha1.ManagedControlPlanePhaseReady
 	log.Info().Msg("SetupSyncAgent: Process completed successfully")
 	return ctrl.Result{}, nil
 }
@@ -236,161 +219,5 @@ func (r *SetupSyncAgentSubroutine) ensureWorkspaceAPIExport(ctx context.Context)
 	} else {
 		log.Info().Str("apiExportName", apiExportName).Str("result", string(result)).Msg("ensureWorkspaceAPIExport: CreateOrUpdate completed")
 	}
-	return err
-}
-
-func (r *SetupSyncAgentSubroutine) ensureContentConfiguration(ctx context.Context) error {
-	log := logger.LoadLoggerFromContext(ctx)
-
-	cluster, err := r.mgr.ClusterFromContext(ctx)
-	if err != nil {
-		log.Error().Err(err).Msg("ensureContentConfiguration: failed to get cluster from context")
-		return err
-	}
-	kcpClient := cluster.GetClient()
-	log.Info().Msg("ensureContentConfiguration: got KCP client, preparing ContentConfiguration resource")
-
-	contentConfig := &unstructured.Unstructured{}
-	contentConfig.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "ui.platform-mesh.io",
-		Version: "v1alpha1",
-		Kind:    "ContentConfiguration",
-	})
-	contentConfig.SetName("openmcp-crossplane")
-	contentConfig.SetLabels(map[string]string{
-		"ui.platform-mesh.io/entity":      "core_platform-mesh_io_account",
-		"ui.platform-mesh.io/content-for": "crossplane.openmcp.cloud",
-	})
-
-	inlineContent := `{
-  "name": "crossplane.crossplane.openmcp.cloud",
-  "luigiConfigFragment": {
-    "data": {
-      "nodes": [
-        {
-          "pathSegment": "crossplane",
-          "navigationContext": "crossplane",
-          "label": "Crossplane",
-          "icon": "customer",
-          "order": 100,
-          "hideSideNav": false,
-          "keepSelectedForChildren": true,
-          "virtualTree": true,
-          "entityType": "main.core_platform-mesh_io_account",
-          "loadingIndicator": { "enabled": false },
-          "category": {
-            "id": "openmcp",
-            "isGroup": true,
-            "label": "OpenMCP",
-            "order": 90
-          },
-          "url": "https://{context.organization}.portal.localhost:8443/ui/generic-resource/#/",
-          "context": {
-            "resourceDefinition": {
-              "group": "crossplane.services.openmcp.cloud",
-              "version": "v1alpha1",
-              "kind": "Crossplane",
-              "plural": "Crossplanes",
-              "singular": "crossplane",
-              "scope": "Cluster"
-            }
-          }
-        }
-      ]
-    }
-  }
-}`
-
-	log.Info().Msg("ensureContentConfiguration: calling CreateOrUpdate for ContentConfiguration 'openmcp-crossplane'")
-	result, err := controllerutil.CreateOrUpdate(ctx, kcpClient, contentConfig, func() error {
-		if err := unstructured.SetNestedMap(contentConfig.Object, map[string]interface{}{
-			"inlineConfiguration": map[string]interface{}{
-				"content":     inlineContent,
-				"contentType": "json",
-			},
-		}, "spec"); err != nil {
-			return err
-		}
-		return nil
-	})
-	if err != nil {
-		log.Error().Err(err).Msg("ensureContentConfiguration: CreateOrUpdate failed")
-	} else {
-		log.Info().Str("result", string(result)).Msg("ensureContentConfiguration: CreateOrUpdate completed")
-	}
-
-	return err
-}
-
-func (r *SetupSyncAgentSubroutine) ensureProviderMetadata(ctx context.Context) error {
-	log := logger.LoadLoggerFromContext(ctx)
-
-	cluster, err := r.mgr.ClusterFromContext(ctx)
-	if err != nil {
-		log.Error().Err(err).Msg("ensureProviderMetadata: failed to get cluster from context")
-		return err
-	}
-	kcpClient := cluster.GetClient()
-	log.Info().Msg("ensureProviderMetadata: got KCP client, preparing ProviderMetadata resource")
-
-	providerMeta := &unstructured.Unstructured{}
-	providerMeta.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "ui.platform-mesh.io",
-		Version: "v1alpha1",
-		Kind:    "ProviderMetadata",
-	})
-	providerMeta.SetName(apiExportName)
-
-	log.Info().Str("name", apiExportName).Msg("ensureProviderMetadata: calling CreateOrUpdate")
-	result, err := controllerutil.CreateOrUpdate(ctx, kcpClient, providerMeta, func() error {
-		return unstructured.SetNestedMap(providerMeta.Object, map[string]interface{}{
-			"displayName": "OpenMCP Crossplane",
-			"description": "Crossplane-as-a-Service by OpenMCP. Provides declarative infrastructure provisioning and composition across multiple cloud providers using the Kubernetes Resource Model.",
-			"tags": []interface{}{
-				"crossplane",
-				"infrastructure",
-				"multi-cloud",
-			},
-			"contacts": []interface{}{
-				map[string]interface{}{
-					"displayName": "OpenMCP Team",
-					"email":       "ManagedControlPlane@sap.com",
-					"role":        []interface{}{"Technical Support"},
-				},
-			},
-			"documentation": []interface{}{
-				map[string]interface{}{
-					"displayName": "OpenMCP Documentation",
-					"url":         "https://github.com/openmcp-project",
-				},
-			},
-			"links": []interface{}{
-				map[string]interface{}{
-					"displayName": "GitHub Organization",
-					"url":         "https://github.com/openmcp-project",
-				},
-			},
-			"preferredSupportChannels": []interface{}{
-				map[string]interface{}{
-					"displayName": "GitHub Issues",
-					"url":         "https://github.com/openmcp-project/mcp-operator/issues",
-				},
-			},
-			"icon": map[string]interface{}{
-				"light": map[string]interface{}{
-					"data": openmcpIconData,
-				},
-				"dark": map[string]interface{}{
-					"data": openmcpIconData,
-				},
-			},
-		}, "spec")
-	})
-	if err != nil {
-		log.Error().Err(err).Msg("ensureProviderMetadata: CreateOrUpdate failed")
-	} else {
-		log.Info().Str("result", string(result)).Msg("ensureProviderMetadata: CreateOrUpdate completed")
-	}
-
 	return err
 }

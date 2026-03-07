@@ -31,6 +31,9 @@ rules:
   - "crossplane.services.openmcp.cloud"
   resources:
   - crossplanes
+  - crossplanes/status
+  - managedcontrolplanes
+  - managedcontrolplanes/status
   verbs:
   - "get"
   - "list"

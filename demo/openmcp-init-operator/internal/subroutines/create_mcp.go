@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/kcp-dev/sdk/apis/apis/v1alpha2"
 	clustersv1alpha1 "github.com/openmcp-project/openmcp-operator/api/clusters/v1alpha1"
 	commonapi "github.com/openmcp-project/openmcp-operator/api/common"
 	mcpv2alpha1 "github.com/openmcp-project/openmcp-operator/api/core/v2alpha1"
@@ -20,6 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	mccontext "sigs.k8s.io/multicluster-runtime/pkg/context"
 
+	crossplanev1alpha1 "github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/api/v1alpha1"
 	"github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/internal/config"
 )
 
@@ -93,7 +93,7 @@ var _ subroutine.Subroutine = &CreateMCPSubroutine{}
 // The ManagedControlPlaneV2 name is derived from the KCP workspace cluster ID.
 func (r *CreateMCPSubroutine) Process(ctx context.Context, runtimeObj runtimeobject.RuntimeObject) (ctrl.Result, errors.OperatorError) {
 	log := logger.LoadLoggerFromContext(ctx)
-	_ = runtimeObj.(*v1alpha2.APIBinding)
+	managedCP := runtimeObj.(*crossplanev1alpha1.ManagedControlPlane)
 
 	// Get cluster ID from multicluster context
 	clusterID, ok := mccontext.ClusterFrom(ctx)
@@ -133,5 +133,7 @@ func (r *CreateMCPSubroutine) Process(ctx context.Context, runtimeObj runtimeobj
 	}
 
 	log.Info().Str("name", clusterID).Msg("ManagedControlPlaneV2 created or updated successfully")
+
+	managedCP.Status.Phase = crossplanev1alpha1.ManagedControlPlanePhaseMCPReady
 	return ctrl.Result{}, nil
 }

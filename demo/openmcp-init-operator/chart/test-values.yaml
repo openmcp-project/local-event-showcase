@@ -35,11 +35,5 @@ operator:
   deployment:
     replicas: 1
 
-initializer:
-  initializingVirtualWorkspaceURL: https://kcp.test.example.com:443/services/initializingworkspaces/root:openmcp
-  initializerName: test-init
-  deployment:
-    replicas: 1
-
 externalSecrets:
   enabled: false

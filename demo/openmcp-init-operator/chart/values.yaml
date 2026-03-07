@@ -64,14 +64,6 @@ operator:
   deployment:
     replicas: 1
 
-# Initializer deployment settings
-initializer:
-  enabled: false
-  initializingVirtualWorkspaceURL: ""
-  initializerName: openmcp-init
-  deployment:
-    replicas: 1
-
 # External secrets configuration
 externalSecrets:
   enabled: false
