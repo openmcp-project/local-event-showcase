@@ -9,17 +9,8 @@ type OperatorConfig struct {
 		SetupSyncAgent struct {
 			Enabled bool `mapstructure:"subroutines-setup-sync-agent-enabled" default:"true"`
 		} `mapstructure:",squash"`
-		SetupFlux struct {
-			Enabled bool `mapstructure:"subroutines-setup-flux-enabled" default:"false"`
-		} `mapstructure:",squash"`
 		InitializePublishedResources struct {
 			Enabled bool `mapstructure:"subroutines-initialize-published-resources-enabled" default:"true"`
-		} `mapstructure:",squash"`
-		DeployAPIExportBinding struct {
-			Enabled bool `mapstructure:"subroutines-deploy-api-export-binding-enabled" default:"false"`
-		} `mapstructure:",squash"`
-		InitializeWorkspace struct {
-			Enabled bool `mapstructure:"subroutines-initialize-workspace-enabled" default:"true"`
 		} `mapstructure:",squash"`
 		CreateCrossplane struct {
 			Enabled bool `mapstructure:"subroutines-create-crossplane-enabled" default:"true"`
@@ -39,18 +30,4 @@ type OperatorConfig struct {
 		HostOverride   string `mapstructure:"mcp-host-override" description:"Override host in MCP kubeconfig (for local testing outside cluster)"`
 	} `mapstructure:",squash"`
 	RuntimeNamespace string `mapstructure:"runtime-namespace" default:"account" description:"Namespace for runtime resources"`
-}
-
-// InitializerConfig struct to hold the initializer-specific config
-type InitializerConfig struct {
-	Subroutines struct {
-		InitializeWorkspace struct {
-			Enabled bool `mapstructure:"subroutines-initialize-workspace-enabled" default:"true"`
-		} `mapstructure:",squash"`
-	} `mapstructure:",squash"`
-	KCP struct {
-		Kubeconfig                      string `mapstructure:"kcp-kubeconfig" description:"Path to the KCP kubeconfig file"`
-		InitializingVirtualWorkspaceURL string `mapstructure:"kcp-initializing-virtual-workspace-url" default:"http://localhost:8080" description:"Virtual workspace URL for initializer"`
-		InitializerName                 string `mapstructure:"kcp-initializer-name" default:"root:openmcp" description:"Initializer name"`
-	} `mapstructure:",squash"`
 }

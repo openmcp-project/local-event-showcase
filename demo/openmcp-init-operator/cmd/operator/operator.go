@@ -44,7 +44,6 @@ import (
 
 	"github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/internal/config"
 	"github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/internal/controller"
-	"github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/internal/predicates"
 )
 
 var (
@@ -62,7 +61,7 @@ func NewOperatorCmd(v *viper.Viper, cfg *platformmeshconfig.CommonServiceConfig,
 
 	operatorCmd := &cobra.Command{
 		Use:   "operator",
-		Short: "operator to reconcile APIBinding resources for OpenMCP initialization",
+		Short: "operator to reconcile ManagedControlPlane and Crossplane resources for OpenMCP initialization",
 		Run:   RunController,
 	}
 
@@ -204,15 +203,10 @@ func RunController(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	reconciler := controller.NewOpenMCPInitReconciler(operatorCfg, mgr, onboardingClient, log)
+	reconciler := controller.NewManagedControlPlaneReconciler(operatorCfg, mgr, onboardingClient, log)
 
-	apiBindingPredicate := predicates.APIBindingExportReferencePredicate(
-		"openmcp.cloud",
-		"root:providers:openmcp",
-	)
-
-	if err = reconciler.SetupWithManager(mgr, defaultCfg, log, apiBindingPredicate); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "OpenMCPInitReconciler")
+	if err = reconciler.SetupWithManager(mgr, defaultCfg, log); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ManagedControlPlaneReconciler")
 		os.Exit(1)
 	}
 
