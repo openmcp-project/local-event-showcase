@@ -28,7 +28,7 @@ import (
 
 const (
 	DeploySyncSubroutineName = "DeploySyncAgent"
-	apiExportName            = "services.openmcp.cloud"
+	apiExportName            = "crossplane.openmcp.cloud"
 	kcpPathAnnotation        = "kcp.io/path"
 )
 
@@ -90,6 +90,14 @@ func (r *SetupSyncAgentSubroutine) Process(ctx context.Context, runtimeObj runti
 		return ctrl.Result{}, errors.NewOperatorError(err, true, true)
 	}
 	log.Info().Msg("SetupSyncAgent: ContentConfiguration ensured successfully")
+
+	// Ensure ProviderMetadata for the marketplace
+	log.Info().Msg("SetupSyncAgent: ensuring ProviderMetadata")
+	if err := r.ensureProviderMetadata(ctx); err != nil {
+		log.Error().Err(err).Msg("SetupSyncAgent: failed to ensure ProviderMetadata")
+		return ctrl.Result{}, errors.NewOperatorError(err, true, true)
+	}
+	log.Info().Msg("SetupSyncAgent: ProviderMetadata ensured successfully")
 
 	log.Info().Msg("SetupSyncAgent: retrieving MCP kubeconfig")
 	mcpKubeconfig, result, operatorError := getMcpKubeconfig(ctx, r.onboardingClient, defaultMCPNamespace, r.cfg.MCP.HostOverride)
@@ -251,11 +259,11 @@ func (r *SetupSyncAgentSubroutine) ensureContentConfiguration(ctx context.Contex
 	contentConfig.SetName("openmcp-crossplane")
 	contentConfig.SetLabels(map[string]string{
 		"ui.platform-mesh.io/entity":      "core_platform-mesh_io_account",
-		"ui.platform-mesh.io/content-for": "services.openmcp.cloud",
+		"ui.platform-mesh.io/content-for": "crossplane.openmcp.cloud",
 	})
 
 	inlineContent := `{
-  "name": "crossplane.services.openmcp.cloud",
+  "name": "crossplane.crossplane.openmcp.cloud",
   "luigiConfigFragment": {
     "data": {
       "nodes": [
@@ -309,6 +317,79 @@ func (r *SetupSyncAgentSubroutine) ensureContentConfiguration(ctx context.Contex
 		log.Error().Err(err).Msg("ensureContentConfiguration: CreateOrUpdate failed")
 	} else {
 		log.Info().Str("result", string(result)).Msg("ensureContentConfiguration: CreateOrUpdate completed")
+	}
+
+	return err
+}
+
+func (r *SetupSyncAgentSubroutine) ensureProviderMetadata(ctx context.Context) error {
+	log := logger.LoadLoggerFromContext(ctx)
+
+	cluster, err := r.mgr.ClusterFromContext(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("ensureProviderMetadata: failed to get cluster from context")
+		return err
+	}
+	kcpClient := cluster.GetClient()
+	log.Info().Msg("ensureProviderMetadata: got KCP client, preparing ProviderMetadata resource")
+
+	providerMeta := &unstructured.Unstructured{}
+	providerMeta.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "ui.platform-mesh.io",
+		Version: "v1alpha1",
+		Kind:    "ProviderMetadata",
+	})
+	providerMeta.SetName(apiExportName)
+
+	log.Info().Str("name", apiExportName).Msg("ensureProviderMetadata: calling CreateOrUpdate")
+	result, err := controllerutil.CreateOrUpdate(ctx, kcpClient, providerMeta, func() error {
+		return unstructured.SetNestedMap(providerMeta.Object, map[string]interface{}{
+			"displayName": "OpenMCP Crossplane",
+			"description": "Crossplane-as-a-Service by OpenMCP. Provides declarative infrastructure provisioning and composition across multiple cloud providers using the Kubernetes Resource Model.",
+			"tags": []interface{}{
+				"crossplane",
+				"infrastructure",
+				"multi-cloud",
+			},
+			"contacts": []interface{}{
+				map[string]interface{}{
+					"displayName": "OpenMCP Team",
+					"email":       "ManagedControlPlane@sap.com",
+					"role":        []interface{}{"Technical Support"},
+				},
+			},
+			"documentation": []interface{}{
+				map[string]interface{}{
+					"displayName": "OpenMCP Documentation",
+					"url":         "https://github.com/openmcp-project",
+				},
+			},
+			"links": []interface{}{
+				map[string]interface{}{
+					"displayName": "GitHub Organization",
+					"url":         "https://github.com/openmcp-project",
+				},
+			},
+			"preferredSupportChannels": []interface{}{
+				map[string]interface{}{
+					"displayName": "GitHub Issues",
+					"url":         "https://github.com/openmcp-project/mcp-operator/issues",
+				},
+			},
+			"icon": map[string]interface{}{
+				"light": map[string]interface{}{
+					"data": openmcpIconData,
+				},
+				"dark": map[string]interface{}{
+					"data": openmcpIconData,
+				},
+			},
+		}, "spec")
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("ensureProviderMetadata: CreateOrUpdate failed")
+	} else {
+		log.Info().Str("result", string(result)).Msg("ensureProviderMetadata: CreateOrUpdate completed")
 	}
 
 	return err

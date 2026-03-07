@@ -56,22 +56,22 @@ fi
 log "platform-mesh resource is ready ✓"
 
 # Patch platform-mesh resource with extraDefaultAPIBindings for openmcp
-#log "Patching platform-mesh with extraDefaultAPIBindings..."
-#KUBECONFIG="${PLATFORM_MESH_KUBECONFIG}" kubectl patch platformmesh platform-mesh -n platform-mesh-system --type=merge -p '
-#{
-#  "spec": {
-#    "kcp": {
-#      "extraDefaultAPIBindings": [
-#        {
-#          "workspaceTypePath": "root:account",
-#          "export": "openmcp.cloud",
-#          "path": "root:providers:openmcp"
-#        }
-#      ]
-#    }
-#  }
-#}'
-#log "Patched platform-mesh with extraDefaultAPIBindings ✓"
+log "Patching platform-mesh with extraDefaultAPIBindings..."
+KUBECONFIG="${PLATFORM_MESH_KUBECONFIG}" kubectl patch platformmesh platform-mesh -n platform-mesh-system --type=merge -p '
+{
+  "spec": {
+    "kcp": {
+      "extraDefaultAPIBindings": [
+        {
+          "workspaceTypePath": "root:account",
+          "export": "openmcp.cloud",
+          "path": "root:providers:openmcp"
+        }
+      ]
+    }
+  }
+}'
+log "Patched platform-mesh with extraDefaultAPIBindings ✓"
 
 # Copy KCP admin kubeconfig from platform-mesh
 KCP_ADMIN_KUBECONFIG="${PLATFORM_MESH_DIR}/.secret/kcp/admin.kubeconfig"

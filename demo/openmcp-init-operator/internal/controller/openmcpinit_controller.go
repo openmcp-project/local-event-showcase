@@ -51,9 +51,6 @@ func NewOpenMCPInitReconciler(cfg config.OperatorConfig, mgr mcmanager.Manager, 
 	if cfg.Subroutines.SetupFlux.Enabled {
 		subs = append(subs, subroutines.NewSetupFluxSubroutine(onboardingClient, &cfg))
 	}
-	if cfg.Subroutines.InitializePublishedResources.Enabled {
-		subs = append(subs, subroutines.NewInitializePublishedResourcesSubroutine(onboardingClient, &cfg))
-	}
 	if cfg.Subroutines.DeployAPIExportBinding.Enabled {
 		subs = append(subs, subroutines.NewDeployAPIExportBindingSubroutine(&cfg, mgr.GetLocalManager().GetScheme()))
 	}

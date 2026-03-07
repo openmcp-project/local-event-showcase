@@ -13,7 +13,7 @@ type OperatorConfig struct {
 			Enabled bool `mapstructure:"subroutines-setup-flux-enabled" default:"false"`
 		} `mapstructure:",squash"`
 		InitializePublishedResources struct {
-			Enabled bool `mapstructure:"subroutines-initialize-published-resources-enabled" default:"false"`
+			Enabled bool `mapstructure:"subroutines-initialize-published-resources-enabled" default:"true"`
 		} `mapstructure:",squash"`
 		DeployAPIExportBinding struct {
 			Enabled bool `mapstructure:"subroutines-deploy-api-export-binding-enabled" default:"false"`

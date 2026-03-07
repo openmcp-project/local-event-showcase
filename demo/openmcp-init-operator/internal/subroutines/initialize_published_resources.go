@@ -4,18 +4,25 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	syncAgentv1alpha1 "github.com/kcp-dev/api-syncagent/sdk/apis/syncagent/v1alpha1"
 	"github.com/platform-mesh/golang-commons/controller/lifecycle/runtimeobject"
 	"github.com/platform-mesh/golang-commons/controller/lifecycle/subroutine"
 	"github.com/platform-mesh/golang-commons/errors"
+	"github.com/platform-mesh/golang-commons/logger"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	mccontext "sigs.k8s.io/multicluster-runtime/pkg/context"
 
+	crossplanev1alpha1 "github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/api/v1alpha1"
 	"github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/internal/config"
 )
 
@@ -23,6 +30,13 @@ const (
 	InitializePublishedResourcesSubroutineName = "InitializePublishedResourcesSubroutine"
 	InitializePublishedResourcesFinalizerName  = "publishedresources.openmcp.io/managed-published-resources"
 )
+
+var mcpScheme = func() *runtime.Scheme {
+	s := runtime.NewScheme()
+	utilruntime.Must(clientgoscheme.AddToScheme(s))
+	utilruntime.Must(syncAgentv1alpha1.AddToScheme(s))
+	return s
+}()
 
 type InitializePublishedResourcesSubroutine struct {
 	onboardingClient client.Client
@@ -38,38 +52,26 @@ func NewInitializePublishedResourcesSubroutine(onboardingClient client.Client, c
 
 // Finalize implements subroutine.Subroutine.
 func (i *InitializePublishedResourcesSubroutine) Finalize(ctx context.Context, _ runtimeobject.RuntimeObject) (ctrl.Result, errors.OperatorError) {
-	return i.finalizeResources(ctx, i.onboardingClient)
+	mcpClient, result, opErr := i.getMCPClient(ctx)
+	if mcpClient == nil {
+		return result, opErr
+	}
+	return i.finalizeResources(ctx, mcpClient)
 }
 
 // finalizeResources deletes all PublishedResource objects created by this subroutine.
-func (i *InitializePublishedResourcesSubroutine) finalizeResources(ctx context.Context, onboardingClient client.Client) (ctrl.Result, errors.OperatorError) {
-	allResources := [][]ResourcesToPublish{
-		esoResourcesToPublish,
-		k8sProviderResourcesToPublish,
-		githubProviderResourcesToPublish,
-	}
-	prefixes := []string{"eso", "k8s", "github"}
-
-	for idx, resources := range allResources {
-		for _, resource := range resources {
+func (i *InitializePublishedResourcesSubroutine) finalizeResources(ctx context.Context, mcpClient client.Client) (ctrl.Result, errors.OperatorError) {
+	for _, entry := range providerResourceMap {
+		for _, resource := range entry.resources {
 			pr := &syncAgentv1alpha1.PublishedResource{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: resource.generateObjectMetaName(prefixes[idx]),
+					Name: resource.generateObjectMetaName(entry.prefix),
 				},
 			}
-			if err := onboardingClient.Delete(ctx, pr); err != nil && !apierrors.IsNotFound(err) {
+			if err := mcpClient.Delete(ctx, pr); err != nil && !apierrors.IsNotFound(err) {
 				return ctrl.Result{}, errors.NewOperatorError(err, true, true)
 			}
 		}
-	}
-
-	// Delete github provider
-	u := &unstructured.Unstructured{}
-	u.SetAPIVersion("pkg.crossplane.io/v1")
-	u.SetKind("Provider")
-	u.SetName("provider-upjet-github")
-	if err := onboardingClient.Delete(ctx, u); err != nil && !apierrors.IsNotFound(err) {
-		return ctrl.Result{}, errors.NewOperatorError(err, true, true)
 	}
 
 	return ctrl.Result{}, nil
@@ -88,70 +90,84 @@ func (i *InitializePublishedResourcesSubroutine) GetName() string {
 var _ subroutine.Subroutine = &InitializePublishedResourcesSubroutine{}
 
 // Process implements subroutine.Subroutine.
-func (i *InitializePublishedResourcesSubroutine) Process(ctx context.Context, _ runtimeobject.RuntimeObject) (ctrl.Result, errors.OperatorError) {
-	return i.initializeResources(ctx, i.onboardingClient)
-}
+func (i *InitializePublishedResourcesSubroutine) Process(ctx context.Context, runtimeObj runtimeobject.RuntimeObject) (ctrl.Result, errors.OperatorError) {
+	log := logger.LoadLoggerFromContext(ctx)
+	sourceCrossplane := runtimeObj.(*crossplanev1alpha1.Crossplane)
 
-func (i *InitializePublishedResourcesSubroutine) initializeResources(ctx context.Context, client client.Client) (ctrl.Result, errors.OperatorError) {
-	for _, resource := range esoResourcesToPublish {
-		pr := resource.ToPublishResource("eso")
-
-		_, err := controllerutil.CreateOrUpdate(ctx, client, &pr, func() error {
-			pr.Spec = resource.ToPublishResource("eso").Spec
-
-			return nil
-		})
-
-		if err != nil {
-			return ctrl.Result{}, errors.NewOperatorError(err, true, true)
-		}
+	clusterID, ok := mccontext.ClusterFrom(ctx)
+	if !ok {
+		return ctrl.Result{}, errors.NewOperatorError(errors.New("could not get cluster ID from context"), false, true)
 	}
 
-	for _, resource := range k8sProviderResourcesToPublish {
-		pr := resource.ToPublishResource("k8s")
-
-		_, err := controllerutil.CreateOrUpdate(ctx, client, &pr, func() error {
-			pr.Spec = resource.ToPublishResource("k8s").Spec
-
-			return nil
-		})
-
-		if err != nil {
-			return ctrl.Result{}, errors.NewOperatorError(err, true, true)
+	// Read the target Crossplane from the onboarding cluster to check readiness.
+	// The source Crossplane (from KCP) has the spec but no conditions;
+	// the target (created by CreateCrossplaneSubroutine) has the conditions.
+	targetCrossplane := &crossplanev1alpha1.Crossplane{}
+	if err := i.onboardingClient.Get(ctx, types.NamespacedName{Name: clusterID, Namespace: i.cfg.MCP.Namespace}, targetCrossplane); err != nil {
+		if apierrors.IsNotFound(err) {
+			log.Info().Str("clusterID", clusterID).Msg("target Crossplane not found yet, waiting")
+			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 		}
-	}
-
-	// Prepare github provider
-	u := unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"apiVersion": "pkg.crossplane.io/v1",
-			"kind":       "Provider",
-			"metadata": map[string]interface{}{
-				"name": "provider-upjet-github",
-			},
-		},
-	}
-	_, err := controllerutil.CreateOrUpdate(ctx, client, &u, func() error {
-		u.Object["spec"] = map[string]interface{}{
-			"package": "xpkg.upbound.io/crossplane-contrib/provider-upjet-github:v0.18.0",
-		}
-		return nil
-	})
-	if err != nil {
 		return ctrl.Result{}, errors.NewOperatorError(err, true, true)
 	}
 
-	for _, resource := range githubProviderResourcesToPublish {
-		pr := resource.ToPublishResource("github")
+	if !allReadyConditionsMet(targetCrossplane.Status.Conditions) {
+		log.Info().Str("clusterID", clusterID).Msg("Crossplane is not ready yet, waiting for all Ready conditions to be met")
+		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+	}
 
-		_, err := controllerutil.CreateOrUpdate(ctx, client, &pr, func() error {
-			pr.Spec = resource.ToPublishResource("github").Spec
+	mcpClient, result, opErr := i.getMCPClient(ctx)
+	if mcpClient == nil {
+		return result, opErr
+	}
 
-			return nil
-		})
+	return i.initializeResources(ctx, mcpClient, sourceCrossplane)
+}
 
-		if err != nil {
-			return ctrl.Result{}, errors.NewOperatorError(err, true, true)
+// getMCPClient retrieves the MCP kubeconfig and creates a client targeting the MCP cluster.
+func (i *InitializePublishedResourcesSubroutine) getMCPClient(ctx context.Context) (client.Client, ctrl.Result, errors.OperatorError) {
+	mcpRestConfig, result, opErr := getMcpKubeconfig(ctx, i.onboardingClient, defaultMCPNamespace, i.cfg.MCP.HostOverride)
+	if mcpRestConfig == nil {
+		return nil, result, opErr
+	}
+
+	mcpClient, err := client.New(mcpRestConfig, client.Options{Scheme: mcpScheme})
+	if err != nil {
+		return nil, ctrl.Result{}, errors.NewOperatorError(err, true, true)
+	}
+
+	return mcpClient, ctrl.Result{}, nil
+}
+
+// allReadyConditionsMet returns true if all conditions with a type ending in "Ready" have status True.
+// Returns false if there are no conditions at all.
+func allReadyConditionsMet(conditions []metav1.Condition) bool {
+	if len(conditions) == 0 {
+		return false
+	}
+	for _, c := range conditions {
+		if strings.HasSuffix(c.Type, "Ready") && c.Status != metav1.ConditionTrue {
+			return false
+		}
+	}
+	return true
+}
+
+func (i *InitializePublishedResourcesSubroutine) initializeResources(ctx context.Context, mcpClient client.Client, crossplane *crossplanev1alpha1.Crossplane) (ctrl.Result, errors.OperatorError) {
+	resources := resourcesToPublishForProviders(crossplane.Spec.Providers)
+
+	for _, entry := range resources {
+		for _, resource := range entry.resources {
+			pr := resource.ToPublishResource(entry.prefix)
+
+			_, err := controllerutil.CreateOrUpdate(ctx, mcpClient, &pr, func() error {
+				pr.Spec = resource.ToPublishResource(entry.prefix).Spec
+				return nil
+			})
+
+			if err != nil {
+				return ctrl.Result{}, errors.NewOperatorError(err, true, true)
+			}
 		}
 	}
 
@@ -229,6 +245,28 @@ func (r *RelatableResources) ToRelatedResourceSpec() syncAgentv1alpha1.RelatedRe
 	return rr
 }
 
+type providerResources struct {
+	prefix    string
+	resources []ResourcesToPublish
+}
+
+var providerResourceMap = map[string]providerResources{
+	"provider-kubernetes": {
+		prefix:    "k8s",
+		resources: k8sProviderResourcesToPublish,
+	},
+}
+
+func resourcesToPublishForProviders(providers []*crossplanev1alpha1.CrossplaneProviderConfig) []providerResources {
+	var result []providerResources
+	for _, p := range providers {
+		if pr, ok := providerResourceMap[p.Name]; ok {
+			result = append(result, pr)
+		}
+	}
+	return result
+}
+
 var k8sProviderResourcesToPublish = []ResourcesToPublish{
 	{
 		Group:   "kubernetes.crossplane.io",
@@ -253,142 +291,5 @@ var k8sProviderResourcesToPublish = []ResourcesToPublish{
 		Group:   "kubernetes.crossplane.io",
 		Kind:    "ObservedObjectCollection",
 		Version: "v1alpha1",
-	},
-}
-
-var githubProviderResourcesToPublish = []ResourcesToPublish{
-	{
-		Group:   "github.upbound.io",
-		Kind:    "ProviderConfig",
-		Version: "v1beta1",
-		RelatedResources: []RelatableResources{
-			{
-				Identifier:    "github-credentials",
-				Origin:        "kcp",
-				Kind:          "Secret",
-				NamePath:      "spec.credentials.secretRef.name",
-				NamespacePath: "spec.credentials.secretRef.namespace",
-			},
-		},
-	},
-	{
-		Group:   "repo.github.upbound.io",
-		Kind:    "Repository",
-		Version: "v1alpha1",
-	},
-	{
-		Group:   "repo.github.upbound.io",
-		Kind:    "DefaultBranch",
-		Version: "v1alpha1",
-	},
-	{
-		Group:   "repo.github.upbound.io",
-		Kind:    "Branch",
-		Version: "v1alpha1",
-	},
-}
-
-var esoResourcesToPublish = []ResourcesToPublish{
-	{
-		Group:   "external-secrets.io",
-		Kind:    "SecretStore",
-		Version: "v1",
-		RelatedResources: []RelatableResources{
-			{
-				Identifier:    "vault-ca-secret",
-				Origin:        "kcp",
-				Kind:          "Secret",
-				NamePath:      "spec.provider.vault.caProvider.name",
-				NamespacePath: "spec.provider.vault.caProvider.namespace",
-			},
-			{
-				Identifier:    "vault-token-secret",
-				Origin:        "kcp",
-				Kind:          "Secret",
-				NamePath:      "spec.provider.vault.auth.tokenSecretRef.name",
-				NamespacePath: "spec.provider.vault.auth.tokenSecretRef.namespace",
-			},
-			{
-				Identifier:    "vault-approle-role-secret",
-				Origin:        "kcp",
-				Kind:          "Secret",
-				NamePath:      "spec.provider.vault.auth.appRole.roleRef.name",
-				NamespacePath: "spec.provider.vault.auth.appRole.roleRef.namespace",
-			},
-			{
-				Identifier:    "vault-approle-secret",
-				Origin:        "kcp",
-				Kind:          "Secret",
-				NamePath:      "spec.provider.vault.auth.appRole.secretRef.name",
-				NamespacePath: "spec.provider.vault.auth.appRole.secretRef.namespace",
-			},
-			{
-				Identifier:    "vault-kubernetes-secret",
-				Origin:        "kcp",
-				Kind:          "Secret",
-				NamePath:      "spec.provider.vault.auth.kubernetes.secretRef.name",
-				NamespacePath: "spec.provider.vault.auth.kubernetes.secretRef.namespace",
-			},
-		},
-	},
-	{
-		Group:   "external-secrets.io",
-		Kind:    "ClusterSecretStore",
-		Version: "v1",
-		RelatedResources: []RelatableResources{
-			{
-				Identifier:    "vault-ca-secret",
-				Origin:        "kcp",
-				Kind:          "Secret",
-				NamePath:      "spec.provider.vault.caProvider.name",
-				NamespacePath: "spec.provider.vault.caProvider.namespace",
-			},
-			{
-				Identifier:    "vault-token-secret",
-				Origin:        "kcp",
-				Kind:          "Secret",
-				NamePath:      "spec.provider.vault.auth.tokenSecretRef.name",
-				NamespacePath: "spec.provider.vault.auth.tokenSecretRef.namespace",
-			},
-			{
-				Identifier:    "vault-approle-role-secret",
-				Origin:        "kcp",
-				Kind:          "Secret",
-				NamePath:      "spec.provider.vault.auth.appRole.roleRef.name",
-				NamespacePath: "spec.provider.vault.auth.appRole.roleRef.namespace",
-			},
-			{
-				Identifier:    "vault-approle-secret",
-				Origin:        "kcp",
-				Kind:          "Secret",
-				NamePath:      "spec.provider.vault.auth.appRole.secretRef.name",
-				NamespacePath: "spec.provider.vault.auth.appRole.secretRef.namespace",
-			},
-			{
-				Identifier:    "vault-kubernetes-secret",
-				Origin:        "kcp",
-				Kind:          "Secret",
-				NamePath:      "spec.provider.vault.auth.kubernetes.secretRef.name",
-				NamespacePath: "spec.provider.vault.auth.kubernetes.secretRef.namespace",
-			},
-		},
-	},
-	{
-		Group:   "external-secrets.io",
-		Kind:    "ExternalSecret",
-		Version: "v1",
-		RelatedResources: []RelatableResources{
-			{
-				Identifier: "target-secret",
-				Origin:     "service",
-				Kind:       "Secret",
-				NamePath:   "spec.target.name",
-			},
-		},
-	},
-	{
-		Group:   "external-secrets.io",
-		Kind:    "ClusterExternalSecret",
-		Version: "v1",
 	},
 }
