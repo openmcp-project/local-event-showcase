@@ -171,7 +171,7 @@ sequenceDiagram
 
 ## Notes
 
-- The `init-agent` is a separate component that runs on the platform-mesh cluster. It watches LogicalClusters in "Initializing" state and seeds each new workspace with a `ManagedControlPlane` resource.
+- The `init-agent` is the [KCP init-agent](https://github.com/kcp-dev/init-agent), deployed by platform-mesh. It is configured via `InitTemplate` and `InitTarget` resources to create a `ManagedControlPlane` resource in each new account workspace.
 - The `openmcp-init-operator` reconciles `ManagedControlPlane` and `Crossplane` resources. It runs on the onboarding cluster.
 - `ManagedControlPlane` is the domain resource that triggers MCP provisioning. It carries status phases (`MCPReady`, `Ready`) giving clear visibility into provisioning progress.
 - The `openmcp-onboarding-ui` is a Luigi micro-frontend under the OpenMCP → Crossplane navigation node. It detects Crossplane state by checking for the APIBinding to `crossplane.services.openmcp.cloud` and the existence of a `Crossplane` resource. It drives a two-step onboarding: activate Crossplane (creates APIBinding), then configure it (creates Crossplane resource).
@@ -208,23 +208,21 @@ Each phase is independently deployable and verifiable before moving to the next.
 
 ---
 
-### Phase 2 — Init-Agent as Standalone Component
+### Phase 2 — KCP Init-Agent Configuration
 
-**Goal:** Extract workspace initialization into a standalone `init-agent` that creates `ManagedControlPlane` resources.
+**Goal:** Use the [KCP init-agent](https://github.com/kcp-dev/init-agent) (already deployed by platform-mesh) to automatically create `ManagedControlPlane` resources when new account workspaces are initialized.
 
 **Changes:**
-- Create new `demo/init-agent/` project (or repurpose the existing initializer subcommand into a standalone binary)
-- `LogicalClusterReconciler` watches LogicalClusters in "Initializing" state
-- On detection: create `ManagedControlPlane` resource in the workspace, remove initializer from LogicalCluster
-- Remove `InitializeWorkspaceSubroutine` (no longer creates APIExport `mcp-api`)
-- Remove the initializer subcommand and Helm deployment from `openmcp-init-operator`
-- Add Helm chart / deployment manifests for the init-agent (deploys to platform-mesh cluster)
-- Update integration script to deploy init-agent to platform-mesh cluster
+- Create `InitTemplate` manifest (`demo/manifests/init-agent/init-template.yaml`) that defines a `ManagedControlPlane` resource to be created in each new workspace
+- Create `InitTarget` manifest (`demo/manifests/init-agent/init-target.yaml`) that connects the `root:account` workspace type to the `InitTemplate`
+- Remove the `initializer` subcommand from `openmcp-init-operator` (replaced by the KCP init-agent)
+- Remove `InitializeWorkspaceSubroutine`, `LogicalClusterReconciler`, and `InitializerConfig` from the operator
+- Update integration script to apply init-agent manifests to the provider workspace
 
 **Validate:**
-- Deploy init-agent to platform-mesh cluster
+- Deploy to local kind setup
 - Create a new account workspace in KCP
-- Verify: workspace initializes, `ManagedControlPlane` is created, operator picks it up and provisions MCP
+- Verify: init-agent creates `ManagedControlPlane`, operator picks it up and provisions MCP
 
 ---
 

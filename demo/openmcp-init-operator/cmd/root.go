@@ -17,7 +17,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	crossplanev1alpha1 "github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/api/v1alpha1"
-	"github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/cmd/initializer"
 	"github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/cmd/operator"
 )
 
@@ -48,9 +47,6 @@ func init() {
 
 	operatorV := newViper()
 	rootCmd.AddCommand(operator.NewOperatorCmd(operatorV, defaultCfg, scheme))
-
-	initializerV := newViper()
-	rootCmd.AddCommand(initializer.NewInitializerCmd(initializerV, defaultCfg, scheme))
 
 	cobra.OnInitialize(initLog)
 }
