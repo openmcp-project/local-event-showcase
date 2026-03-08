@@ -9,3 +9,4 @@ bin
 demo/external
 .envrc
 hack/kubeconfigs/
+node_modules/

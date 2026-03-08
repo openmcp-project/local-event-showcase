@@ -65,7 +65,7 @@ tasks:
         fi
       - "yq -i '.metadata.name = \"openmcp.cloud\"' ./config/resources/apiexport-openmcp.cloud.yaml"
       - "yq -i '.metadata.labels.\"ui.platform-mesh.io/content-for\" = \"openmcp.cloud\"' ./config/resources/apiexport-openmcp.cloud.yaml"
-      - "yq -i '.spec.permissionClaims = [{\"group\": \"apis.kcp.io\", \"resource\": \"apiexports\", \"all\": true}, {\"group\": \"ui.platform-mesh.io\", \"resource\": \"contentconfigurations\", \"all\": true}]' ./config/resources/apiexport-openmcp.cloud.yaml"
+      - "yq -i '.spec.permissionClaims = [{\"group\": \"apis.kcp.io\", \"resource\": \"apiexports\", \"all\": true}, {\"group\": \"ui.platform-mesh.io\", \"resource\": \"contentconfigurations\", \"all\": true}, {\"group\": \"rbac.authorization.k8s.io\", \"resource\": \"clusterroles\", \"all\": true}, {\"group\": \"rbac.authorization.k8s.io\", \"resource\": \"clusterrolebindings\", \"all\": true}]' ./config/resources/apiexport-openmcp.cloud.yaml"
       - rm -f ./config/resources/apiexport-crossplane.services.openmcp.cloud.yaml ./config/resources/apiexport-core.openmcp.cloud.yaml
   build:
     cmds:

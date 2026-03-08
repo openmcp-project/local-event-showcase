@@ -4,7 +4,7 @@ metadata:
   name: openmcp-account-init
 spec:
   workspaceTypeRef:
-    name: account
+    name: openmcp-init
     path: root
   sources:
     - template:

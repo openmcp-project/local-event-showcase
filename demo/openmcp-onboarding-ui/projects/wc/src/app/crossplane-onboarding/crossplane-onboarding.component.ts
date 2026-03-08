@@ -14,6 +14,7 @@ import {
 } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { LuigiClient } from '@luigi-project/client/luigi-element';
+import { sendCustomMessage } from '@luigi-project/client/luigi-client';
 import { ButtonComponent } from '@fundamental-ngx/core/button';
 import { BusyIndicatorComponent } from '@fundamental-ngx/core/busy-indicator';
 import { MessageStripComponent } from '@fundamental-ngx/core/message-strip';
@@ -315,6 +316,7 @@ type OnboardingState =
 export class CrossplaneOnboardingComponent implements OnDestroy {
   private onboardingService = inject(CrossplaneOnboardingService);
   private watchSub?: Subscription;
+  private luigiContext!: LuigiContext;
 
   state = signal<OnboardingState>('loading');
   error = signal('');
@@ -325,6 +327,7 @@ export class CrossplaneOnboardingComponent implements OnDestroy {
 
   @Input()
   set context(ctx: LuigiContext) {
+    this.luigiContext = ctx;
     this.onboardingService.initialize(ctx);
     this.checkState();
   }
@@ -402,6 +405,7 @@ export class CrossplaneOnboardingComponent implements OnDestroy {
         this.crossplane.set(event.object);
         if (event.object.status?.phase === 'Ready') {
           this.state.set('active');
+          this.sendPortalReloadMessage();
           this.watchSub?.unsubscribe();
         } else {
           this.state.set('provisioning');
@@ -409,6 +413,20 @@ export class CrossplaneOnboardingComponent implements OnDestroy {
       },
       error: (err) => {
         this.error.set(`Watch error: ${err.message}`);
+      },
+    });
+  }
+
+  private sendPortalReloadMessage(): void {
+    const entityType = this.luigiContext?.entityType ?? '';
+    sendCustomMessage({
+      id: 'openmfp.reload-luigi-config',
+      origin: 'CrossplaneOnboarding',
+      action: 'provisionCrossplane',
+      entity: entityType,
+      context: {
+        [entityType]: this.luigiContext?.entityName,
+        user: this.luigiContext?.userId,
       },
     });
   }

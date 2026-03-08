@@ -124,18 +124,35 @@ log "Found identityHash: ${CONTENT_CONFIG_IDENTITY_HASH}"
 # Patch copied APIExport file with identityHash
 APIEXPORT_FILE="${OPENMCP_MANIFESTS_DIR}/apiexport-openmcp.cloud.yaml"
 log "Patching APIExport with contentconfigurations identityHash..."
-yq -i ".spec.permissionClaims[1].identityHash = \"${CONTENT_CONFIG_IDENTITY_HASH}\"" "${APIEXPORT_FILE}"
+yq -i "(.spec.permissionClaims[] | select(.resource == \"contentconfigurations\")).identityHash = \"${CONTENT_CONFIG_IDENTITY_HASH}\"" "${APIEXPORT_FILE}"
 log "Patched APIExport file ✓"
 
 # Apply all provider manifests to the openmcp provider workspace
 OPENMCP_WORKSPACE_URL="https://localhost:8443/clusters/root:providers:openmcp"
 log "Applying provider manifests to openmcp provider workspace..."
-KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${OPENMCP_MANIFESTS_DIR}" --server="${OPENMCP_WORKSPACE_URL}"
+KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${OPENMCP_MANIFESTS_DIR}" --server="${OPENMCP_WORKSPACE_URL}" --server-side --force-conflicts
 log "Applied provider manifests to ${OPENMCP_WORKSPACE_URL} ✓"
+
+# Apply openmcp-init WorkspaceType to root workspace
+# This type carries initializer: true so the init-agent can watch for new account workspaces
+INIT_AGENT_MANIFESTS_DIR="${MANIFESTS_DIR}/init-agent"
+ROOT_WORKSPACE_URL="https://localhost:8443/clusters/root"
+log "Applying openmcp-init WorkspaceType to root workspace..."
+KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${INIT_AGENT_MANIFESTS_DIR}/workspace-type-openmcp-init.yaml" \
+    --server="${ROOT_WORKSPACE_URL}"
+log "Applied openmcp-init WorkspaceType ✓"
+
+# Patch account WorkspaceType to extend from openmcp-init
+# This ensures new account workspaces get the root:openmcp-init initializer via transitive extend.with
+log "Patching account WorkspaceType to extend from openmcp-init..."
+KUBECONFIG="${KCP_KUBECONFIG}" kubectl patch workspacetype account \
+    --server="${ROOT_WORKSPACE_URL}" \
+    --type=json \
+    -p '[{"op": "add", "path": "/spec/extend/with/-", "value": {"name": "openmcp-init", "path": "root"}}]'
+log "Patched account WorkspaceType ✓"
 
 # Apply init-agent manifests (InitTemplate + InitTarget) to the config workspace
 # The KCP init-agent reads these to know what resources to create in new workspaces
-INIT_AGENT_MANIFESTS_DIR="${MANIFESTS_DIR}/init-agent"
 log "Applying init-agent manifests to platform-mesh-system workspace..."
 KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${INIT_AGENT_MANIFESTS_DIR}" --server="${PLATFORM_MESH_SYSTEM_URL}"
 log "Applied init-agent manifests to ${PLATFORM_MESH_SYSTEM_URL} ✓"

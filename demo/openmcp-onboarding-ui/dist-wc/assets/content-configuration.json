@@ -1,0 +1,29 @@
+{
+  "name": "openmcp-crossplane-onboarding",
+  "luigiConfigFragment": {
+    "data": {
+      "nodes": [
+        {
+          "label": "Crossplane",
+          "pathSegment": "crossplane",
+          "icon": "cloud",
+          "order": 100,
+          "entityType": "main.core_platform-mesh_io_account",
+          "category": {
+            "label": "OpenMCP",
+            "icon": "cloud",
+            "order": 900
+          },
+          "loadingIndicator": {
+            "enabled": false
+          },
+          "url": "/ui/openmcp/wc/main.js",
+          "webcomponent": {
+            "selfRegistered": true,
+            "type": "module"
+          }
+        }
+      ]
+    }
+  }
+}

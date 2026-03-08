@@ -15,6 +15,9 @@ type OperatorConfig struct {
 		CreateCrossplane struct {
 			Enabled bool `mapstructure:"subroutines-create-crossplane-enabled" default:"true"`
 		} `mapstructure:",squash"`
+		DeployContentConfigurations struct {
+			Enabled bool `mapstructure:"subroutines-deploy-content-configurations-enabled" default:"true"`
+		} `mapstructure:",squash"`
 	} `mapstructure:",squash"`
 	KCP struct {
 		Kubeconfig                 string `mapstructure:"kcp-kubeconfig" description:"Path to the KCP kubeconfig file"`

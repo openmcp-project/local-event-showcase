@@ -21,6 +21,9 @@ export interface LuigiContext {
   portalContext: {
     crdGatewayApiUrl: string;
   };
+  entityType?: string;
+  entityName?: string;
+  userId?: string;
 }
 
 class SSELink extends ApolloLink {
