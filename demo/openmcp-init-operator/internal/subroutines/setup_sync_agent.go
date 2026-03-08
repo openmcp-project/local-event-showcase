@@ -20,7 +20,7 @@ import (
 	mccontext "sigs.k8s.io/multicluster-runtime/pkg/context"
 	mcmanager "sigs.k8s.io/multicluster-runtime/pkg/manager"
 
-	crossplanev1alpha1 "github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/api/v1alpha1"
+	corev1alpha1 "github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/api/core/v1alpha1"
 	"github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/internal/config"
 )
 
@@ -54,7 +54,7 @@ func (r *SetupSyncAgentSubroutine) Finalizers(_ runtimeobject.RuntimeObject) []s
 
 func (r *SetupSyncAgentSubroutine) Process(ctx context.Context, runtimeObj runtimeobject.RuntimeObject) (ctrl.Result, errors.OperatorError) {
 	log := logger.LoadLoggerFromContext(ctx)
-	managedCP := runtimeObj.(*crossplanev1alpha1.ManagedControlPlane)
+	managedCP := runtimeObj.(*corev1alpha1.ManagedControlPlane)
 
 	clusterID, _ := mccontext.ClusterFrom(ctx)
 	log.Info().
@@ -190,7 +190,7 @@ hostAliases:
 		return ctrl.Result{}, errors.NewOperatorError(err, true, true)
 	}
 
-	managedCP.Status.Phase = crossplanev1alpha1.ManagedControlPlanePhaseReady
+	managedCP.Status.Phase = corev1alpha1.ManagedControlPlanePhaseReady
 	log.Info().Msg("SetupSyncAgent: Process completed successfully")
 	return ctrl.Result{}, nil
 }

@@ -53,10 +53,20 @@ tasks:
     internal: true
     cmds:
       - rm -f ./config/resources/apiexport-openmcp.cloud.yaml
-      - mv ./config/resources/apiexport-crossplane.services.openmcp.cloud.yaml ./config/resources/apiexport-openmcp.cloud.yaml
+      # Start from the crossplane APIExport as a base
+      - cp ./config/resources/apiexport-crossplane.services.openmcp.cloud.yaml ./config/resources/apiexport-openmcp.cloud.yaml
+      # Merge latestResourceSchemas from the core APIExport into the combined file
+      - |
+        CORE_SCHEMAS=$(yq '.spec.latestResourceSchemas[]' ./config/resources/apiexport-core.openmcp.cloud.yaml 2>/dev/null)
+        if [ -n "$CORE_SCHEMAS" ]; then
+          for schema in $CORE_SCHEMAS; do
+            yq -i '.spec.latestResourceSchemas += ["'"$schema"'"]' ./config/resources/apiexport-openmcp.cloud.yaml
+          done
+        fi
       - "yq -i '.metadata.name = \"openmcp.cloud\"' ./config/resources/apiexport-openmcp.cloud.yaml"
       - "yq -i '.metadata.labels.\"ui.platform-mesh.io/content-for\" = \"openmcp.cloud\"' ./config/resources/apiexport-openmcp.cloud.yaml"
       - "yq -i '.spec.permissionClaims = [{\"group\": \"apis.kcp.io\", \"resource\": \"apiexports\", \"all\": true}, {\"group\": \"ui.platform-mesh.io\", \"resource\": \"contentconfigurations\", \"all\": true}]' ./config/resources/apiexport-openmcp.cloud.yaml"
+      - rm -f ./config/resources/apiexport-crossplane.services.openmcp.cloud.yaml ./config/resources/apiexport-core.openmcp.cloud.yaml
   build:
     cmds:
       - go build ./...

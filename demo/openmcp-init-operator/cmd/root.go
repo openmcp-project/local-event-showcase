@@ -16,6 +16,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 
+	corev1alpha1 "github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/api/core/v1alpha1"
 	crossplanev1alpha1 "github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/api/v1alpha1"
 	"github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/cmd/operator"
 )
@@ -37,6 +38,7 @@ func init() {
 	utilruntime.Must(kcpapisv1alpha2.AddToScheme(scheme))
 	utilruntime.Must(kcpcorev1alpha1.AddToScheme(scheme))
 	utilruntime.Must(mcpv2alpha1.AddToScheme(scheme))
+	utilruntime.Must(corev1alpha1.AddToScheme(scheme))
 	utilruntime.Must(crossplanev1alpha1.AddToScheme(scheme))
 
 	var err error

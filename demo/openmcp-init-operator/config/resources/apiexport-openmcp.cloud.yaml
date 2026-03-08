@@ -8,7 +8,7 @@ metadata:
 spec:
   latestResourceSchemas:
     - v260218-a16964f.crossplanes.crossplane.services.openmcp.cloud
-    - v260307-567f630.managedcontrolplanes.crossplane.services.openmcp.cloud
+    - v260308-d0e7cae.managedcontrolplanes.core.openmcp.cloud
   permissionClaims:
     - group: apis.kcp.io
       resource: apiexports

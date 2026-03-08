@@ -6,9 +6,9 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.14.0
   labels:
     openmcp.cloud/cluster: onboarding
-  name: managedcontrolplanes.crossplane.services.openmcp.cloud
+  name: managedcontrolplanes.core.openmcp.cloud
 spec:
-  group: crossplane.services.openmcp.cloud
+  group: core.openmcp.cloud
   names:
     kind: ManagedControlPlane
     listKind: ManagedControlPlaneList

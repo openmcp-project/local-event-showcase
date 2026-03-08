@@ -2,9 +2,9 @@ apiVersion: apis.kcp.io/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v260307-567f630.managedcontrolplanes.crossplane.services.openmcp.cloud
+  name: v260308-d0e7cae.managedcontrolplanes.core.openmcp.cloud
 spec:
-  group: crossplane.services.openmcp.cloud
+  group: core.openmcp.cloud
   names:
     kind: ManagedControlPlane
     listKind: ManagedControlPlaneList

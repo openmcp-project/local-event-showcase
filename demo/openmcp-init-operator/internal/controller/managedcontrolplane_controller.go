@@ -15,7 +15,7 @@ import (
 	mcmanager "sigs.k8s.io/multicluster-runtime/pkg/manager"
 	mcreconcile "sigs.k8s.io/multicluster-runtime/pkg/reconcile"
 
-	crossplanev1alpha1 "github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/api/v1alpha1"
+	corev1alpha1 "github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/api/core/v1alpha1"
 	"github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/internal/config"
 	"github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/internal/subroutines"
 )
@@ -53,9 +53,9 @@ func NewManagedControlPlaneReconciler(cfg config.OperatorConfig, mgr mcmanager.M
 }
 
 func (r *ManagedControlPlaneReconciler) Reconcile(ctx context.Context, req mcreconcile.Request) (ctrl.Result, error) {
-	return r.lifecycle.Reconcile(mccontext.WithCluster(ctx, req.ClusterName), req, &crossplanev1alpha1.ManagedControlPlane{})
+	return r.lifecycle.Reconcile(mccontext.WithCluster(ctx, req.ClusterName), req, &corev1alpha1.ManagedControlPlane{})
 }
 
 func (r *ManagedControlPlaneReconciler) SetupWithManager(mgr mcmanager.Manager, cfg *platformmeshconfig.CommonServiceConfig, log *logger.Logger, eventPredicates ...predicate.Predicate) error {
-	return r.lifecycle.SetupWithManager(mgr, cfg.MaxConcurrentReconciles, managedControlPlaneReconcilerName, &crossplanev1alpha1.ManagedControlPlane{}, cfg.DebugLabelValue, r, log, eventPredicates...)
+	return r.lifecycle.SetupWithManager(mgr, cfg.MaxConcurrentReconciles, managedControlPlaneReconcilerName, &corev1alpha1.ManagedControlPlane{}, cfg.DebugLabelValue, r, log, eventPredicates...)
 }

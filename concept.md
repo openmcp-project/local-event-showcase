@@ -191,7 +191,7 @@ Each phase is independently deployable and verifiable before moving to the next.
 **Goal:** Replace the APIBinding-triggered reconciliation with a `ManagedControlPlane` custom resource.
 
 **Changes:**
-- Define `ManagedControlPlane` CRD in `api/v1alpha1/` with spec (empty for now) and status (phase: `Provisioning`, `MCPReady`, `Ready`; conditions)
+- Define `ManagedControlPlane` CRD in `api/core/v1alpha1/` with spec (empty for now) and status (phase: `Provisioning`, `MCPReady`, `Ready`; conditions)
 - Create `ManagedControlPlaneReconciler` replacing `OpenMCPInitReconciler` — watches `ManagedControlPlane` instead of `APIBinding`
 - Refactor `CreateMCPSubroutine` and `SetupSyncAgentSubroutine` to work against `ManagedControlPlane` instead of `APIBinding`
 - Update status phases on the `ManagedControlPlane` resource after each subroutine completes

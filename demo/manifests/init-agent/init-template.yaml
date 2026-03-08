@@ -4,7 +4,7 @@ metadata:
   name: openmcp-managed-control-plane
 spec:
   template: |
-    apiVersion: openmcp.io/v1alpha1
+    apiVersion: core.openmcp.cloud/v1alpha1
     kind: ManagedControlPlane
     metadata:
       name: default
