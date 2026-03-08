@@ -27,7 +27,6 @@ import (
 const (
 	DeploySyncSubroutineName = "DeploySyncAgent"
 	apiExportName            = "crossplane.services.openmcp.cloud"
-	kcpPathAnnotation        = "kcp.io/path"
 )
 
 type SetupSyncAgentSubroutine struct {
@@ -56,22 +55,14 @@ func (r *SetupSyncAgentSubroutine) Process(ctx context.Context, runtimeObj runti
 	log := logger.LoadLoggerFromContext(ctx)
 	managedCP := runtimeObj.(*corev1alpha1.ManagedControlPlane)
 
-	clusterID, _ := mccontext.ClusterFrom(ctx)
+	clusterID, ok := mccontext.ClusterFrom(ctx)
+	if !ok {
+		return ctrl.Result{}, errors.NewOperatorError(errors.New("could not get cluster ID from context"), false, true)
+	}
 	log.Info().
 		Str("managedControlPlane", managedCP.Name).
 		Str("clusterID", clusterID).
 		Msg("SetupSyncAgent: starting Process")
-
-	kcpPath := managedCP.GetAnnotations()[kcpPathAnnotation]
-	if kcpPath == "" {
-		log.Error().
-			Str("managedControlPlane", managedCP.Name).
-			Msg("SetupSyncAgent: missing kcp.io/path annotation")
-		return ctrl.Result{}, errors.NewOperatorError(
-			fmt.Errorf("ManagedControlPlane %s is missing required annotation %s", managedCP.Name, kcpPathAnnotation),
-			false, true)
-	}
-	log.Info().Str("kcpPath", kcpPath).Msg("SetupSyncAgent: resolved KCP path")
 
 	// Ensure the workspace APIExport exists
 	log.Info().Msg("SetupSyncAgent: ensuring workspace APIExport")
@@ -102,7 +93,7 @@ func (r *SetupSyncAgentSubroutine) Process(ctx context.Context, runtimeObj runti
 		return ctrl.Result{}, errors.NewOperatorError(err, false, true)
 	}
 	kcpURL.Host = "localhost:31000"
-	kcpURL.Path = fmt.Sprintf("/clusters/%s", kcpPath)
+	kcpURL.Path = fmt.Sprintf("/clusters/%s", clusterID)
 	host := kcpURL.String()
 	log.Info().Str("kcpHost", host).Msg("SetupSyncAgent: constructed KCP host URL")
 
