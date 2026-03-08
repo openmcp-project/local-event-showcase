@@ -11,6 +11,7 @@ import (
 	"github.com/platform-mesh/golang-commons/errors"
 	"github.com/platform-mesh/golang-commons/logger"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
@@ -27,6 +28,7 @@ import (
 const (
 	DeploySyncSubroutineName = "DeploySyncAgent"
 	apiExportName            = "crossplane.services.openmcp.cloud"
+	apiExportBindRoleName    = "crossplane-apiexport-bind"
 )
 
 type SetupSyncAgentSubroutine struct {
@@ -207,8 +209,69 @@ func (r *SetupSyncAgentSubroutine) ensureWorkspaceAPIExport(ctx context.Context)
 	})
 	if err != nil {
 		log.Error().Err(err).Str("apiExportName", apiExportName).Msg("ensureWorkspaceAPIExport: CreateOrUpdate failed")
-	} else {
-		log.Info().Str("apiExportName", apiExportName).Str("result", string(result)).Msg("ensureWorkspaceAPIExport: CreateOrUpdate completed")
+		return err
 	}
-	return err
+	log.Info().Str("apiExportName", apiExportName).Str("result", string(result)).Msg("ensureWorkspaceAPIExport: CreateOrUpdate completed")
+
+	if err := r.ensureAPIExportBindRBAC(ctx, kcpClient); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *SetupSyncAgentSubroutine) ensureAPIExportBindRBAC(ctx context.Context, kcpClient client.Client) error {
+	log := logger.LoadLoggerFromContext(ctx)
+
+	clusterRole := &rbacv1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: apiExportBindRoleName,
+		},
+	}
+
+	log.Info().Msg("ensureAPIExportBindRBAC: creating or updating ClusterRole")
+	_, err := controllerutil.CreateOrUpdate(ctx, kcpClient, clusterRole, func() error {
+		clusterRole.Rules = []rbacv1.PolicyRule{
+			{
+				APIGroups: []string{"apis.kcp.io"},
+				Resources: []string{"apiexports"},
+				Verbs:     []string{"bind"},
+			},
+		}
+		return nil
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("ensureAPIExportBindRBAC: failed to create/update ClusterRole")
+		return err
+	}
+
+	clusterRoleBinding := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: apiExportBindRoleName,
+		},
+	}
+
+	log.Info().Msg("ensureAPIExportBindRBAC: creating or updating ClusterRoleBinding")
+	_, err = controllerutil.CreateOrUpdate(ctx, kcpClient, clusterRoleBinding, func() error {
+		clusterRoleBinding.RoleRef = rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "ClusterRole",
+			Name:     apiExportBindRoleName,
+		}
+		clusterRoleBinding.Subjects = []rbacv1.Subject{
+			{
+				APIGroup: "rbac.authorization.k8s.io",
+				Kind:     "Group",
+				Name:     "system:authenticated",
+			},
+		}
+		return nil
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("ensureAPIExportBindRBAC: failed to create/update ClusterRoleBinding")
+		return err
+	}
+
+	log.Info().Msg("ensureAPIExportBindRBAC: RBAC ensured successfully")
+	return nil
 }

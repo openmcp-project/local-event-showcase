@@ -1,4 +1,4 @@
-apiVersion: apis.kcp.io/v1alpha1
+apiVersion: apis.kcp.io/v1alpha2
 kind: APIExport
 metadata:
   creationTimestamp: null
@@ -6,14 +6,28 @@ metadata:
   labels:
     ui.platform-mesh.io/content-for: openmcp.cloud
 spec:
-  latestResourceSchemas:
-    - v260218-a16964f.crossplanes.crossplane.services.openmcp.cloud
-    - v260308-d0e7cae.managedcontrolplanes.core.openmcp.cloud
+  resources:
+    - group: crossplane.services.openmcp.cloud
+      name: crossplanes
+      schema: v260218-a16964f.crossplanes.crossplane.services.openmcp.cloud
+      storage:
+        crd: {}
+    - group: core.openmcp.cloud
+      name: managedcontrolplanes
+      schema: v260308-d0e7cae.managedcontrolplanes.core.openmcp.cloud
+      storage:
+        crd: {}
   permissionClaims:
     - group: apis.kcp.io
       resource: apiexports
-      all: true
+      verbs: ["get", "list", "watch", "create", "update", "patch"]
     - group: ui.platform-mesh.io
       resource: contentconfigurations
-      all: true
+      verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+    - group: rbac.authorization.k8s.io
+      resource: clusterroles
+      verbs: ["get", "create", "update", "patch"]
+    - group: rbac.authorization.k8s.io
+      resource: clusterrolebindings
+      verbs: ["get", "create", "update", "patch"]
 status: {}

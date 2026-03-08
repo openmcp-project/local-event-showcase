@@ -39,7 +39,6 @@ func NewCrossplaneReconciler(cfg config.OperatorConfig, mgr mcmanager.Manager, o
 
 	return &CrossplaneReconciler{
 		lifecycle: builder.NewBuilder(operatorName, crossplaneReconcilerName, subs, log).
-			WithReadOnly().
 			BuildMultiCluster(mgr),
 		log: log,
 	}

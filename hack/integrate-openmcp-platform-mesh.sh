@@ -247,5 +247,32 @@ KUBECONFIG="${ONBOARDING_KUBECONFIG}" kubectl rollout status deployment/openmcp-
     --namespace="${OPERATOR_NAMESPACE}" --timeout=120s
 log "Operator is ready ✓"
 
+# Build and deploy the onboarding UI to the platform-mesh cluster
+UI_DIR="${PROJECT_DIR}/demo/openmcp-onboarding-ui"
+UI_IMAGE="openmcp-onboarding-ui:local-$(date +%s)"
+
+log "Building openmcp-onboarding-ui Docker image..."
+docker build -t "${UI_IMAGE}" "${UI_DIR}"
+log "Built Docker image ${UI_IMAGE} ✓"
+
+log "Loading Docker image into platform-mesh cluster..."
+kind load docker-image "${UI_IMAGE}" --name platform-mesh
+log "Loaded Docker image into platform-mesh ✓"
+
+log "Deploying openmcp-onboarding-ui to platform-mesh..."
+helm upgrade --install openmcp-onboarding-ui "${UI_DIR}/chart" \
+    --kubeconfig="${PLATFORM_MESH_KUBECONFIG}" \
+    --namespace=platform-mesh-system \
+    --set image.name="${UI_IMAGE%:*}" \
+    --set image.tag="${UI_IMAGE#*:}" \
+    --set image.imagePullSecret="" \
+    --set image.pullPolicy=Never
+log "Deployed openmcp-onboarding-ui ✓"
+
+log "Waiting for UI deployment to be ready..."
+KUBECONFIG="${PLATFORM_MESH_KUBECONFIG}" kubectl rollout status deployment/openmcp-onboarding-ui \
+    --namespace=platform-mesh-system --timeout=120s
+log "Onboarding UI is ready ✓"
+
 log "Integration complete!"
 log "Portal URL: https://portal.localhost:8443/"

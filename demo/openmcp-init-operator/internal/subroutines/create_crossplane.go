@@ -109,6 +109,8 @@ func (r *CreateCrossplaneSubroutine) Process(ctx context.Context, runtimeObj run
 	}
 
 	log.Info().Str("name", clusterID).Msg("Crossplane created or updated successfully")
+
+	sourceCrossplane.Status.Phase = crossplanev1alpha1.CrossplanePhaseProvisioning
 	return ctrl.Result{}, nil
 }
 

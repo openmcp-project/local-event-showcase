@@ -27,7 +27,7 @@
             "index": "projects/wc/src/index.html",
             "browser": "projects/wc/src/main.ts",
             "tsConfig": "projects/wc/tsconfig.app.json",
-            "inlineStyleLanguage": "sass",
+            "inlineStyleLanguage": "css",
             "assets": [
               "projects/wc/src/assets"
             ],

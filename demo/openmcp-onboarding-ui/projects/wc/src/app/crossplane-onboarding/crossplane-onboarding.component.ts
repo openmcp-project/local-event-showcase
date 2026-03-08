@@ -7,16 +7,17 @@ import {
   ChangeDetectionStrategy,
   Component,
   Input,
+  OnDestroy,
   ViewEncapsulation,
   inject,
   signal,
 } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { LuigiClient } from '@luigi-project/client/luigi-element';
 import { ButtonComponent } from '@fundamental-ngx/core/button';
 import { BusyIndicatorComponent } from '@fundamental-ngx/core/busy-indicator';
 import { MessageStripComponent } from '@fundamental-ngx/core/message-strip';
 import { IconComponent } from '@fundamental-ngx/core/icon';
-import { ContentDensityDirective } from '@fundamental-ngx/core/content-density';
 
 type OnboardingState =
   | 'loading'
@@ -24,6 +25,7 @@ type OnboardingState =
   | 'activating'
   | 'configure'
   | 'creating'
+  | 'provisioning'
   | 'active';
 
 @Component({
@@ -34,7 +36,6 @@ type OnboardingState =
     BusyIndicatorComponent,
     MessageStripComponent,
     IconComponent,
-    ContentDensityDirective,
   ],
   encapsulation: ViewEncapsulation.ShadowDom,
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -120,6 +121,52 @@ type OnboardingState =
       background: var(--sapPositiveElementColor, #107e3e);
       color: #fff;
     }
+
+    .status-badge.provisioning {
+      background: var(--sapInformationColor, #0a6ed1);
+    }
+
+    .provisioning-card {
+      background: var(--sapTile_Background, #fff);
+      border: 1px solid var(--sapTile_BorderColor, #d9d9d9);
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+      max-width: 600px;
+    }
+
+    .provisioning-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .provisioning-header h2 {
+      margin: 0;
+      font-size: var(--sapFontHeader3Size, 1.25rem);
+      color: var(--sapTextColor, #32363a);
+    }
+
+    .provisioning-status {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+      background: var(--sapInformationBackground, #e5f0fa);
+      border: 1px solid var(--sapInformationBorderColor, #0a6ed1);
+      border-radius: 0.25rem;
+      margin-bottom: 1rem;
+    }
+
+    .provisioning-status .phase-text {
+      font-size: var(--sapFontSize, 0.875rem);
+      color: var(--sapTextColor, #32363a);
+    }
+
+    .provisioning-status .phase-label {
+      font-weight: bold;
+      color: var(--sapInformationColor, #0a6ed1);
+    }
   `,
   template: `
     @switch (state()) {
@@ -185,6 +232,45 @@ type OnboardingState =
         </div>
       }
 
+      @case ('provisioning') {
+        <div class="provisioning-card">
+          <div class="provisioning-header">
+            <fd-busy-indicator [loading]="true" size="s"></fd-busy-indicator>
+            <h2>Crossplane is provisioning</h2>
+          </div>
+          <div class="provisioning-status">
+            <div>
+              <div class="phase-text">Your Crossplane instance is being set up. This may take a few minutes.</div>
+              @if (crossplane()?.status?.phase) {
+                <div class="phase-label" style="margin-top: 0.5rem">
+                  Phase: {{ crossplane()!.status!.phase }}
+                </div>
+              }
+            </div>
+          </div>
+          @if (crossplane()) {
+            <div class="config-section">
+              <div class="config-row">
+                <span class="config-label">Version</span>
+                <span class="config-value">{{ crossplane()!.spec?.version }}</span>
+              </div>
+              @for (provider of crossplane()!.spec?.providers ?? []; track provider.name) {
+                <div class="config-row">
+                  <span class="config-label">Provider</span>
+                  <span class="config-value">{{ provider.name }} {{ provider.version }}</span>
+                </div>
+              }
+              <div class="config-row">
+                <span class="config-label">Status</span>
+                <span class="config-value">
+                  <span class="status-badge provisioning">{{ crossplane()!.status?.phase ?? 'Pending' }}</span>
+                </span>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
       @case ('active') {
         <div class="onboarding-card">
           <div class="card-header">
@@ -226,8 +312,9 @@ type OnboardingState =
     }
   `,
 })
-export class CrossplaneOnboardingComponent {
+export class CrossplaneOnboardingComponent implements OnDestroy {
   private onboardingService = inject(CrossplaneOnboardingService);
+  private watchSub?: Subscription;
 
   state = signal<OnboardingState>('loading');
   error = signal('');
@@ -240,6 +327,10 @@ export class CrossplaneOnboardingComponent {
   set context(ctx: LuigiContext) {
     this.onboardingService.initialize(ctx);
     this.checkState();
+  }
+
+  ngOnDestroy(): void {
+    this.watchSub?.unsubscribe();
   }
 
   onActivate(): void {
@@ -258,7 +349,7 @@ export class CrossplaneOnboardingComponent {
     this.state.set('creating');
     this.error.set('');
     this.onboardingService.createCrossplane().subscribe({
-      next: () => this.checkCrossplaneState(),
+      next: () => this.startWatchingCrossplane(),
       error: (err) => {
         this.error.set(`Failed to create Crossplane: ${err.message}`);
         this.state.set('configure');
@@ -288,13 +379,36 @@ export class CrossplaneOnboardingComponent {
       next: (cp) => {
         if (cp) {
           this.crossplane.set(cp);
-          this.state.set('active');
+          if (cp.status?.phase === 'Ready') {
+            this.state.set('active');
+          } else {
+            this.startWatchingCrossplane();
+          }
         } else {
           this.state.set('configure');
         }
       },
       error: () => {
         this.state.set('configure');
+      },
+    });
+  }
+
+  private startWatchingCrossplane(): void {
+    this.state.set('provisioning');
+    this.watchSub?.unsubscribe();
+    this.watchSub = this.onboardingService.watchCrossplane().subscribe({
+      next: (event) => {
+        this.crossplane.set(event.object);
+        if (event.object.status?.phase === 'Ready') {
+          this.state.set('active');
+          this.watchSub?.unsubscribe();
+        } else {
+          this.state.set('provisioning');
+        }
+      },
+      error: (err) => {
+        this.error.set(`Watch error: ${err.message}`);
       },
     });
   }

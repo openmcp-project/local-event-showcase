@@ -121,7 +121,13 @@ func (i *InitializePublishedResourcesSubroutine) Process(ctx context.Context, ru
 		return result, opErr
 	}
 
-	return i.initializeResources(ctx, mcpClient, sourceCrossplane)
+	result, opErr = i.initializeResources(ctx, mcpClient, sourceCrossplane)
+	if opErr != nil {
+		return result, opErr
+	}
+
+	sourceCrossplane.Status.Phase = crossplanev1alpha1.CrossplanePhaseReady
+	return result, nil
 }
 
 // getMCPClient retrieves the MCP kubeconfig and creates a client targeting the MCP cluster.

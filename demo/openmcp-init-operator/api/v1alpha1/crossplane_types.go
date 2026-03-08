@@ -21,6 +21,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	CrossplanePhaseProvisioning = "Provisioning"
+	CrossplanePhaseReady        = "Ready"
+)
+
 // CrossplaneProviderConfig represents configuration for Crossplane providers in a Crossplane instance.
 type CrossplaneProviderConfig struct {
 	// Name of the provider.

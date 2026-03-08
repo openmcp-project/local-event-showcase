@@ -1,4 +1,5 @@
 import { Injectable, NgZone, inject } from '@angular/core';
+import { HttpHeaders } from '@angular/common/http';
 import {
   type ApolloClientOptions,
   ApolloLink,
@@ -59,18 +60,16 @@ export class ApolloFactory {
 
   private createApolloOptions(
     context: LuigiContext,
-  ): ApolloClientOptions<unknown> {
+  ): ApolloClientOptions {
     const gatewayUrl = context.portalContext.crdGatewayApiUrl;
 
-    const contextLink = setContext(() => {
-      return {
-        uri: () => gatewayUrl,
-        headers: {
-          Authorization: `Bearer ${context.token}`,
-          Accept: 'charset=utf-8',
-        },
-      };
-    });
+    const contextLink = setContext(() => ({
+      uri: gatewayUrl,
+      headers: new HttpHeaders({
+        Authorization: `Bearer ${context.token}`,
+        Accept: 'charset=utf-8',
+      }),
+    }));
 
     const splitClient = split(
       ({ query }) => {
