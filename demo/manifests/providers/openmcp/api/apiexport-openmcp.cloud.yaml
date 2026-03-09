@@ -1,0 +1,47 @@
+apiVersion: apis.kcp.io/v1alpha2
+kind: APIExport
+metadata:
+  name: openmcp.cloud
+  labels:
+    ui.platform-mesh.io/content-for: openmcp.cloud
+spec:
+  resources:
+    - group: crossplane.services.openmcp.cloud
+      name: crossplanecatalogs
+      schema: v260308-657c3cf.crossplanecatalogs.crossplane.services.openmcp.cloud
+      storage:
+        virtual:
+          reference:
+            apiGroup: cache.kcp.io
+            kind: CachedResourceEndpointSlice
+            name: crossplanecatalogs-v1alpha1
+          identityHash: 7a2d87a45b51498635dcd97be80f1e28edf8d6d8e170bac8382fe12bc0c828ad
+    - group: crossplane.services.openmcp.cloud
+      name: crossplanes
+      schema: v260218-a16964f.crossplanes.crossplane.services.openmcp.cloud
+      storage:
+        crd: {}
+    - group: core.openmcp.cloud
+      name: managedcontrolplanes
+      schema: v260308-d0e7cae.managedcontrolplanes.core.openmcp.cloud
+      storage:
+        crd: {}
+  permissionClaims:
+    - group: apis.kcp.io
+      resource: apiexports
+      verbs:
+        - '*'
+    - group: ui.platform-mesh.io
+      resource: contentconfigurations
+      verbs:
+        - '*'
+      identityHash: ab1a5195ed2f7e8c4be0018a91de37eb796d13ce2f3d64ff475d2cc7e606c829
+    - group: rbac.authorization.k8s.io
+      resource: clusterroles
+      verbs:
+        - '*'
+    - group: rbac.authorization.k8s.io
+      resource: clusterrolebindings
+      verbs:
+        - '*'
+status: {}

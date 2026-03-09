@@ -4,8 +4,10 @@ metadata:
   name: openmcp-account-init
 spec:
   workspaceTypeRef:
-    name: account
+    name: openmcp-init
     path: root
   sources:
     - template:
         name: openmcp-managed-control-plane
+    - template:
+        name: openmcp-gardener-project

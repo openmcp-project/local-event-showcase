@@ -1,7 +1,6 @@
 apiVersion: apis.kcp.io/v1alpha1
 kind: APIResourceSchema
 metadata:
-  creationTimestamp: null
   name: v260308-d0e7cae.managedcontrolplanes.core.openmcp.cloud
 spec:
   group: core.openmcp.cloud

@@ -1,0 +1,16 @@
+apiVersion: apis.kcp.io/v1alpha2
+kind: APIExport
+metadata:
+  name: gardener.cloud
+spec:
+  permissionClaims:
+    - resource: secrets
+      verbs:
+        - '*'
+  resources:
+    - group: gardener.cloud
+      name: gardenerprojects
+      schema: v260309-657c3cf.gardenerprojects.gardener.cloud
+      storage:
+        crd: {}
+status: {}

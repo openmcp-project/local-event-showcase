@@ -5,7 +5,7 @@ dotenv:
 
 vars:
   REG_NAME: kind-registry
-  REG_PORT: "5001"
+  REG_PORT: "5002"
   LOCAL_OCI_REGISTRY: localhost:{{.REG_PORT}}
   LOCAL_OCM_REPO: "https://{{.LOCAL_OCI_REGISTRY}}/ocm"
   TMP_DIR: .tmp
@@ -26,6 +26,30 @@ tasks:
   tmp-dir:
     cmds:
       - mkdir -p {{.TMP_DIR}}
+
+  kind-network:
+    desc: Create the shared kind Docker network with ICC enabled (required for Docker >= 29.x)
+    cmds:
+      - |
+        if docker network inspect kind >/dev/null 2>&1; then
+          ICC=$(docker network inspect kind -f '{{`{{index .Options "com.docker.network.bridge.enable_icc"}}`}}')
+          if [ "$ICC" = "true" ]; then
+            echo "Kind network already exists with ICC enabled ✓"
+            exit 0
+          fi
+          echo "Kind network exists but ICC is not enabled."
+          echo "Delete all kind clusters first, then re-run this task:"
+          echo "  task delete-clusters"
+          echo "  docker network rm kind"
+          echo "  task kind-network"
+          exit 1
+        fi
+        docker network create kind --driver=bridge \
+          --subnet 172.18.0.0/16 --gateway 172.18.0.1 \
+          --ipv6 --subnet fd00:10::/64 --gateway fd00:10::1 \
+          --opt com.docker.network.bridge.enable_ip_masquerade=true \
+          --opt com.docker.network.bridge.enable_icc=true
+        echo "Kind network created with ICC enabled ✓"
 
   certs:generate:
     desc: Generate CA and registry TLS certificates for HTTPS registry, plus OCM config for registry trust
@@ -251,7 +275,7 @@ tasks:
         }
 
         rewrite_image_ref() {
-          sed 's|https\{0,1\}://localhost:{{.REG_PORT}}|{{.REG_NAME}}:{{.REG_PORT}}|'
+          sed 's|https\{0,1\}://localhost:[0-9]*|{{.REG_NAME}}:{{.REG_PORT}}|'
         }
 
         export OPENMCP_OPERATOR_IMAGE=$(ocm --config $(pwd)/{{.OCM_CONFIG}} get component --latest {{.LOCAL_OCM_REPO}}//{{.OPENMCP_OCM_COMPONENT_NAME_OPENMCP_OPERATOR}} -oyaml | get_image_reference openmcp-operator-image | rewrite_image_ref)
@@ -343,6 +367,11 @@ tasks:
           echo "Deleting kind cluster: $cluster"
           kind delete cluster --name "$cluster"
         done
+
+  gardener:local:
+    desc: Clone Gardener and start it locally in a Kind cluster
+    cmds:
+      - bash hack/setup-gardener-local.sh
 
   platform-mesh:local:
     desc: Checkout platform-mesh helm-charts and run local-setup:cached:showcase

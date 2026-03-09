@@ -1,7 +1,6 @@
 apiVersion: apis.kcp.io/v1alpha1
 kind: APIResourceSchema
 metadata:
-  creationTimestamp: null
   name: v260218-a16964f.crossplanes.crossplane.services.openmcp.cloud
 spec:
   group: crossplane.services.openmcp.cloud

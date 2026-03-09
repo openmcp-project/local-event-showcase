@@ -1,0 +1,41 @@
+apiVersion: ui.platform-mesh.io/v1alpha1
+kind: ContentConfiguration
+metadata:
+  labels:
+    ui.platform-mesh.io/entity: core_platform-mesh_io_account
+    ui.platform-mesh.io/content-for: openmcp.cloud
+  name: openmcp-crossplane-onboarding
+spec:
+  inlineConfiguration:
+    contentType: json
+    content: |-
+      {
+        "name": "openmcp-crossplane-onboarding",
+        "luigiConfigFragment": {
+          "data": {
+            "nodes": [
+              {
+                "label": "Crossplane",
+                "pathSegment": "crossplane",
+                "icon": "cloud",
+                "order": 100,
+                "entityType": "main.core_platform-mesh_io_account",
+                "category": {
+                  "id": "crossplane",
+                  "isGroup": true,
+                  "label": "Crossplane",
+                  "order": 800
+                },
+                "loadingIndicator": {
+                  "enabled": false
+                },
+                "url": "/ui/openmcp/wc/main.js",
+                "webcomponent": {
+                  "selfRegistered": true,
+                  "type": "module"
+                }
+              }
+            ]
+          }
+        }
+      }

@@ -29,7 +29,6 @@ import (
 	openmfpcontext "github.com/platform-mesh/golang-commons/context"
 	"github.com/platform-mesh/golang-commons/logger"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"k8s.io/apimachinery/pkg/runtime"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/tools/clientcmd"
@@ -48,14 +47,15 @@ import (
 
 var (
 	setupLog                                         = ctrl.Log.WithName("setup")
-	operatorCfg                                      config.OperatorConfig
+	operatorCfg                                      *config.OperatorConfig
 	defaultCfg                                       *platformmeshconfig.CommonServiceConfig
 	scheme                                           *runtime.Scheme
 	tlsOpts                                          []func(*tls.Config)
 	metricsCertPath, metricsCertName, metricsCertKey string
 )
 
-func NewOperatorCmd(v *viper.Viper, cfg *platformmeshconfig.CommonServiceConfig, s *runtime.Scheme) *cobra.Command {
+func NewOperatorCmd(opCfg *config.OperatorConfig, cfg *platformmeshconfig.CommonServiceConfig, s *runtime.Scheme) *cobra.Command {
+	operatorCfg = opCfg
 	defaultCfg = cfg
 	scheme = s
 
@@ -63,11 +63,6 @@ func NewOperatorCmd(v *viper.Viper, cfg *platformmeshconfig.CommonServiceConfig,
 		Use:   "operator",
 		Short: "operator to reconcile ManagedControlPlane and Crossplane resources for OpenMCP initialization",
 		Run:   RunController,
-	}
-
-	err := platformmeshconfig.BindConfigToFlags(v, operatorCmd, &operatorCfg)
-	if err != nil {
-		panic(err)
 	}
 
 	operatorCmd.Flags().StringVar(&metricsCertPath, "metrics-cert-path", "",
@@ -176,7 +171,7 @@ func RunController(_ *cobra.Command, _ []string) {
 		Scheme:                 scheme,
 		Metrics:                metricsServerOptions,
 		HealthProbeBindAddress: defaultCfg.HealthProbeBindAddress,
-		LeaderElection:         defaultCfg.LeaderElection.Enabled,
+		LeaderElection:         defaultCfg.LeaderElectionEnabled,
 		LeaderElectionID:       "1da1c418.openmcp.io",
 		BaseContext: func() context.Context {
 			return ctx
@@ -203,14 +198,14 @@ func RunController(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	reconciler := controller.NewManagedControlPlaneReconciler(operatorCfg, mgr, onboardingClient, log)
+	reconciler := controller.NewManagedControlPlaneReconciler(*operatorCfg, mgr, onboardingClient, log)
 
 	if err = reconciler.SetupWithManager(mgr, defaultCfg, log); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ManagedControlPlaneReconciler")
 		os.Exit(1)
 	}
 
-	crossplaneReconciler := controller.NewCrossplaneReconciler(operatorCfg, mgr, onboardingClient, log)
+	crossplaneReconciler := controller.NewCrossplaneReconciler(*operatorCfg, mgr, onboardingClient, log)
 	if err = crossplaneReconciler.SetupWithManager(mgr, defaultCfg, log); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CrossplaneReconciler")
 		os.Exit(1)

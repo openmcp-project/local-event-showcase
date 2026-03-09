@@ -8,7 +8,7 @@ vars:
   ENVTEST_VERSION: release-0.23
   CRD_DIRECTORY: config/crd
   TEST_SETUP_DIRECTORY: test/setup/01-openmfp-system
-  KCP_APIGEN_VERSION: v2.4.0
+  KCP_APIGEN_VERSION: v0.30.0
   KCP_VERSION: 0.30.0
   GOMPLATE_VERSION: v5.0.0
   GOARCH:
@@ -36,7 +36,7 @@ tasks:
   setup:kcp-api-gen:
     internal: true
     cmds:
-      - test -s {{.LOCAL_BIN}}/apigen || GOBIN=$(pwd)/{{.LOCAL_BIN}} go install github.com/kcp-dev/kcp/sdk/cmd/apigen@{{.KCP_APIGEN_VERSION}}
+      - test -s {{.LOCAL_BIN}}/apigen || GOBIN=$(pwd)/{{.LOCAL_BIN}} go install github.com/kcp-dev/sdk/cmd/apigen@{{.KCP_APIGEN_VERSION}}
 
   ## Development
   manifests:
@@ -52,20 +52,24 @@ tasks:
   rename-apiexport:
     internal: true
     cmds:
-      - rm -f ./config/resources/apiexport-openmcp.cloud.yaml
-      # Start from the crossplane APIExport as a base
+      - rm -f ./config/resources/apiexport-openmcp.cloud.yaml ./config/resources/apiexport-openmcp-internal.cloud.yaml
+      # Start from the crossplane APIExport as a base (has spec.resources with crossplane entries)
       - cp ./config/resources/apiexport-crossplane.services.openmcp.cloud.yaml ./config/resources/apiexport-openmcp.cloud.yaml
-      # Merge latestResourceSchemas from the core APIExport into the combined file
+      # Merge spec.resources from the core APIExport into the combined file
       - |
-        CORE_SCHEMAS=$(yq '.spec.latestResourceSchemas[]' ./config/resources/apiexport-core.openmcp.cloud.yaml 2>/dev/null)
-        if [ -n "$CORE_SCHEMAS" ]; then
-          for schema in $CORE_SCHEMAS; do
-            yq -i '.spec.latestResourceSchemas += ["'"$schema"'"]' ./config/resources/apiexport-openmcp.cloud.yaml
-          done
+        CORE_RESOURCES=$(yq -o=json '.spec.resources[]' ./config/resources/apiexport-core.openmcp.cloud.yaml 2>/dev/null)
+        if [ -n "$CORE_RESOURCES" ]; then
+          yq -i '.spec.resources += load("./config/resources/apiexport-core.openmcp.cloud.yaml").spec.resources' ./config/resources/apiexport-openmcp.cloud.yaml
         fi
       - "yq -i '.metadata.name = \"openmcp.cloud\"' ./config/resources/apiexport-openmcp.cloud.yaml"
       - "yq -i '.metadata.labels.\"ui.platform-mesh.io/content-for\" = \"openmcp.cloud\"' ./config/resources/apiexport-openmcp.cloud.yaml"
-      - "yq -i '.spec.permissionClaims = [{\"group\": \"apis.kcp.io\", \"resource\": \"apiexports\", \"all\": true}, {\"group\": \"ui.platform-mesh.io\", \"resource\": \"contentconfigurations\", \"all\": true}]' ./config/resources/apiexport-openmcp.cloud.yaml"
+      - "yq -i '.spec.permissionClaims = [{\"group\": \"apis.kcp.io\", \"resource\": \"apiexports\", \"verbs\": [\"*\"]}, {\"group\": \"ui.platform-mesh.io\", \"resource\": \"contentconfigurations\", \"verbs\": [\"*\"]}, {\"group\": \"rbac.authorization.k8s.io\", \"resource\": \"clusterroles\", \"verbs\": [\"*\"]}, {\"group\": \"rbac.authorization.k8s.io\", \"resource\": \"clusterrolebindings\", \"verbs\": [\"*\"]}]' ./config/resources/apiexport-openmcp.cloud.yaml"
+      # Create internal APIExport (only crossplanecatalogs, CRD-backed, self-bound in provider workspace)
+      - cp ./config/resources/apiexport-openmcp.cloud.yaml ./config/resources/apiexport-openmcp-internal.cloud.yaml
+      - "yq -i '.metadata.name = \"openmcp-internal.cloud\"' ./config/resources/apiexport-openmcp-internal.cloud.yaml"
+      - "yq -i 'del(.metadata.labels)' ./config/resources/apiexport-openmcp-internal.cloud.yaml"
+      - "yq -i 'del(.spec.permissionClaims)' ./config/resources/apiexport-openmcp-internal.cloud.yaml"
+      - "yq -i '.spec.resources = [.spec.resources[] | select(.name == \"crossplanecatalogs\")]' ./config/resources/apiexport-openmcp-internal.cloud.yaml"
       - rm -f ./config/resources/apiexport-crossplane.services.openmcp.cloud.yaml ./config/resources/apiexport-core.openmcp.cloud.yaml
   build:
     cmds:

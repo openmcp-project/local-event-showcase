@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"strings"
-
 	kcpapisv1alpha1 "github.com/kcp-dev/sdk/apis/apis/v1alpha1"
 	kcpapisv1alpha2 "github.com/kcp-dev/sdk/apis/apis/v1alpha2"
 	kcpcorev1alpha1 "github.com/kcp-dev/sdk/apis/core/v1alpha1"
@@ -10,7 +8,6 @@ import (
 	platformmeshconfig "github.com/platform-mesh/golang-commons/config"
 	"github.com/platform-mesh/golang-commons/logger"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -19,12 +16,14 @@ import (
 	corev1alpha1 "github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/api/core/v1alpha1"
 	crossplanev1alpha1 "github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/api/v1alpha1"
 	"github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/cmd/operator"
+	"github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/internal/config"
 )
 
 var (
-	scheme     = runtime.NewScheme()
-	defaultCfg *platformmeshconfig.CommonServiceConfig
-	log        *logger.Logger
+	scheme      = runtime.NewScheme()
+	defaultCfg  *platformmeshconfig.CommonServiceConfig
+	operatorCfg config.OperatorConfig
+	log         *logger.Logger
 )
 
 var rootCmd = &cobra.Command{
@@ -41,24 +40,16 @@ func init() {
 	utilruntime.Must(corev1alpha1.AddToScheme(scheme))
 	utilruntime.Must(crossplanev1alpha1.AddToScheme(scheme))
 
-	var err error
-	_, defaultCfg, err = platformmeshconfig.NewDefaultConfig(rootCmd)
-	if err != nil {
-		panic(err)
-	}
+	defaultCfg = platformmeshconfig.NewDefaultConfig()
+	operatorCfg = config.NewOperatorConfig()
 
-	operatorV := newViper()
-	rootCmd.AddCommand(operator.NewOperatorCmd(operatorV, defaultCfg, scheme))
+	defaultCfg.AddFlags(rootCmd.PersistentFlags())
+
+	operatorCmd := operator.NewOperatorCmd(&operatorCfg, defaultCfg, scheme)
+	operatorCfg.AddFlags(operatorCmd.Flags())
+	rootCmd.AddCommand(operatorCmd)
 
 	cobra.OnInitialize(initLog)
-}
-
-func newViper() *viper.Viper {
-	v := viper.NewWithOptions(
-		viper.EnvKeyReplacer(strings.NewReplacer("-", "_")),
-	)
-	v.AutomaticEnv()
-	return v
 }
 
 func initLog() {

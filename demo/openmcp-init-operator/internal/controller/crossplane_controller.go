@@ -36,6 +36,9 @@ func NewCrossplaneReconciler(cfg config.OperatorConfig, mgr mcmanager.Manager, o
 	if cfg.Subroutines.InitializePublishedResources.Enabled {
 		subs = append(subs, subroutines.NewInitializePublishedResourcesSubroutine(onboardingClient, &cfg))
 	}
+	if cfg.Subroutines.DeployContentConfigurations.Enabled {
+		subs = append(subs, subroutines.NewDeployContentConfigurationsSubroutine(&mcManagerKCPAdapter{mgr: mgr}))
+	}
 
 	return &CrossplaneReconciler{
 		lifecycle: builder.NewBuilder(operatorName, crossplaneReconcilerName, subs, log).
@@ -50,4 +53,17 @@ func (r *CrossplaneReconciler) Reconcile(ctx context.Context, req mcreconcile.Re
 
 func (r *CrossplaneReconciler) SetupWithManager(mgr mcmanager.Manager, cfg *platformmeshconfig.CommonServiceConfig, log *logger.Logger, eventPredicates ...predicate.Predicate) error {
 	return r.lifecycle.SetupWithManager(mgr, cfg.MaxConcurrentReconciles, crossplaneReconcilerName, &crossplanev1alpha1.Crossplane{}, cfg.DebugLabelValue, r, log, eventPredicates...)
+}
+
+// mcManagerKCPAdapter adapts mcmanager.Manager to subroutines.KCPClientProvider.
+type mcManagerKCPAdapter struct {
+	mgr mcmanager.Manager
+}
+
+func (a *mcManagerKCPAdapter) KCPClientFromContext(ctx context.Context) (client.Client, error) {
+	cl, err := a.mgr.ClusterFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return cl.GetClient(), nil
 }
