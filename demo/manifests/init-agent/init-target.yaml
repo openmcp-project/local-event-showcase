@@ -9,3 +9,5 @@ spec:
   sources:
     - template:
         name: openmcp-managed-control-plane
+    - template:
+        name: openmcp-gardener-project

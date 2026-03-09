@@ -7,7 +7,6 @@ vars:
   ENVTEST_K8S_VERSION: "1.35.1"
   ENVTEST_VERSION: release-0.23
   CRD_DIRECTORY: config/crd
-  TEST_SETUP_DIRECTORY: test/setup/01-openmfp-system
   KCP_APIGEN_VERSION: v0.30.0
   KCP_VERSION: 0.30.0
   GOMPLATE_VERSION: v5.0.0
@@ -25,10 +24,6 @@ tasks:
     internal: true
     cmds:
       - test -s {{.LOCAL_BIN}}/kcp || GOBIN=$(pwd)/{{.LOCAL_BIN}} ./hack/download-tool.sh https://github.com/kcp-dev/kcp/releases/download/v{{ .KCP_VERSION }}/kcp_{{ .KCP_VERSION }}_{{ .GOOS }}_{{ .GOARCH }}.tar.gz kcp {{.KCP_VERSION}}
-  setup:gomplate:
-    internal: true
-    cmds:
-      - test -s {{.LOCAL_BIN}}/gomplate || curl -o {{.LOCAL_BIN}}/gomplate -sSL https://github.com/hairyhenderson/gomplate/releases/download/{{ .GOMPLATE_VERSION }}/gomplate_{{ .GOOS }}-{{ .GOARCH }} && chmod +x {{.LOCAL_BIN}}/gomplate && chmod 755 {{.LOCAL_BIN}}/gomplate
   setup:golangci-lint:
     internal: true
     cmds:
@@ -48,29 +43,11 @@ tasks:
       - task: manifests
       - "{{.LOCAL_BIN}}/controller-gen object:headerFile=hack/boilerplate.go.txt paths=./..."
       - "{{.LOCAL_BIN}}/apigen --input-dir {{.CRD_DIRECTORY}} --output-dir ./config/resources"
-      - task: rename-apiexport
-  rename-apiexport:
+      - task: patch-apiexport
+  patch-apiexport:
     internal: true
     cmds:
-      - rm -f ./config/resources/apiexport-openmcp.cloud.yaml ./config/resources/apiexport-openmcp-internal.cloud.yaml
-      # Start from the crossplane APIExport as a base (has spec.resources with crossplane entries)
-      - cp ./config/resources/apiexport-crossplane.services.openmcp.cloud.yaml ./config/resources/apiexport-openmcp.cloud.yaml
-      # Merge spec.resources from the core APIExport into the combined file
-      - |
-        CORE_RESOURCES=$(yq -o=json '.spec.resources[]' ./config/resources/apiexport-core.openmcp.cloud.yaml 2>/dev/null)
-        if [ -n "$CORE_RESOURCES" ]; then
-          yq -i '.spec.resources += load("./config/resources/apiexport-core.openmcp.cloud.yaml").spec.resources' ./config/resources/apiexport-openmcp.cloud.yaml
-        fi
-      - "yq -i '.metadata.name = \"openmcp.cloud\"' ./config/resources/apiexport-openmcp.cloud.yaml"
-      - "yq -i '.metadata.labels.\"ui.platform-mesh.io/content-for\" = \"openmcp.cloud\"' ./config/resources/apiexport-openmcp.cloud.yaml"
-      - "yq -i '.spec.permissionClaims = [{\"group\": \"apis.kcp.io\", \"resource\": \"apiexports\", \"verbs\": [\"*\"]}, {\"group\": \"ui.platform-mesh.io\", \"resource\": \"contentconfigurations\", \"verbs\": [\"*\"]}, {\"group\": \"rbac.authorization.k8s.io\", \"resource\": \"clusterroles\", \"verbs\": [\"*\"]}, {\"group\": \"rbac.authorization.k8s.io\", \"resource\": \"clusterrolebindings\", \"verbs\": [\"*\"]}]' ./config/resources/apiexport-openmcp.cloud.yaml"
-      # Create internal APIExport (only crossplanecatalogs, CRD-backed, self-bound in provider workspace)
-      - cp ./config/resources/apiexport-openmcp.cloud.yaml ./config/resources/apiexport-openmcp-internal.cloud.yaml
-      - "yq -i '.metadata.name = \"openmcp-internal.cloud\"' ./config/resources/apiexport-openmcp-internal.cloud.yaml"
-      - "yq -i 'del(.metadata.labels)' ./config/resources/apiexport-openmcp-internal.cloud.yaml"
-      - "yq -i 'del(.spec.permissionClaims)' ./config/resources/apiexport-openmcp-internal.cloud.yaml"
-      - "yq -i '.spec.resources = [.spec.resources[] | select(.name == \"crossplanecatalogs\")]' ./config/resources/apiexport-openmcp-internal.cloud.yaml"
-      - rm -f ./config/resources/apiexport-crossplane.services.openmcp.cloud.yaml ./config/resources/apiexport-core.openmcp.cloud.yaml
+      - "yq -i '.spec.permissionClaims = [{\"resource\": \"secrets\", \"verbs\": [\"*\"]}]' ./config/resources/apiexport-gardener.cloud.yaml"
   build:
     cmds:
       - go build ./...
@@ -86,22 +63,12 @@ tasks:
     cmds:
       - task: fmt
       - "{{.LOCAL_BIN}}/golangci-lint run --timeout 15m ./..."
-  envtest:
-    cmds:
-      - go test ./... {{.ADDITIONAL_COMMAND_ARGS}}
   test:
-    deps: [setup:kcp, setup:gomplate]
     cmds:
-      - task: envtest
+      - go test ./...
   cover:
-    deps: [setup:kcp, setup:gomplate]
     cmds:
-      - task: envtest
-        vars:
-          ADDITIONAL_COMMAND_ARGS: -coverprofile=./cover.out -covermode=atomic -coverpkg=./...
-  helm-unittest:
-    cmds:
-      - helm unittest chart
+      - go test ./... -coverprofile=./cover.out -covermode=atomic -coverpkg=./...
   validate:
     cmds:
       - task: lint
@@ -113,11 +80,11 @@ tasks:
       KIND_CLUSTER:
         sh: kind get clusters 2>/dev/null | grep '^onboarding' | head -1
       KIND_CONTEXT: kind-{{.KIND_CLUSTER}}
-      DEPLOYMENT_NAME: '{{.DEPLOYMENT_NAME | default "openmcp-init-operator"}}'
+      DEPLOYMENT_NAME: '{{.DEPLOYMENT_NAME | default "gardener-init-operator"}}'
       DEPLOYMENT_NAMESPACE: '{{.DEPLOYMENT_NAMESPACE | default "openmcp-system"}}'
       IMAGE_TAG:
         sh: kubectl --context {{.KIND_CONTEXT}} get deployment {{.DEPLOYMENT_NAME}} -n {{.DEPLOYMENT_NAMESPACE}} -o jsonpath='{.spec.template.spec.containers[0].image}' | cut -d':' -f2
-      IMAGE_NAME: openmcp-init-operator:{{.IMAGE_TAG}}
+      IMAGE_NAME: gardener-init-operator:{{.IMAGE_TAG}}
     cmds:
       - echo "Building image with tag {{.IMAGE_TAG}} using {{.CONTAINER_RUNTIME}}"
       - "{{.CONTAINER_RUNTIME}} build -t {{.IMAGE_NAME}} ."
@@ -131,9 +98,3 @@ tasks:
         fi
       - kubectl --context {{.KIND_CONTEXT}} rollout restart deployment/{{.DEPLOYMENT_NAME}} -n {{.DEPLOYMENT_NAMESPACE}}
       - echo "Image loaded and deployment restarted"
-
-  start-kcp:
-    deps: [setup:kcp]
-    cmds:
-      - "{{ .LOCAL_BIN}}/kcp start"
-

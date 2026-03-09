@@ -1,0 +1,11 @@
+apiVersion: crossplane.services.openmcp.cloud/v1alpha1
+kind: CrossplaneCatalog
+metadata:
+  name: default
+spec:
+  versions:
+    - version: "v1.20.1"
+  providers:
+    - name: provider-kubernetes
+      versions:
+        - "v0.15.0"

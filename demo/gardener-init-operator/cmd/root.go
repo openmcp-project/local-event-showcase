@@ -4,7 +4,6 @@ import (
 	kcpapisv1alpha1 "github.com/kcp-dev/sdk/apis/apis/v1alpha1"
 	kcpapisv1alpha2 "github.com/kcp-dev/sdk/apis/apis/v1alpha2"
 	kcpcorev1alpha1 "github.com/kcp-dev/sdk/apis/core/v1alpha1"
-	mcpv2alpha1 "github.com/openmcp-project/openmcp-operator/api/core/v2alpha1"
 	platformmeshconfig "github.com/platform-mesh/golang-commons/config"
 	"github.com/platform-mesh/golang-commons/logger"
 	"github.com/spf13/cobra"
@@ -13,10 +12,9 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	corev1alpha1 "github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/api/core/v1alpha1"
-	crossplanev1alpha1 "github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/api/v1alpha1"
-	"github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/cmd/operator"
-	"github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/internal/config"
+	gardenerv1alpha1 "github.com/openmcp/local-event-showcase/demo/gardener-init-operator/api/v1alpha1"
+	"github.com/openmcp/local-event-showcase/demo/gardener-init-operator/cmd/operator"
+	"github.com/openmcp/local-event-showcase/demo/gardener-init-operator/internal/config"
 )
 
 var (
@@ -27,8 +25,8 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "openmcp-init-operator",
-	Short: "operator for OpenMCP workspace initialization",
+	Use:   "gardener-init-operator",
+	Short: "operator for Gardener project initialization per KCP workspace",
 }
 
 func init() {
@@ -36,9 +34,7 @@ func init() {
 	utilruntime.Must(kcpapisv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(kcpapisv1alpha2.AddToScheme(scheme))
 	utilruntime.Must(kcpcorev1alpha1.AddToScheme(scheme))
-	utilruntime.Must(mcpv2alpha1.AddToScheme(scheme))
-	utilruntime.Must(corev1alpha1.AddToScheme(scheme))
-	utilruntime.Must(crossplanev1alpha1.AddToScheme(scheme))
+	utilruntime.Must(gardenerv1alpha1.AddToScheme(scheme))
 
 	defaultCfg = platformmeshconfig.NewDefaultConfig()
 	operatorCfg = config.NewOperatorConfig()

@@ -1,0 +1,10 @@
+apiVersion: initialization.kcp.io/v1alpha1
+kind: InitTemplate
+metadata:
+  name: openmcp-gardener-project
+spec:
+  template: |
+    apiVersion: gardener.cloud/v1alpha1
+    kind: GardenerProject
+    metadata:
+      name: default

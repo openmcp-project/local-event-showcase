@@ -20,11 +20,20 @@ cp .env.example .env
 
 # Setup instructions
 0. Delete any existing kind clusters that you may have that could conflict with this setup.
-1. Download openmcp distro (takes longer, do when necessary)
+1. Create the shared kind Docker network with ICC enabled (required once, before any cluster setup)
+  ```
+  task kind-network
+  ```
+  > **Why?** Docker >= 29.x defaults ICC (inter-container communication) to `false` on user-created bridge networks. Without this, containers on the kind network cannot talk to each other, breaking DNS resolution and registry caches.
+2. Download openmcp distro (takes longer, do when necessary)
   ```
   task openmcp:clone-distro
   ```
-3. Install Platform-mesh
+3. Set up Gardener locally (clones Gardener into `demo/external/gardener`, creates a `gardener-local` Kind cluster, and starts Gardener)
+  ```
+  task gardener:local
+  ```
+4. Install Platform-mesh
   ```
   task platform-mesh:local openmcp:local integrate
   ```

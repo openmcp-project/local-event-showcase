@@ -10,7 +10,12 @@ spec:
       name: crossplanecatalogs
       schema: v260308-657c3cf.crossplanecatalogs.crossplane.services.openmcp.cloud
       storage:
-        crd: {}
+        virtual:
+          reference:
+            apiGroup: cache.kcp.io
+            kind: CachedResourceEndpointSlice
+            name: crossplanecatalogs-v1alpha1
+          identityHash: 7a2d87a45b51498635dcd97be80f1e28edf8d6d8e170bac8382fe12bc0c828ad
     - group: crossplane.services.openmcp.cloud
       name: crossplanes
       schema: v260218-a16964f.crossplanes.crossplane.services.openmcp.cloud
@@ -30,6 +35,7 @@ spec:
       resource: contentconfigurations
       verbs:
         - '*'
+      identityHash: ab1a5195ed2f7e8c4be0018a91de37eb796d13ce2f3d64ff475d2cc7e606c829
     - group: rbac.authorization.k8s.io
       resource: clusterroles
       verbs:

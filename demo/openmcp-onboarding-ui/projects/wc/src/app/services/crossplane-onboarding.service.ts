@@ -20,6 +20,14 @@ export interface CrossplaneEvent {
   object: CrossplaneStatus;
 }
 
+export interface CrossplaneCatalog {
+  metadata: { name: string };
+  spec: {
+    versions: { version: string }[];
+    providers: { name: string; versions: string[] }[];
+  };
+}
+
 const CHECK_API_BINDING = gql`
   query {
     apis_kcp_io {
@@ -109,23 +117,22 @@ const WATCH_CROSSPLANE = gql`
   }
 `;
 
-const CREATE_CROSSPLANE = gql`
-  mutation {
+const QUERY_CATALOG = gql`
+  query {
     crossplane_services_openmcp_cloud {
       v1alpha1 {
-        createCrossplane(
-          object: {
-            metadata: { name: "default" }
-            spec: {
-              version: "v1.20.1"
-              providers: [
-                { name: "provider-kubernetes", version: "v0.15.0" }
-              ]
-            }
-          }
-        ) {
+        CrossplaneCatalog(name: "default") {
           metadata {
             name
+          }
+          spec {
+            versions {
+              version
+            }
+            providers {
+              name
+              versions
+            }
           }
         }
       }
@@ -202,7 +209,50 @@ export class CrossplaneOnboardingService {
       );
   }
 
-  public createCrossplane(): Observable<{ metadata: { name: string } }> {
+  public getCatalog(): Observable<CrossplaneCatalog | null> {
+    return this.apollo
+      .query<{
+        crossplane_services_openmcp_cloud: {
+          v1alpha1: { CrossplaneCatalog: CrossplaneCatalog | null };
+        };
+      }>({
+        query: QUERY_CATALOG,
+        fetchPolicy: 'network-only',
+      })
+      .pipe(
+        map((result) => result.data!.crossplane_services_openmcp_cloud.v1alpha1.CrossplaneCatalog),
+        catchError(() => of(null)),
+      );
+  }
+
+  public createCrossplane(
+    version: string,
+    providers: { name: string; version: string }[],
+  ): Observable<{ metadata: { name: string } }> {
+    const providersInput = providers
+      .map((p) => `{ name: "${p.name}", version: "${p.version}" }`)
+      .join(', ');
+    const mutation = gql`
+      mutation {
+        crossplane_services_openmcp_cloud {
+          v1alpha1 {
+            createCrossplane(
+              object: {
+                metadata: { name: "default" }
+                spec: {
+                  version: "${version}"
+                  providers: [${providersInput}]
+                }
+              }
+            ) {
+              metadata {
+                name
+              }
+            }
+          }
+        }
+      }
+    `;
     return this.apollo
       .mutate<{
         crossplane_services_openmcp_cloud: {
@@ -211,7 +261,7 @@ export class CrossplaneOnboardingService {
           };
         };
       }>({
-        mutation: CREATE_CROSSPLANE,
+        mutation,
       })
       .pipe(
         map((result) => result.data!.crossplane_services_openmcp_cloud.v1alpha1.createCrossplane),

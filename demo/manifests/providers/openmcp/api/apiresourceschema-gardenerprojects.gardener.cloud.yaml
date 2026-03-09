@@ -1,21 +1,17 @@
 apiVersion: apis.kcp.io/v1alpha1
 kind: APIResourceSchema
 metadata:
-  creationTimestamp: null
-  name: v260218-a16964f.crossplanes.crossplane.services.openmcp.cloud
+  name: v260309-657c3cf.gardenerprojects.gardener.cloud
 spec:
-  group: crossplane.services.openmcp.cloud
+  group: gardener.cloud
   names:
-    kind: Crossplane
-    listKind: CrossplaneList
-    plural: crossplanes
-    singular: crossplane
+    kind: GardenerProject
+    listKind: GardenerProjectList
+    plural: gardenerprojects
+    singular: gardenerproject
   scope: Cluster
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .spec.version
-      name: Version
-      type: string
     - jsonPath: .status.phase
       name: Phase
       type: string
@@ -24,7 +20,7 @@ spec:
       type: date
     name: v1alpha1
     schema:
-      description: Crossplane is the Schema for the crossplanes API
+      description: GardenerProject is the Schema for the gardenerprojects API
       properties:
         apiVersion:
           description: |-
@@ -44,47 +40,16 @@ spec:
         metadata:
           type: object
         spec:
-          description: spec defines the desired state of Crossplane
-          properties:
-            providers:
-              description: List of Crossplane providers to be installed.
-              items:
-                description: CrossplaneProviderConfig represents configuration for
-                  Crossplane providers in a Crossplane instance.
-                properties:
-                  name:
-                    description: Name of the provider.
-                    type: string
-                  version:
-                    description: Version of the provider to install.
-                    type: string
-                required:
-                - name
-                - version
-                type: object
-              type: array
-            version:
-              description: The Version of Crossplane to install.
-              type: string
-          required:
-          - version
+          description: spec defines the desired state of GardenerProject
           type: object
         status:
-          description: status defines the observed state of Crossplane
+          description: status defines the observed state of GardenerProject
           properties:
             conditions:
               description: Conditions contains the conditions.
               items:
-                description: "Condition contains details for one aspect of the current
-                  state of this API Resource.\n---\nThis struct is intended for direct
-                  use as an array at the field path .status.conditions.  For example,\n\n\n\ttype
-                  FooStatus struct{\n\t    // Represents the observations of a foo's
-                  current state.\n\t    // Known .status.conditions.type are: \"Available\",
-                  \"Progressing\", and \"Degraded\"\n\t    // +patchMergeKey=type\n\t
-                  \   // +patchStrategy=merge\n\t    // +listType=map\n\t    // +listMapKey=type\n\t
-                  \   Conditions []metav1.Condition `json:\"conditions,omitempty\"
-                  patchStrategy:\"merge\" patchMergeKey:\"type\" protobuf:\"bytes,1,rep,name=conditions\"`\n\n\n\t
-                  \   // other fields\n\t}"
+                description: Condition contains details for one aspect of the current
+                  state of this API Resource.
                 properties:
                   lastTransitionTime:
                     description: |-
@@ -125,12 +90,7 @@ spec:
                     - Unknown
                     type: string
                   type:
-                    description: |-
-                      type of condition in CamelCase or in foo.example.com/CamelCase.
-                      ---
-                      Many .condition.type values are consistent across resources like Available, but because arbitrary conditions can be
-                      useful (see .node.status.conditions), the ability to deconflict is important.
-                      The regex it matches is (dns1123SubdomainFmt/)?(qualifiedNameFmt)
+                    description: type of condition in CamelCase or in foo.example.com/CamelCase.
                     maxLength: 316
                     pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
                     type: string
@@ -154,8 +114,6 @@ spec:
           - observedGeneration
           - phase
           type: object
-      required:
-      - spec
       type: object
     served: true
     storage: true

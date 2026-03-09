@@ -1,5 +1,5 @@
 /*
-Copyright 2024.
+Copyright 2025.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -41,8 +41,8 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	mcmanager "sigs.k8s.io/multicluster-runtime/pkg/manager"
 
-	"github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/internal/config"
-	"github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/internal/controller"
+	"github.com/openmcp/local-event-showcase/demo/gardener-init-operator/internal/config"
+	"github.com/openmcp/local-event-showcase/demo/gardener-init-operator/internal/controller"
 )
 
 var (
@@ -61,7 +61,7 @@ func NewOperatorCmd(opCfg *config.OperatorConfig, cfg *platformmeshconfig.Common
 
 	operatorCmd := &cobra.Command{
 		Use:   "operator",
-		Short: "operator to reconcile ManagedControlPlane and Crossplane resources for OpenMCP initialization",
+		Short: "operator to reconcile GardenerProject resources for Gardener initialization",
 		Run:   RunController,
 	}
 
@@ -95,7 +95,6 @@ func RunController(_ *cobra.Command, _ []string) {
 		tlsOpts = append(tlsOpts, disableHTTP2)
 	}
 
-	// Create watchers for metrics and webhooks certificates
 	var metricsCertWatcher *certwatcher.CertWatcher
 
 	metricsServerOptions := metricsserver.Options{
@@ -129,7 +128,6 @@ func RunController(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	// Initialize APIExport provider for multicluster support
 	apiExportName := operatorCfg.KCP.APIExportEndpointSliceName
 
 	provider, err := apiexport.New(restCfg, apiExportName, apiexport.Options{
@@ -141,7 +139,6 @@ func RunController(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	// Override endpoint URLs for local kind setups where KCP is reachable on a different host:port
 	if kcpHostOverride := operatorCfg.KCP.HostOverride; kcpHostOverride != "" {
 		setupLog.Info("applying KCP host override to endpoint URLs", "hostOverride", kcpHostOverride)
 		origGetVWs := provider.Factory.GetVWs
@@ -172,7 +169,7 @@ func RunController(_ *cobra.Command, _ []string) {
 		Metrics:                metricsServerOptions,
 		HealthProbeBindAddress: defaultCfg.HealthProbeBindAddress,
 		LeaderElection:         defaultCfg.LeaderElectionEnabled,
-		LeaderElectionID:       "1da1c418.openmcp.io",
+		LeaderElectionID:       "gardener-init-operator.openmcp.io",
 		BaseContext: func() context.Context {
 			return ctx
 		},
@@ -182,36 +179,28 @@ func RunController(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
-	if err := mgr.Add(&Test{}); err != nil {
-		setupLog.Error(err, "unable to add Test runnable to manager")
+	if err := mgr.Add(&NoOp{}); err != nil {
+		setupLog.Error(err, "unable to add NoOp runnable to manager")
 		os.Exit(1)
 	}
 
-	onboardingRestConfig, err := clientcmd.BuildConfigFromFlags("", operatorCfg.MCP.Kubeconfig)
+	gardenerRestConfig, err := clientcmd.BuildConfigFromFlags("", operatorCfg.Gardener.Kubeconfig)
 	if err != nil {
-		setupLog.Error(err, "unable to get kubeconfig for onboarding cluster")
+		setupLog.Error(err, "unable to get kubeconfig for Gardener")
 		os.Exit(1)
 	}
-	onboardingClient, err := client.New(onboardingRestConfig, client.Options{Scheme: scheme})
+	gardenerClient, err := client.New(gardenerRestConfig, client.Options{})
 	if err != nil {
-		setupLog.Error(err, "unable to get onboarding client")
+		setupLog.Error(err, "unable to create Gardener client")
 		os.Exit(1)
 	}
 
-	reconciler := controller.NewManagedControlPlaneReconciler(*operatorCfg, mgr, onboardingClient, log)
-
+	reconciler := controller.NewGardenerProjectReconciler(*operatorCfg, mgr, gardenerClient, log)
 	if err = reconciler.SetupWithManager(mgr, defaultCfg, log); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ManagedControlPlaneReconciler")
+		setupLog.Error(err, "unable to create controller", "controller", "GardenerProjectReconciler")
 		os.Exit(1)
 	}
 
-	crossplaneReconciler := controller.NewCrossplaneReconciler(*operatorCfg, mgr, onboardingClient, log)
-	if err = crossplaneReconciler.SetupWithManager(mgr, defaultCfg, log); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "CrossplaneReconciler")
-		os.Exit(1)
-	}
-
-	// +kubebuilder:scaffold:builder
 	if metricsCertWatcher != nil {
 		setupLog.Info("Adding metrics certificate watcher to local manager")
 		if err := mgr.GetLocalManager().Add(metricsCertWatcher); err != nil {
@@ -236,13 +225,13 @@ func RunController(_ *cobra.Command, _ []string) {
 	}
 }
 
-type Test struct{}
+type NoOp struct{}
 
-func (t *Test) Start(context.Context) error {
+func (t *NoOp) Start(context.Context) error {
 	return nil
 }
 
-func (t *Test) Engage(context.Context, string, cluster.Cluster) error {
+func (t *NoOp) Engage(context.Context, string, cluster.Cluster) error {
 	return nil
 }
 

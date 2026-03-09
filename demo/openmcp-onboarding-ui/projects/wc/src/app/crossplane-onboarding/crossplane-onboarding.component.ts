@@ -1,5 +1,6 @@
 import {
   CrossplaneOnboardingService,
+  CrossplaneCatalog,
   CrossplaneStatus,
 } from '../services/crossplane-onboarding.service';
 import { LuigiContext } from '../services/apollo-factory';
@@ -19,6 +20,7 @@ import { ButtonComponent } from '@fundamental-ngx/core/button';
 import { BusyIndicatorComponent } from '@fundamental-ngx/core/busy-indicator';
 import { MessageStripComponent } from '@fundamental-ngx/core/message-strip';
 import { IconComponent } from '@fundamental-ngx/core/icon';
+import { SelectComponent, OptionComponent } from '@fundamental-ngx/core/select';
 
 type OnboardingState =
   | 'loading'
@@ -37,6 +39,8 @@ type OnboardingState =
     BusyIndicatorComponent,
     MessageStripComponent,
     IconComponent,
+    SelectComponent,
+    OptionComponent,
   ],
   encapsulation: ViewEncapsulation.ShadowDom,
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -101,6 +105,22 @@ type OnboardingState =
     .config-value {
       font-weight: bold;
       color: var(--sapTextColor, #32363a);
+    }
+
+    .config-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      padding: 0.5rem 0;
+    }
+
+    .config-field + .config-field {
+      border-top: 1px solid var(--sapList_BorderColor, #e4e4e4);
+    }
+
+    .config-field label {
+      color: var(--sapContent_LabelColor, #6a6d70);
+      font-size: var(--sapFontSmallSize, 0.75rem);
     }
 
     .loading-container {
@@ -211,17 +231,40 @@ type OnboardingState =
             The Crossplane API is active. Configure your Crossplane installation with the
             following settings:
           </div>
-          <div class="config-section">
-            <div class="config-row">
-              <span class="config-label">Crossplane Version</span>
-              <span class="config-value">v1.20.1</span>
+          @if (catalog()) {
+            <div class="config-section">
+              <div class="config-field">
+                <label>Crossplane Version</label>
+                <fd-select [value]="selectedVersion()" (valueChange)="selectedVersion.set($event)"
+                  placeholder="Select version">
+                  @for (v of catalog()!.spec.versions; track v.version) {
+                    <fd-option [value]="v.version">{{ v.version }}</fd-option>
+                  }
+                </fd-select>
+              </div>
+              @for (provider of catalog()!.spec.providers; track provider.name) {
+                <div class="config-field">
+                  <label>{{ provider.name }}</label>
+                  <fd-select [value]="selectedProviderVersions()[provider.name]"
+                    (valueChange)="onProviderVersionChange(provider.name, $event)"
+                    placeholder="Select version">
+                    @for (pv of provider.versions; track pv) {
+                      <fd-option [value]="pv">{{ pv }}</fd-option>
+                    }
+                  </fd-select>
+                </div>
+              }
             </div>
-            <div class="config-row">
-              <span class="config-label">Provider</span>
-              <span class="config-value">provider-kubernetes v0.15.0</span>
+          } @else {
+            <div class="config-section">
+              <div class="loading-container">
+                <fd-busy-indicator [loading]="true" size="s"></fd-busy-indicator>
+                <span>Loading available versions...</span>
+              </div>
             </div>
-          </div>
+          }
           <button fd-button label="Confirm and Install" fdType="emphasized"
+            [disabled]="!catalog() || !selectedVersion()"
             (click)="onConfigure()"></button>
         </div>
       }
@@ -321,6 +364,9 @@ export class CrossplaneOnboardingComponent implements OnDestroy {
   state = signal<OnboardingState>('loading');
   error = signal('');
   crossplane = signal<CrossplaneStatus | null>(null);
+  catalog = signal<CrossplaneCatalog | null>(null);
+  selectedVersion = signal('');
+  selectedProviderVersions = signal<Record<string, string>>({});
 
   @Input()
   LuigiClient!: LuigiClient;
@@ -348,16 +394,28 @@ export class CrossplaneOnboardingComponent implements OnDestroy {
     });
   }
 
+  onProviderVersionChange(providerName: string, version: string): void {
+    this.selectedProviderVersions.update((prev) => ({
+      ...prev,
+      [providerName]: version,
+    }));
+  }
+
   onConfigure(): void {
     this.state.set('creating');
     this.error.set('');
-    this.onboardingService.createCrossplane().subscribe({
-      next: () => this.startWatchingCrossplane(),
-      error: (err) => {
-        this.error.set(`Failed to create Crossplane: ${err.message}`);
-        this.state.set('configure');
-      },
-    });
+    const providers = Object.entries(this.selectedProviderVersions())
+      .filter(([, version]) => !!version)
+      .map(([name, version]) => ({ name, version }));
+    this.onboardingService
+      .createCrossplane(this.selectedVersion(), providers)
+      .subscribe({
+        next: () => this.startWatchingCrossplane(),
+        error: (err) => {
+          this.error.set(`Failed to create Crossplane: ${err.message}`);
+          this.state.set('configure');
+        },
+      });
   }
 
   private checkState(): void {
@@ -389,12 +447,36 @@ export class CrossplaneOnboardingComponent implements OnDestroy {
           }
         } else {
           this.state.set('configure');
+          this.loadCatalog();
         }
       },
       error: () => {
         this.state.set('configure');
+        this.loadCatalog();
       },
     });
+  }
+
+  private loadCatalog(): void {
+    // TODO: Replace with catalog query once CachedResource virtual storage is working
+    const hardcodedCatalog: CrossplaneCatalog = {
+      metadata: { name: 'default' },
+      spec: {
+        versions: [{ version: 'v1.20.1' }],
+        providers: [
+          { name: 'provider-kubernetes', versions: ['v0.15.0'] },
+        ],
+      },
+    };
+    this.catalog.set(hardcodedCatalog);
+    this.selectedVersion.set(hardcodedCatalog.spec.versions[0].version);
+    const providerDefaults: Record<string, string> = {};
+    for (const provider of hardcodedCatalog.spec.providers) {
+      if (provider.versions.length > 0) {
+        providerDefaults[provider.name] = provider.versions[0];
+      }
+    }
+    this.selectedProviderVersions.set(providerDefaults);
   }
 
   private startWatchingCrossplane(): void {
