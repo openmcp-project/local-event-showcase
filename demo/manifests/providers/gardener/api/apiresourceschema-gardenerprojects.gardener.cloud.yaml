@@ -1,7 +1,7 @@
 apiVersion: apis.kcp.io/v1alpha1
 kind: APIResourceSchema
 metadata:
-  name: v260309-657c3cf.gardenerprojects.gardener.cloud
+  name: v260309-373266d.gardenerprojects.gardener.cloud
 spec:
   group: gardener.cloud
   names:
@@ -109,6 +109,11 @@ spec:
               type: integer
             phase:
               description: Phase is the current phase of the resource.
+              type: string
+            projectName:
+              description: |-
+                ProjectName is the name of the Gardener Project created for this workspace.
+                Set by the operator after creation via generateName.
               type: string
           required:
           - observedGeneration

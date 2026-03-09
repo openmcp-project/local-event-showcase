@@ -14,6 +14,12 @@ type SubroutinesConfig struct {
 	DeployContentConfigurations  SubroutineToggle
 }
 
+type SyncAgentConfig struct {
+	ChartURL        string
+	ImageRepository string
+	ImageTag        string
+}
+
 type KCPConfig struct {
 	Kubeconfig                 string
 	APIExportEndpointSliceName string
@@ -33,6 +39,7 @@ type OperatorConfig struct {
 	Subroutines      SubroutinesConfig
 	KCP              KCPConfig
 	MCP              MCPConfig
+	SyncAgent        SyncAgentConfig
 	RuntimeNamespace string
 }
 
@@ -51,6 +58,9 @@ func NewOperatorConfig() OperatorConfig {
 		MCP: MCPConfig{
 			ServiceAccount: "hsp",
 			Namespace:      "default",
+		},
+		SyncAgent: SyncAgentConfig{
+			ChartURL: "https://github.com/kcp-dev/helm-charts/releases/download/api-syncagent-0.5.0/api-syncagent-0.5.0.tgz",
 		},
 		RuntimeNamespace: "account",
 	}
@@ -71,5 +81,8 @@ func (c *OperatorConfig) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&c.MCP.ServiceAccount, "mcp-service-account", c.MCP.ServiceAccount, "Service account name for MCP operations")
 	fs.StringVar(&c.MCP.Namespace, "mcp-namespace", c.MCP.Namespace, "Namespace for MCP resources")
 	fs.StringVar(&c.MCP.HostOverride, "mcp-host-override", c.MCP.HostOverride, "Override host in MCP kubeconfig")
+	fs.StringVar(&c.SyncAgent.ChartURL, "sync-agent-chart-url", c.SyncAgent.ChartURL, "Helm chart URL for the api-syncagent")
+	fs.StringVar(&c.SyncAgent.ImageRepository, "sync-agent-image-repository", c.SyncAgent.ImageRepository, "Override image repository for the api-syncagent")
+	fs.StringVar(&c.SyncAgent.ImageTag, "sync-agent-image-tag", c.SyncAgent.ImageTag, "Override image tag for the api-syncagent")
 	fs.StringVar(&c.RuntimeNamespace, "runtime-namespace", c.RuntimeNamespace, "Namespace for runtime resources")
 }

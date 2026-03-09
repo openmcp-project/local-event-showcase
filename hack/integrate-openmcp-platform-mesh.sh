@@ -56,6 +56,7 @@ fi
 log "platform-mesh resource is ready ✓"
 
 # Patch platform-mesh resource with extraDefaultAPIBindings for openmcp and gardener
+# gardener.cloud binding now points to the separate root:providers:gardener workspace
 log "Patching platform-mesh with extraDefaultAPIBindings..."
 KUBECONFIG="${PLATFORM_MESH_KUBECONFIG}" kubectl patch platformmesh platform-mesh -n platform-mesh-system --type=merge -p '
 {
@@ -70,7 +71,7 @@ KUBECONFIG="${PLATFORM_MESH_KUBECONFIG}" kubectl patch platformmesh platform-mes
         {
           "workspaceTypePath": "root:account",
           "export": "gardener.cloud",
-          "path": "root:providers:openmcp"
+          "path": "root:providers:gardener"
         }
       ]
     }
@@ -112,22 +113,31 @@ log "Generating gardener-init-operator manifests..."
 (cd "${GARDENER_OPERATOR_DIR}" && task generate)
 log "Generated gardener-init-operator manifests ✓"
 
-# Prepare provider workspace
+# Prepare provider workspaces
 KCP_KUBECONFIG="${KUBECONFIGS_DIR}/kcp-admin.kubeconfig"
 KUBECONFIG="${KCP_KUBECONFIG}" kubectl create-workspace providers --type=root:providers --ignore-existing --server="https://localhost:8443/clusters/root"
 KUBECONFIG="${KCP_KUBECONFIG}" kubectl create-workspace openmcp --type=root:provider --ignore-existing --server="https://localhost:8443/clusters/root:providers"
-log "Created provider workspaces ✓"
+KUBECONFIG="${KCP_KUBECONFIG}" kubectl create-workspace gardener --type=root:provider --ignore-existing --server="https://localhost:8443/clusters/root:providers"
+log "Created provider workspaces (openmcp + gardener) ✓"
 
-# Copy operator API resources to demo manifests directory for deployment
+# Copy openmcp-init-operator API resources to demo manifests directory for deployment
+# (gardener resources are NOT copied here — they live in the separate gardener provider dir)
 MANIFESTS_DIR="${SCRIPT_DIR}/../demo/manifests"
 OPENMCP_MANIFESTS_DIR="${MANIFESTS_DIR}/providers/openmcp"
 OPENMCP_API_DIR="${OPENMCP_MANIFESTS_DIR}/api"
 OPENMCP_CONFIG_DIR="${OPENMCP_MANIFESTS_DIR}/config"
 OPENMCP_INSTANCES_DIR="${OPENMCP_MANIFESTS_DIR}/instances"
-log "Copying API resources to ${OPENMCP_API_DIR}..."
+log "Copying openmcp API resources to ${OPENMCP_API_DIR}..."
 cp "${OPERATOR_DIR}/config/resources/"*.yaml "${OPENMCP_API_DIR}/"
-cp "${GARDENER_OPERATOR_DIR}/config/resources/"*.yaml "${OPENMCP_API_DIR}/"
-log "Copied API resources ✓"
+log "Copied openmcp API resources ✓"
+
+# Copy gardener-init-operator API resources to gardener provider manifests directory
+GARDENER_MANIFESTS_DIR="${MANIFESTS_DIR}/providers/gardener"
+GARDENER_API_DIR="${GARDENER_MANIFESTS_DIR}/api"
+GARDENER_CONFIG_DIR="${GARDENER_MANIFESTS_DIR}/config"
+log "Copying gardener API resources to ${GARDENER_API_DIR}..."
+cp "${GARDENER_OPERATOR_DIR}/config/resources/"*.yaml "${GARDENER_API_DIR}/"
+log "Copied gardener API resources ✓"
 
 # Lookup identityHash from core.platform-mesh.io APIExport
 log "Looking up identityHash from core.platform-mesh.io APIExport..."
@@ -146,7 +156,7 @@ log "Patched consumer APIExport file ✓"
 
 OPENMCP_WORKSPACE_URL="https://localhost:8443/clusters/root:providers:openmcp"
 
-# Step 1: Apply APIResourceSchemas (shared by both APIExports)
+# Step 1: Apply APIResourceSchemas (openmcp only)
 log "Applying APIResourceSchemas to openmcp provider workspace..."
 for f in "${OPENMCP_API_DIR}"/apiresourceschema-*.yaml; do
     KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "$f" --server="${OPENMCP_WORKSPACE_URL}" --server-side --force-conflicts
@@ -221,16 +231,31 @@ yq -i '(.spec.resources[] | select(.name == "crossplanecatalogs")).storage = {
 KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${APIEXPORT_FILE}" --server="${OPENMCP_WORKSPACE_URL}" --server-side --force-conflicts
 log "Applied consumer APIExport with virtual storage ✓"
 
-# Step 7b: Apply gardener.cloud APIExport
-GARDENER_APIEXPORT_FILE="${OPENMCP_API_DIR}/apiexport-gardener.cloud.yaml"
-log "Applying gardener.cloud APIExport to openmcp provider workspace..."
-KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${GARDENER_APIEXPORT_FILE}" --server="${OPENMCP_WORKSPACE_URL}" --server-side --force-conflicts
-log "Applied gardener.cloud APIExport ✓"
-
-# Step 8: Config manifests (ContentConfiguration, RBAC)
+# Step 8: Config manifests (ContentConfiguration, RBAC) for openmcp provider
 log "Applying config manifests..."
 KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${OPENMCP_CONFIG_DIR}" --server="${OPENMCP_WORKSPACE_URL}" --server-side --force-conflicts
 log "Applied config manifests ✓"
+
+# ─── Gardener Provider Workspace Setup ───
+GARDENER_WORKSPACE_URL="https://localhost:8443/clusters/root:providers:gardener"
+
+# Apply APIResourceSchemas to gardener provider workspace
+log "Applying APIResourceSchemas to gardener provider workspace..."
+for f in "${GARDENER_API_DIR}"/apiresourceschema-*.yaml; do
+    KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "$f" --server="${GARDENER_WORKSPACE_URL}" --server-side --force-conflicts
+done
+log "Applied gardener APIResourceSchemas ✓"
+
+# Apply gardener.cloud APIExport to gardener provider workspace
+GARDENER_APIEXPORT_FILE="${GARDENER_API_DIR}/apiexport-gardener.cloud.yaml"
+log "Applying gardener.cloud APIExport to gardener provider workspace..."
+KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${GARDENER_APIEXPORT_FILE}" --server="${GARDENER_WORKSPACE_URL}" --server-side --force-conflicts
+log "Applied gardener.cloud APIExport ✓"
+
+# Apply gardener RBAC
+log "Applying gardener config manifests..."
+KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${GARDENER_CONFIG_DIR}" --server="${GARDENER_WORKSPACE_URL}" --server-side --force-conflicts
+log "Applied gardener config manifests ✓"
 
 # Apply openmcp-init WorkspaceType to root workspace
 # This type carries initializer: true so the init-agent can watch for new account workspaces
@@ -288,6 +313,31 @@ EOF
 chmod 600 "${OPERATOR_KUBECONFIG}"
 log "Created operator kubeconfig at ${OPERATOR_KUBECONFIG} ✓"
 
+# Create a separate kubeconfig pointing to the gardener provider workspace
+GARDENER_OPERATOR_KUBECONFIG="${KUBECONFIGS_DIR}/gardener-operator.kubeconfig"
+cat > "${GARDENER_OPERATOR_KUBECONFIG}" <<EOF
+apiVersion: v1
+kind: Config
+clusters:
+- name: gardener
+  cluster:
+    server: ${GARDENER_WORKSPACE_URL}
+    certificate-authority-data: ${CA_DATA}
+contexts:
+- name: gardener
+  context:
+    cluster: gardener
+    user: gardener
+current-context: gardener
+users:
+- name: gardener
+  user:
+    client-certificate-data: ${CLIENT_CERT}
+    client-key-data: ${CLIENT_KEY}
+EOF
+chmod 600 "${GARDENER_OPERATOR_KUBECONFIG}"
+log "Created gardener operator kubeconfig at ${GARDENER_OPERATOR_KUBECONFIG} ✓"
+
 # Get platform-mesh control plane Docker IP for cross-cluster access
 # The sync agent in MCP clusters needs this IP to reach KCP via hostAliases
 PLATFORM_MESH_IP=$(docker inspect platform-mesh-control-plane --format '{{.NetworkSettings.Networks.kind.IPAddress}}')
@@ -311,6 +361,24 @@ kind get kubeconfig --name platform > "${PLATFORM_KUBECONFIG}"
 log "Installing Flux on platform cluster..."
 KUBECONFIG="${PLATFORM_KUBECONFIG}" flux install --components=source-controller,kustomize-controller,helm-controller,notification-controller
 log "Flux installed on platform cluster ✓"
+
+# Build and push api-syncagent image to local registry
+API_SYNCAGENT_DIR="${PROJECT_DIR}/demo/external/api-syncagent"
+if [ -d "${API_SYNCAGENT_DIR}/.git" ]; then
+    log "Updating api-syncagent source..."
+    (cd "${API_SYNCAGENT_DIR}" && git fetch origin && git checkout main && git pull origin main)
+else
+    log "Cloning api-syncagent..."
+    rm -rf "${API_SYNCAGENT_DIR}"
+    git clone https://github.com/kcp-dev/api-syncagent.git "${API_SYNCAGENT_DIR}"
+fi
+# Build and push via localhost (host-reachable), pods pull via kind-registry (container DNS)
+API_SYNCAGENT_IMAGE_LOCAL="localhost:5002/kcp-dev/api-syncagent:local"
+API_SYNCAGENT_IMAGE="kind-registry:5002/kcp-dev/api-syncagent:local"
+log "Building api-syncagent Docker image..."
+docker build -t "${API_SYNCAGENT_IMAGE_LOCAL}" "${API_SYNCAGENT_DIR}"
+docker push "${API_SYNCAGENT_IMAGE_LOCAL}"
+log "Pushed ${API_SYNCAGENT_IMAGE_LOCAL} ✓"
 
 OPERATOR_IMAGE="openmcp-init-operator:local-$(date +%s)"
 
@@ -352,6 +420,8 @@ helm upgrade --install openmcp-init-operator "${OPERATOR_DIR}/chart" \
     --set kcp.apiExportEndpointSliceName="openmcp.cloud" \
     --set kcp.platformMeshIP="${PLATFORM_MESH_IP}" \
     --set kcp.hostOverride="localhost:31000" \
+    --set syncAgent.imageRepository="kind-registry:5002/kcp-dev/api-syncagent" \
+    --set syncAgent.imageTag="local" \
     --set runtime.namespace="default" \
     --set log.level="debug" \
     --set log.noJson=true
@@ -363,12 +433,12 @@ KUBECONFIG="${ONBOARDING_KUBECONFIG}" kubectl rollout status deployment/openmcp-
     --namespace="${OPERATOR_NAMESPACE}" --timeout=120s
 log "Operator is ready ✓"
 
-# ─── Gardener Init Operator (conditional on gardener-local cluster) ───
+# ─── Gardener Init Operator (deployed to gardener-local cluster) ───
 GARDENER_CLUSTER=$(kind get clusters 2>/dev/null | grep -E "^gardener-local$" || true)
 if [[ -n "${GARDENER_CLUSTER}" ]]; then
     log "Found gardener-local cluster, deploying gardener-init-operator..."
 
-    # Export gardener-local kubeconfig and get Docker IP
+    # Export gardener-local kubeconfig
     GARDENER_RAW_KUBECONFIG="${KUBECONFIGS_DIR}/gardener-local.kubeconfig"
     kind get kubeconfig --name gardener-local > "${GARDENER_RAW_KUBECONFIG}"
     log "Exported gardener-local kubeconfig ✓"
@@ -376,18 +446,23 @@ if [[ -n "${GARDENER_CLUSTER}" ]]; then
     GARDENER_IP=$(docker inspect gardener-local-control-plane --format '{{.NetworkSettings.Networks.kind.IPAddress}}')
     log "Gardener Docker IP: ${GARDENER_IP}"
 
-    # Rewrite kubeconfig server URL to use the Docker IP (accessible from onboarding cluster)
-    GARDENER_KUBECONFIG="${KUBECONFIGS_DIR}/gardener.kubeconfig"
-    sed "s|https://127.0.0.1:[0-9]*|https://${GARDENER_IP}:6443|g" "${GARDENER_RAW_KUBECONFIG}" > "${GARDENER_KUBECONFIG}"
-    log "Rewrote gardener kubeconfig with Docker IP ✓"
+    # The operator runs ON gardener-local, so it can reach Gardener at localhost:443
+    # No cross-cluster Docker IP kubeconfig needed for the Gardener API itself
 
-    # Create gardener-kubeconfig Secret on onboarding cluster
-    KUBECONFIG="${ONBOARDING_KUBECONFIG}" kubectl create secret generic gardener-kubeconfig \
+    # Create namespace on gardener-local for the operator
+    KUBECONFIG="${GARDENER_RAW_KUBECONFIG}" kubectl create namespace "${OPERATOR_NAMESPACE}" --dry-run=client -o yaml | \
+        KUBECONFIG="${GARDENER_RAW_KUBECONFIG}" kubectl apply -f -
+    log "Created namespace ${OPERATOR_NAMESPACE} on gardener-local ✓"
+
+    # Create KCP kubeconfig secret on gardener-local (pointing to gardener provider workspace)
+    # hostAliases will map localhost to platform-mesh IP so the operator can reach KCP
+    KCP_GARDENER_KUBECONFIG=$(sed "s|https://localhost:8443|https://localhost:31000|g" "${GARDENER_OPERATOR_KUBECONFIG}")
+    KUBECONFIG="${GARDENER_RAW_KUBECONFIG}" kubectl create secret generic kcp-openmfp-system-kubeconfig \
         --namespace="${OPERATOR_NAMESPACE}" \
-        --from-file=kubeconfig="${GARDENER_KUBECONFIG}" \
+        --from-literal=kubeconfig="${KCP_GARDENER_KUBECONFIG}" \
         --dry-run=client -o yaml | \
-        KUBECONFIG="${ONBOARDING_KUBECONFIG}" kubectl apply -f -
-    log "Created gardener-kubeconfig secret ✓"
+        KUBECONFIG="${GARDENER_RAW_KUBECONFIG}" kubectl apply -f -
+    log "Created KCP kubeconfig secret on gardener-local ✓"
 
     # Build gardener-init-operator Docker image
     GARDENER_OPERATOR_IMAGE="gardener-init-operator:local-$(date +%s)"
@@ -395,15 +470,15 @@ if [[ -n "${GARDENER_CLUSTER}" ]]; then
     docker build -t "${GARDENER_OPERATOR_IMAGE}" "${GARDENER_OPERATOR_DIR}"
     log "Built Docker image ${GARDENER_OPERATOR_IMAGE} ✓"
 
-    # Load image into the onboarding kind cluster
-    log "Loading Docker image into ${ONBOARDING_CLUSTER} cluster..."
-    kind load docker-image "${GARDENER_OPERATOR_IMAGE}" --name "${ONBOARDING_CLUSTER}"
-    log "Loaded Docker image into ${ONBOARDING_CLUSTER} ✓"
+    # Load image into the gardener-local kind cluster (not onboarding)
+    log "Loading Docker image into gardener-local cluster..."
+    kind load docker-image "${GARDENER_OPERATOR_IMAGE}" --name gardener-local
+    log "Loaded Docker image into gardener-local ✓"
 
-    # Deploy the gardener-init-operator using Helm
-    log "Deploying gardener-init-operator to ${ONBOARDING_CLUSTER}..."
+    # Deploy the gardener-init-operator to gardener-local using Helm
+    log "Deploying gardener-init-operator to gardener-local..."
     helm upgrade --install gardener-init-operator "${GARDENER_OPERATOR_DIR}/chart" \
-        --kubeconfig="${ONBOARDING_KUBECONFIG}" \
+        --kubeconfig="${GARDENER_RAW_KUBECONFIG}" \
         --namespace="${OPERATOR_NAMESPACE}" \
         --set image.name="${GARDENER_OPERATOR_IMAGE%:*}" \
         --set image.tag="${GARDENER_OPERATOR_IMAGE#*:}" \
@@ -412,7 +487,6 @@ if [[ -n "${GARDENER_CLUSTER}" ]]; then
         --set kcp.apiExportEndpointSliceName="gardener.cloud" \
         --set kcp.platformMeshIP="${PLATFORM_MESH_IP}" \
         --set kcp.hostOverride="localhost:31000" \
-        --set gardener.kubeconfigSecret="gardener-kubeconfig" \
         --set gardener.ip="${GARDENER_IP}" \
         --set runtime.namespace="default" \
         --set log.level="debug" \
@@ -421,7 +495,7 @@ if [[ -n "${GARDENER_CLUSTER}" ]]; then
 
     # Wait for gardener-init-operator to be ready
     log "Waiting for gardener-init-operator deployment to be ready..."
-    KUBECONFIG="${ONBOARDING_KUBECONFIG}" kubectl rollout status deployment/gardener-init-operator \
+    KUBECONFIG="${GARDENER_RAW_KUBECONFIG}" kubectl rollout status deployment/gardener-init-operator \
         --namespace="${OPERATOR_NAMESPACE}" --timeout=120s
     log "Gardener init operator is ready ✓"
 else

@@ -382,7 +382,8 @@ tasks:
         else
           rm -rf demo/external/platform-mesh/helm-charts
           mkdir -p demo/external/platform-mesh
-          git clone -b feat/local-event-showcase https://github.com/platform-mesh/helm-charts.git demo/external/platform-mesh/helm-charts
+          git clone https://github.com/platform-mesh/helm-charts.git demo/external/platform-mesh/helm-charts
+          cd demo/external/platform-mesh/helm-charts && git checkout feat/local-event-showcase
         fi
       - task --dir demo/external/platform-mesh/helm-charts local-setup:cached:showcase
 
@@ -395,6 +396,7 @@ tasks:
         else
           rm -rf demo/external/platform-mesh/helm-charts
           mkdir -p demo/external/platform-mesh
-          git clone -b feat/local-event-showcase https://github.com/platform-mesh/helm-charts.git demo/external/platform-mesh/helm-charts
+          git clone https://github.com/platform-mesh/helm-charts.git demo/external/platform-mesh/helm-charts
+          cd demo/external/platform-mesh/helm-charts && git checkout feat/local-event-showcase
         fi
       - task --dir demo/external/platform-mesh/helm-charts local-setup:cached:showcase:iterate

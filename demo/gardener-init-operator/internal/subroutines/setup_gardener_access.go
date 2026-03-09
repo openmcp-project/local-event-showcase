@@ -16,7 +16,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	mccontext "sigs.k8s.io/multicluster-runtime/pkg/context"
 	mcmanager "sigs.k8s.io/multicluster-runtime/pkg/manager"
 
 	gardenerv1alpha1 "github.com/openmcp/local-event-showcase/demo/gardener-init-operator/api/v1alpha1"
@@ -55,16 +54,13 @@ func (r *SetupGardenerAccessSubroutine) Process(ctx context.Context, runtimeObj 
 	log := logger.LoadLoggerFromContext(ctx)
 	gardenerProject := runtimeObj.(*gardenerv1alpha1.GardenerProject)
 
-	clusterID, ok := mccontext.ClusterFrom(ctx)
-	if !ok {
-		return ctrl.Result{}, errors.NewOperatorError(errors.New("could not get cluster ID from context"), false, true)
+	projectName := gardenerProject.Status.ProjectName
+	if projectName == "" {
+		return ctrl.Result{}, errors.NewOperatorError(errors.New("projectName not set in status — CreateGardenerProject must run first"), false, true)
 	}
-
-	projectName := shortenClusterID(clusterID)
 	projectNamespace := fmt.Sprintf("garden-%s", projectName)
 
 	log.Info().
-		Str("clusterID", clusterID).
 		Str("projectName", projectName).
 		Str("projectNamespace", projectNamespace).
 		Msg("SetupGardenerAccess: starting Process")

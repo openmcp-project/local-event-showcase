@@ -170,10 +170,20 @@ hostAliases:
       hostnames:
         - "localhost"`, apiExportName, r.cfg.KCP.PlatformMeshIP)
 
+	if r.cfg.SyncAgent.ImageRepository != "" {
+		valuesYaml += fmt.Sprintf(`
+image:
+  repository: "%s"`, r.cfg.SyncAgent.ImageRepository)
+		if r.cfg.SyncAgent.ImageTag != "" {
+			valuesYaml += fmt.Sprintf(`
+  tag: "%s"`, r.cfg.SyncAgent.ImageTag)
+		}
+	}
+
 	log.Info().Msg("SetupSyncAgent: installing/upgrading api-syncagent helm chart")
 	_, err = helmClient.InstallOrUpgradeChart(ctx, &goHelm.ChartSpec{
 		ReleaseName: "api-syncagent",
-		ChartName:   "https://github.com/kcp-dev/helm-charts/releases/download/api-syncagent-0.5.0/api-syncagent-0.5.0.tgz",
+		ChartName:   r.cfg.SyncAgent.ChartURL,
 		Namespace:   "default",
 		UpgradeCRDs: true,
 		ValuesYaml:  valuesYaml,

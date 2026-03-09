@@ -54,6 +54,15 @@ spec:
           {{- with .Values.kcp.hostOverride }}
           - "--kcp-host-override={{ . }}"
           {{- end }}
+          {{- with .Values.syncAgent.chartURL }}
+          - "--sync-agent-chart-url={{ . }}"
+          {{- end }}
+          {{- with .Values.syncAgent.imageRepository }}
+          - "--sync-agent-image-repository={{ . }}"
+          {{- end }}
+          {{- with .Values.syncAgent.imageTag }}
+          - "--sync-agent-image-tag={{ . }}"
+          {{- end }}
           {{- with .Values.mcp.kubeconfigSecret }}
           - "--mcp-kubeconfig=/var/opt/mcp/config"
           {{- end }}

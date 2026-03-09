@@ -15,7 +15,7 @@ spec:
             apiGroup: cache.kcp.io
             kind: CachedResourceEndpointSlice
             name: crossplanecatalogs-v1alpha1
-          identityHash: 7a2d87a45b51498635dcd97be80f1e28edf8d6d8e170bac8382fe12bc0c828ad
+          identityHash: 2b0dd15374beae157d103d5016d9e72d974085de88f33f4b251dc24eb2607fd7
     - group: crossplane.services.openmcp.cloud
       name: crossplanes
       schema: v260218-a16964f.crossplanes.crossplane.services.openmcp.cloud
@@ -35,7 +35,7 @@ spec:
       resource: contentconfigurations
       verbs:
         - '*'
-      identityHash: ab1a5195ed2f7e8c4be0018a91de37eb796d13ce2f3d64ff475d2cc7e606c829
+      identityHash: 788d35da0400ab7376bc0ebb62bfa00f11d3e95aad1f603f0d04f98c513fd4e5
     - group: rbac.authorization.k8s.io
       resource: clusterroles
       verbs:

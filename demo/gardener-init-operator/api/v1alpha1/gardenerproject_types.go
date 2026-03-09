@@ -33,6 +33,11 @@ type GardenerProjectSpec struct{}
 // GardenerProjectStatus defines the observed state of a GardenerProject.
 type GardenerProjectStatus struct {
 	commonapi.Status `json:",inline"`
+
+	// ProjectName is the name of the Gardener Project created for this workspace.
+	// Set by the operator after creation via generateName.
+	// +optional
+	ProjectName string `json:"projectName,omitempty"`
 }
 
 // GardenerProject is the Schema for the gardenerprojects API

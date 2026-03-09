@@ -28,18 +28,10 @@ const (
 	CreateGardenerProjectSubroutineName = "CreateGardenerProject"
 	CreateGardenerProjectFinalizerName  = "gardener.cloud/gardener-project"
 	gardenerServiceAccountName          = "openmcp"
-	// Gardener Project names are limited to 10 characters.
-	maxProjectNameLength = 10
+	// generateName prefix for Gardener Projects. Gardener limits project names
+	// to 10 characters, so the prefix must be short to leave room for the random suffix.
+	gardenerProjectGenerateNamePrefix = "om-"
 )
-
-// shortenClusterID truncates a KCP cluster ID to fit within Gardener's
-// 10-character Project name limit.
-func shortenClusterID(clusterID string) string {
-	if len(clusterID) <= maxProjectNameLength {
-		return clusterID
-	}
-	return clusterID[:maxProjectNameLength]
-}
 
 var gardenerProjectGVR = schema.GroupVersionResource{
 	Group:    "core.gardener.cloud",
@@ -69,17 +61,16 @@ func (r *CreateGardenerProjectSubroutine) Finalizers(_ runtimeobject.RuntimeObje
 	return []string{CreateGardenerProjectFinalizerName}
 }
 
-func (r *CreateGardenerProjectSubroutine) Finalize(ctx context.Context, _ runtimeobject.RuntimeObject) (ctrl.Result, errors.OperatorError) {
+func (r *CreateGardenerProjectSubroutine) Finalize(ctx context.Context, runtimeObj runtimeobject.RuntimeObject) (ctrl.Result, errors.OperatorError) {
 	log := logger.LoadLoggerFromContext(ctx)
+	gardenerProject := runtimeObj.(*gardenerv1alpha1.GardenerProject)
 
-	clusterID, ok := mccontext.ClusterFrom(ctx)
-	if !ok {
-		return ctrl.Result{}, errors.NewOperatorError(errors.New("could not get cluster ID from context"), false, true)
+	projectName := gardenerProject.Status.ProjectName
+	if projectName == "" {
+		log.Info().Msg("no ProjectName in status, nothing to clean up")
+		return ctrl.Result{}, nil
 	}
 
-	projectName := shortenClusterID(clusterID)
-
-	// Check if Gardener Project still exists
 	project := &unstructured.Unstructured{}
 	project.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   gardenerProjectGVR.Group,
@@ -96,10 +87,9 @@ func (r *CreateGardenerProjectSubroutine) Finalize(ctx context.Context, _ runtim
 		return ctrl.Result{}, errors.NewOperatorError(err, true, true)
 	}
 
-	// Project exists, trigger deletion if not already deleting
 	deletionTimestamp := project.GetDeletionTimestamp()
 	if deletionTimestamp == nil || deletionTimestamp.IsZero() {
-		log.Info().Str("clusterID", clusterID).Msg("deleting Gardener Project")
+		log.Info().Str("name", projectName).Msg("deleting Gardener Project")
 		if err := r.gardenerClient.Delete(ctx, project); err != nil {
 			if !apierrors.IsNotFound(err) {
 				log.Error().Err(err).Str("name", projectName).Msg("failed to delete Gardener Project")
@@ -123,47 +113,58 @@ func (r *CreateGardenerProjectSubroutine) Process(ctx context.Context, runtimeOb
 		return ctrl.Result{}, errors.NewOperatorError(errors.New("could not get cluster ID from context"), false, true)
 	}
 
-	projectName := shortenClusterID(clusterID)
-	log.Info().Str("clusterID", clusterID).Str("projectName", projectName).Msg("creating Gardener Project")
+	projectName := gardenerProject.Status.ProjectName
 
-	// Step 1: Create the Gardener Project (unstructured to avoid massive Gardener Go dependency)
+	// Step 1: Create the Gardener Project if we haven't yet (tracked via status.projectName)
+	if projectName == "" {
+		project := &unstructured.Unstructured{}
+		project.SetGroupVersionKind(schema.GroupVersionKind{
+			Group:   gardenerProjectGVR.Group,
+			Version: gardenerProjectGVR.Version,
+			Kind:    "Project",
+		})
+		project.SetGenerateName(gardenerProjectGenerateNamePrefix)
+		project.SetLabels(map[string]string{
+			"gardener.cloud/managed-by": "gardener-init-operator",
+			"gardener.cloud/cluster-id": clusterID,
+		})
+		project.Object["spec"] = map[string]interface{}{}
+
+		if err := r.gardenerClient.Create(ctx, project); err != nil {
+			log.Error().Err(err).Msg("failed to create Gardener Project")
+			return ctrl.Result{}, errors.NewOperatorError(err, true, true)
+		}
+
+		projectName = project.GetName()
+		gardenerProject.Status.ProjectName = projectName
+		log.Info().Str("clusterID", clusterID).Str("projectName", projectName).Msg("Gardener Project created")
+	}
+
+	// Step 2: Wait for project to be ready
 	project := &unstructured.Unstructured{}
 	project.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   gardenerProjectGVR.Group,
 		Version: gardenerProjectGVR.Version,
 		Kind:    "Project",
 	})
-
-	err := r.gardenerClient.Get(ctx, types.NamespacedName{Name: projectName}, project)
-	if err != nil {
-		if !apierrors.IsNotFound(err) {
-			log.Error().Err(err).Str("name", projectName).Msg("failed to get Gardener Project")
-			return ctrl.Result{}, errors.NewOperatorError(err, true, true)
-		}
-
-		// Create the project
-		project.SetName(projectName)
-		project.Object["spec"] = map[string]interface{}{
-			"namespace": fmt.Sprintf("garden-%s", projectName),
-		}
-		if err := r.gardenerClient.Create(ctx, project); err != nil {
-			if !apierrors.IsAlreadyExists(err) {
-				log.Error().Err(err).Str("name", projectName).Msg("failed to create Gardener Project")
-				return ctrl.Result{}, errors.NewOperatorError(err, true, true)
-			}
-		}
-		log.Info().Str("name", projectName).Msg("Gardener Project created")
+	if err := r.gardenerClient.Get(ctx, types.NamespacedName{Name: projectName}, project); err != nil {
+		log.Error().Err(err).Str("name", projectName).Msg("failed to get Gardener Project")
+		return ctrl.Result{}, errors.NewOperatorError(err, true, true)
 	}
 
-	// Step 2: Wait for project to be ready
 	phase, _, _ := unstructured.NestedString(project.Object, "status", "phase")
 	if phase != "Ready" {
 		log.Info().Str("name", projectName).Str("phase", phase).Msg("Gardener Project not ready yet, requeuing")
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
 
-	// Step 3: Ensure the project namespace exists (Gardener creates it)
-	projectNamespace := fmt.Sprintf("garden-%s", projectName)
+	// Step 3: Get the project namespace from the project status
+	projectNamespace, _, _ := unstructured.NestedString(project.Object, "spec", "namespace")
+	if projectNamespace == "" {
+		// Gardener sets spec.namespace to garden-<projectName> once the project is ready
+		projectNamespace = fmt.Sprintf("garden-%s", projectName)
+	}
+
 	ns := &corev1.Namespace{}
 	if err := r.gardenerClient.Get(ctx, types.NamespacedName{Name: projectNamespace}, ns); err != nil {
 		if apierrors.IsNotFound(err) {

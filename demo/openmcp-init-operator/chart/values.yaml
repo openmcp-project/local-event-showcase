@@ -9,6 +9,11 @@ kcp:
   platformMeshIP: ""
   hostOverride: ""
 
+syncAgent:
+  chartURL: ""
+  imageRepository: ""
+  imageTag: ""
+
 mcp:
   kubeconfigSecret: ""
   issuerURL: ""

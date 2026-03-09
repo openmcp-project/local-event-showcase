@@ -12,7 +12,7 @@ The following must be in place before running the integration:
 | `onboarding` kind cluster | Hosts the `openmcp-init-operator` |
 | `platform-mesh` kind cluster | Runs KCP and the platform portal |
 | `platform-mesh` resource | Must be in `Ready` state inside the `platform-mesh` cluster |
-| `gardener-local` kind cluster | Runs Gardener (local setup via `hack/setup-gardener-local.sh`) |
+| `gardener-local` kind cluster | Runs Gardener and the `gardener-init-operator` (local setup via `hack/setup-gardener-local.sh`) |
 
 ---
 
@@ -26,6 +26,7 @@ sequenceDiagram
     participant KCP as KCP<br/>(logical workspaces)
     participant Onboarding as Onboarding Cluster
     participant Platform as Platform Cluster
+    participant GardenerLocal as Gardener-Local Cluster
 
     Admin->>Script: run hack/integrate-openmcp-platform-mesh.sh
 
@@ -35,7 +36,8 @@ sequenceDiagram
         Script->>PlatformMesh: verify platform-mesh resource is Ready
         Script->>KCP: create workspace root:providers
         Script->>KCP: create workspace root:providers:openmcp
-        Script->>PlatformMesh: patch platform-mesh extraDefaultAPIBindings<br/>(workspaceType: root:account → export: openmcp.cloud)
+        Script->>KCP: create workspace root:providers:gardener
+        Script->>PlatformMesh: patch platform-mesh extraDefaultAPIBindings<br/>(openmcp.cloud → root:providers:openmcp, gardener.cloud → root:providers:gardener)
     end
 
     rect rgb(235, 230, 255)
@@ -43,6 +45,7 @@ sequenceDiagram
 
         Script->>KCP: lookup identityHash from core.platform-mesh.io APIExport
         Script->>KCP: apply APIExport, RBAC, ProviderMetadata<br/>to root:providers:openmcp workspace
+        Script->>KCP: apply gardener.cloud APIExport, RBAC<br/>to root:providers:gardener workspace
     end
 
     rect rgb(230, 255, 230)
@@ -55,6 +58,12 @@ sequenceDiagram
         Script->>Onboarding: load image into kind cluster
         Script->>Onboarding: helm install openmcp-init-operator<br/>(namespace: openmcp-system)
         Onboarding-->>Script: operator deployment Ready
+        Script->>GardenerLocal: create namespace openmcp-system
+        Script->>GardenerLocal: create secret kcp-openmfp-system-kubeconfig<br/>(pointing to root:providers:gardener)
+        Script->>Script: build gardener-init-operator Docker image
+        Script->>GardenerLocal: load image into kind cluster
+        Script->>GardenerLocal: helm install gardener-init-operator<br/>(namespace: openmcp-system)
+        GardenerLocal-->>Script: operator deployment Ready
     end
 ```
 
@@ -154,19 +163,19 @@ sequenceDiagram
 
 ---
 
-## 3. Gardener Provisioning Phase (per new account workspace)
+## 3. Gardener Provisioning Phase (user-driven per account workspace)
 
 ```mermaid
 sequenceDiagram
+    actor User as User
     participant KCP as KCP<br/>(logical workspaces)
-    participant InitAgent as init-agent
-    participant Operator as gardener-init-operator
-    participant Onboarding as Onboarding Cluster
+    participant Operator as gardener-init-operator<br/>(on gardener-local)
     participant Gardener as Gardener<br/>(gardener-local)
 
-    KCP->>InitAgent: LogicalCluster detected (Initializing state)
-    Note over KCP: APIBinding to gardener.cloud created<br/>via extraDefaultAPIBindings
-    InitAgent->>KCP: create GardenerProject resource in workspace
+    Note over KCP: APIBinding to gardener.cloud created<br/>via extraDefaultAPIBindings (from root:providers:gardener)
+    Note over User,KCP: GardenerProject is NOT auto-created by init-agent.<br/>Users create it explicitly (e.g. via Crossplane compositions or directly).
+
+    User->>KCP: create GardenerProject resource in workspace
 
     rect rgb(255, 235, 235)
         Note over KCP,Gardener: Gardener Project Provisioning (GardenerProjectReconciler)
@@ -198,28 +207,29 @@ sequenceDiagram
 | **Integration Script** | One-time bootstrap: creates KCP workspaces, deploys operator, wires platform-mesh |
 | **KCP** | Multi-tenant control plane; hosts logical workspaces, ManagedControlPlane, and Crossplane resources per account |
 | **platform-mesh cluster** | Runs KCP and the platform portal; owns the `platform-mesh` resource |
-| **init-agent** | Watches LogicalClusters, creates ManagedControlPlane resource per workspace |
+| **init-agent** | Watches LogicalClusters, creates ManagedControlPlane resource per workspace (no longer creates GardenerProject) |
 | **openmcp-init-operator** | Reconciles ManagedControlPlane and Crossplane resources |
 | **openmcp-onboarding-ui** | Luigi micro-frontend: guides users through Crossplane activation and configuration |
 | **Onboarding Cluster** | Hosts the `openmcp-init-operator` and `ManagedControlPlaneV2` resources |
 | **MCP Cluster** | Provisioned per account; runs Crossplane and the KCP api-syncagent |
 | **Platform Cluster** | Core OpenMCP infrastructure; Flux is installed here during Phase 1 |
-| **gardener-init-operator** | Reconciles GardenerProject resources: creates Gardener projects, sets up access |
-| **Gardener (gardener-local)** | Local Gardener installation; provides project-based resource isolation |
+| **gardener-init-operator** | Reconciles GardenerProject resources: creates Gardener projects, sets up access. Runs on gardener-local cluster. |
+| **Gardener (gardener-local)** | Local Gardener installation; provides project-based resource isolation. Hosts the gardener-init-operator. |
 
 ---
 
 ## Notes
 
-- The `init-agent` is the [KCP init-agent](https://github.com/kcp-dev/init-agent), deployed by platform-mesh. It is configured via `InitTemplate` and `InitTarget` resources to create a `ManagedControlPlane` resource in each new account workspace.
+- The `init-agent` is the [KCP init-agent](https://github.com/kcp-dev/init-agent), deployed by platform-mesh. It is configured via `InitTemplate` and `InitTarget` resources to create a `ManagedControlPlane` resource in each new account workspace. It does **not** create GardenerProject resources — those are user-driven.
 - The `openmcp-init-operator` reconciles `ManagedControlPlane` and `Crossplane` resources. It runs on the onboarding cluster.
+- The `gardener-init-operator` reconciles `GardenerProject` resources. It uses `unstructured.Unstructured` to interact with the Gardener API to avoid pulling in the massive Gardener Go dependency tree. It runs on the **gardener-local** cluster (not the onboarding cluster), giving it direct access to the Gardener API via in-cluster config.
+- Gardener is an **independent provider** with its own KCP workspace (`root:providers:gardener`) and APIExport (`gardener.cloud`). This decouples Gardener from the OpenMCP provider workspace.
 - `ManagedControlPlane` is the domain resource that triggers MCP provisioning. It carries status phases (`MCPReady`, `Ready`) giving clear visibility into provisioning progress.
 - The `openmcp-onboarding-ui` is a Luigi micro-frontend under the OpenMCP → Crossplane navigation node. It detects Crossplane state by checking for the APIBinding to `crossplane.services.openmcp.cloud` and the existence of a `Crossplane` resource. It drives a two-step onboarding: activate Crossplane (creates APIBinding), then configure it (creates Crossplane resource).
 - Crossplane onboarding is **user-driven** — the operator does not create Crossplane resources automatically. The UI creates the APIBinding and Crossplane resource based on user choices.
 - After Crossplane is ready and PublishedResources are created, the api-syncagent adds the published Crossplane resource APIs (ProviderConfig, Object, ObservedObjectCollection) to the `crossplane.services.openmcp.cloud` APIExport, making them available in the workspace.
 - Network routing from MCP clusters to KCP uses `hostAliases` to map `localhost` to the `platform-mesh` Docker container IP, since KCP listens on `localhost:31000` (NodePort) inside the kind network.
 - Published resources (`ProviderConfig`, `Object`, `ObservedObjectCollection`) are only initialized once the target Crossplane on the onboarding cluster reports all `*Ready` conditions as `True`.
-- The `gardener-init-operator` reconciles `GardenerProject` resources. It uses `unstructured.Unstructured` to interact with the Gardener API to avoid pulling in the massive Gardener Go dependency tree. It runs on the onboarding cluster alongside the `openmcp-init-operator`.
 
 ---
 
@@ -308,24 +318,29 @@ Each phase is independently deployable and verifiable before moving to the next.
 
 ---
 
-### Phase 5 — GardenerProject + gardener-init-operator
+### Phase 5 — GardenerProject + gardener-init-operator (independent provider)
 
-**Goal:** Each account workspace gets a `GardenerProject` resource that triggers creation of a Gardener Project in the local Gardener installation, sets up a ServiceAccount with admin access, and stores a kubeconfig Secret in the KCP workspace.
+**Goal:** Gardener is an independent provider with its own KCP workspace (`root:providers:gardener`). The `gardener-init-operator` runs on the `gardener-local` cluster and reconciles `GardenerProject` resources, creating Gardener Projects, ServiceAccounts, and kubeconfig Secrets. GardenerProject resources are **user-driven** — not auto-created by the init-agent.
 
 **Changes:**
 - Define `GardenerProject` CRD in `gardener-init-operator/api/v1alpha1/` with status phases (`Provisioning`, `ProjectReady`, `Ready`)
 - Create `gardener-init-operator` — new Go operator (`demo/gardener-init-operator/`)
 - `CreateGardenerProjectSubroutine`: creates Gardener Project (unstructured), ServiceAccount, RoleBinding
 - `SetupGardenerAccessSubroutine`: creates SA token Secret, builds kubeconfig, stores in KCP workspace
-- Register `gardener.cloud` APIExport with GardenerProject APIResourceSchema
-- Add `GardenerProject` InitTemplate so init-agent creates one per workspace
-- Update integration script to deploy gardener-init-operator and wire gardener.cloud APIBinding
+- Register `gardener.cloud` APIExport with GardenerProject APIResourceSchema in the `root:providers:gardener` workspace (separate from openmcp)
+- No `GardenerProject` InitTemplate — users create GardenerProject explicitly (e.g., via Crossplane compositions or directly)
+- Update integration script to:
+  - Create `root:providers:gardener` workspace
+  - Apply gardener manifests to the gardener workspace (not openmcp)
+  - Deploy gardener-init-operator to `gardener-local` cluster (not onboarding)
+  - Create KCP kubeconfig secret pointing to `root:providers:gardener`
 - Migrate both operators to new golang-commons config pattern (no mapstructure/viper)
 
 **Validate:**
-- `gardener.cloud` APIExport exists in provider workspace
-- New account workspace has APIBindings to both `openmcp.cloud` and `gardener.cloud`
-- Init-agent creates both `ManagedControlPlane` and `GardenerProject`
+- `gardener.cloud` APIExport exists in `root:providers:gardener` workspace (not in openmcp)
+- New account workspace has APIBindings to both `openmcp.cloud` (from `root:providers:openmcp`) and `gardener.cloud` (from `root:providers:gardener`)
+- Init-agent creates only `ManagedControlPlane` (no auto-created GardenerProject)
+- Manually create a `GardenerProject` in an account workspace — gardener-init-operator (on gardener-local) picks it up
 - gardener-init-operator provisions Gardener Project, SA, kubeconfig
 - `kubectl get gardenerprojects` → `Phase: Ready`
 - `kubectl get secret gardener-project-kubeconfig` exists in workspace
