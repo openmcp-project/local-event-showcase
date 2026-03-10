@@ -32,8 +32,25 @@ spec:
                       description: "Name for the Gardener Shoot resource."
                     kubernetesVersion:
                       type: string
-                      description: "Kubernetes version for the Shoot."
+                      description: "Kubernetes version for the Shoot (must exist in CloudProfile)."
                       default: "1.31.1"
+                    purpose:
+                      type: string
+                      description: "Purpose of the Shoot cluster. Affects resource quotas and allowed operations."
+                      enum:
+                        - evaluation
+                        - development
+                        - testing
+                        - production
+                      default: evaluation
+                    hibernationEnabled:
+                      type: boolean
+                      description: "Whether the Shoot cluster should be hibernated."
+                      default: false
+                    workerName:
+                      type: string
+                      description: "Name of the worker group."
+                      default: local
                     workerMinimum:
                       type: integer
                       description: "Minimum number of worker nodes."
@@ -42,6 +59,18 @@ spec:
                       type: integer
                       description: "Maximum number of worker nodes."
                       default: 2
+                    workerMaxSurge:
+                      type: integer
+                      description: "Maximum number of workers that can be created above the desired count during a rolling update."
+                      default: 1
+                    workerMaxUnavailable:
+                      type: integer
+                      description: "Maximum number of workers that can be unavailable during a rolling update."
+                      default: 0
+                    autoUpdateKubernetesVersion:
+                      type: boolean
+                      description: "Whether the Kubernetes version should be automatically updated during maintenance windows."
+                      default: false
                   required:
                     - projectName
                     - shootName

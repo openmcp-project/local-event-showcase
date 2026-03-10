@@ -157,9 +157,15 @@ All Crossplane resources should show `SYNCED=True` and `READY=True`. The Shoot s
 |-----------|------|----------|---------|-------------|
 | `projectName` | string | yes | — | Gardener project name. Shoot is created in `garden-<projectName>` namespace. |
 | `shootName` | string | yes | — | Name for the Shoot resource. |
-| `kubernetesVersion` | string | no | `1.31.1` | Kubernetes version (must be in CloudProfile `local`). |
+| `kubernetesVersion` | string | no | `1.31.1` | Kubernetes version (must exist in CloudProfile `local`). |
+| `purpose` | string | no | `evaluation` | Shoot purpose: `evaluation`, `development`, `testing`, or `production`. |
+| `hibernationEnabled` | boolean | no | `false` | Whether the cluster should be hibernated. |
+| `workerName` | string | no | `local` | Name of the worker group. |
 | `workerMinimum` | integer | no | `1` | Minimum worker node count. |
 | `workerMaximum` | integer | no | `2` | Maximum worker node count. |
+| `workerMaxSurge` | integer | no | `1` | Max extra workers created during rolling update. |
+| `workerMaxUnavailable` | integer | no | `0` | Max workers unavailable during rolling update. |
+| `autoUpdateKubernetesVersion` | boolean | no | `false` | Auto-update Kubernetes version during maintenance windows. |
 
 ## Hardcoded Values (from local Gardener setup)
 
