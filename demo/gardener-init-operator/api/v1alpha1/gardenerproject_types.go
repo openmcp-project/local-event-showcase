@@ -38,6 +38,11 @@ type GardenerProjectStatus struct {
 	// Set by the operator after creation via generateName.
 	// +optional
 	ProjectName string `json:"projectName,omitempty"`
+
+	// ProjectNamespace is the Gardener-managed namespace for this project (e.g. "garden-om-xyz").
+	// Set by the operator once the project is ready and the namespace is available.
+	// +optional
+	ProjectNamespace string `json:"projectNamespace,omitempty"`
 }
 
 // GardenerProject is the Schema for the gardenerprojects API

@@ -1,7 +1,7 @@
 apiVersion: apis.kcp.io/v1alpha1
 kind: APIResourceSchema
 metadata:
-  name: v260310-e532c57.gardenerprojects.gardener.cloud
+  name: v260310-b7b9b3b.gardenerprojects.gardener.cloud
 spec:
   group: gardener.cloud
   names:
@@ -114,6 +114,11 @@ spec:
               description: |-
                 ProjectName is the name of the Gardener Project created for this workspace.
                 Set by the operator after creation via generateName.
+              type: string
+            projectNamespace:
+              description: |-
+                ProjectNamespace is the Gardener-managed namespace for this project (e.g. "garden-om-xyz").
+                Set by the operator once the project is ready and the namespace is available.
               type: string
           required:
           - observedGeneration

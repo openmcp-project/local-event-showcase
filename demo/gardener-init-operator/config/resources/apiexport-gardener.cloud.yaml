@@ -10,7 +10,7 @@ spec:
   resources:
     - group: gardener.cloud
       name: gardenerprojects
-      schema: v260310-e532c57.gardenerprojects.gardener.cloud
+      schema: v260310-b7b9b3b.gardenerprojects.gardener.cloud
       storage:
         crd: {}
 status: {}

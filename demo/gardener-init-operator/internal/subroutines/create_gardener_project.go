@@ -178,6 +178,7 @@ func (r *CreateGardenerProjectSubroutine) Process(ctx context.Context, runtimeOb
 		log.Info().Str("name", projectName).Msg("project namespace not yet set in spec, requeuing")
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
+	gardenerProject.Status.ProjectNamespace = projectNamespace
 
 	ns := &corev1.Namespace{}
 	if err := r.gardenerClient.Get(ctx, types.NamespacedName{Name: projectNamespace}, ns); err != nil {

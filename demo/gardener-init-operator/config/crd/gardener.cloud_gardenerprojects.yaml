@@ -121,6 +121,11 @@ spec:
                   ProjectName is the name of the Gardener Project created for this workspace.
                   Set by the operator after creation via generateName.
                 type: string
+              projectNamespace:
+                description: |-
+                  ProjectNamespace is the Gardener-managed namespace for this project (e.g. "garden-om-xyz").
+                  Set by the operator once the project is ready and the namespace is available.
+                type: string
             required:
             - observedGeneration
             - phase
