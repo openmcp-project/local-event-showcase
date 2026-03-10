@@ -252,7 +252,7 @@ log "Applying gardener.cloud APIExport to gardener provider workspace..."
 KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${GARDENER_APIEXPORT_FILE}" --server="${GARDENER_WORKSPACE_URL}" --server-side --force-conflicts
 log "Applied gardener.cloud APIExport ✓"
 
-# Apply gardener RBAC
+# Apply gardener config manifests (ContentConfiguration, RBAC)
 log "Applying gardener config manifests..."
 KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${GARDENER_CONFIG_DIR}" --server="${GARDENER_WORKSPACE_URL}" --server-side --force-conflicts
 log "Applied gardener config manifests ✓"
@@ -364,17 +364,20 @@ log "Flux installed on platform cluster ✓"
 
 # Build and push api-syncagent image to local registry
 API_SYNCAGENT_DIR="${PROJECT_DIR}/demo/external/api-syncagent"
-if [ -d "${API_SYNCAGENT_DIR}/.git" ]; then
+API_SYNCAGENT_REPO="https://github.com/xrstf/kcp-api-syncagent.git"
+API_SYNCAGENT_BRANCH="host-override"
+if [ -d "${API_SYNCAGENT_DIR}/.git" ] && (cd "${API_SYNCAGENT_DIR}" && git remote get-url origin) | grep -q "xrstf/kcp-api-syncagent"; then
     log "Updating api-syncagent source..."
-    (cd "${API_SYNCAGENT_DIR}" && git fetch origin && git checkout main && git pull origin main)
+    (cd "${API_SYNCAGENT_DIR}" && git fetch origin && git checkout "${API_SYNCAGENT_BRANCH}" && git pull origin "${API_SYNCAGENT_BRANCH}")
 else
-    log "Cloning api-syncagent..."
+    log "Cloning api-syncagent (xrstf/host-override branch)..."
     rm -rf "${API_SYNCAGENT_DIR}"
-    git clone https://github.com/kcp-dev/api-syncagent.git "${API_SYNCAGENT_DIR}"
+    git clone -b "${API_SYNCAGENT_BRANCH}" "${API_SYNCAGENT_REPO}" "${API_SYNCAGENT_DIR}"
 fi
 # Build and push via localhost (host-reachable), pods pull via kind-registry (container DNS)
-API_SYNCAGENT_IMAGE_LOCAL="localhost:5002/kcp-dev/api-syncagent:local"
-API_SYNCAGENT_IMAGE="kind-registry:5002/kcp-dev/api-syncagent:local"
+API_SYNCAGENT_TAG="local-$(date +%s)"
+API_SYNCAGENT_IMAGE_LOCAL="localhost:5002/kcp-dev/api-syncagent:${API_SYNCAGENT_TAG}"
+API_SYNCAGENT_IMAGE="kind-registry:5002/kcp-dev/api-syncagent:${API_SYNCAGENT_TAG}"
 log "Building api-syncagent Docker image..."
 docker build -t "${API_SYNCAGENT_IMAGE_LOCAL}" "${API_SYNCAGENT_DIR}"
 docker push "${API_SYNCAGENT_IMAGE_LOCAL}"
@@ -421,7 +424,8 @@ helm upgrade --install openmcp-init-operator "${OPERATOR_DIR}/chart" \
     --set kcp.platformMeshIP="${PLATFORM_MESH_IP}" \
     --set kcp.hostOverride="localhost:31000" \
     --set syncAgent.imageRepository="kind-registry:5002/kcp-dev/api-syncagent" \
-    --set syncAgent.imageTag="local" \
+    --set syncAgent.imageTag="${API_SYNCAGENT_TAG}" \
+    --set "syncAgent.apiExportHostPortOverrides={localhost:8443=localhost:31000}" \
     --set runtime.namespace="default" \
     --set log.level="debug" \
     --set log.noJson=true
@@ -501,33 +505,6 @@ if [[ -n "${GARDENER_CLUSTER}" ]]; then
 else
     warn "gardener-local kind cluster not found, skipping gardener-init-operator deployment"
 fi
-
-# Build and deploy the onboarding UI to the platform-mesh cluster
-UI_DIR="${PROJECT_DIR}/demo/openmcp-onboarding-ui"
-UI_IMAGE="openmcp-onboarding-ui:local-$(date +%s)"
-
-log "Building openmcp-onboarding-ui Docker image..."
-docker build -t "${UI_IMAGE}" "${UI_DIR}"
-log "Built Docker image ${UI_IMAGE} ✓"
-
-log "Loading Docker image into platform-mesh cluster..."
-kind load docker-image "${UI_IMAGE}" --name platform-mesh
-log "Loaded Docker image into platform-mesh ✓"
-
-log "Deploying openmcp-onboarding-ui to platform-mesh..."
-helm upgrade --install openmcp-onboarding-ui "${UI_DIR}/chart" \
-    --kubeconfig="${PLATFORM_MESH_KUBECONFIG}" \
-    --namespace=platform-mesh-system \
-    --set image.name="${UI_IMAGE%:*}" \
-    --set image.tag="${UI_IMAGE#*:}" \
-    --set image.imagePullSecret="" \
-    --set image.pullPolicy=Never
-log "Deployed openmcp-onboarding-ui ✓"
-
-log "Waiting for UI deployment to be ready..."
-KUBECONFIG="${PLATFORM_MESH_KUBECONFIG}" kubectl rollout status deployment/openmcp-onboarding-ui \
-    --namespace=platform-mesh-system --timeout=120s
-log "Onboarding UI is ready ✓"
 
 log "Integration complete!"
 log "Portal URL: https://portal.localhost:8443/"

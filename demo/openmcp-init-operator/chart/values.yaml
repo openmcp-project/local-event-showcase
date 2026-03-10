@@ -13,6 +13,7 @@ syncAgent:
   chartURL: ""
   imageRepository: ""
   imageTag: ""
+  apiExportHostPortOverrides: []
 
 mcp:
   kubeconfigSecret: ""

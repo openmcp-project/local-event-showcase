@@ -10,7 +10,6 @@ import (
 	"github.com/platform-mesh/golang-commons/errors"
 	"github.com/platform-mesh/golang-commons/logger"
 	corev1 "k8s.io/api/core/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -195,36 +194,37 @@ func (r *CreateGardenerProjectSubroutine) Process(ctx context.Context, runtimeOb
 		log.Info().Str("name", sa.Name).Str("namespace", sa.Namespace).Msg("ServiceAccount created")
 	}
 
-	// Step 5: Create RoleBinding granting admin in the project namespace
-	rb := &rbacv1.RoleBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-admin", gardenerServiceAccountName),
-			Namespace: projectNamespace,
-		},
+	// Step 5: Add the SA as a Gardener project member with admin role.
+	// Gardener's project controller creates the RBAC in the project namespace
+	// automatically, which avoids RBAC escalation issues with manual RoleBinding creation.
+	members, _, _ := unstructured.NestedSlice(project.Object, "spec", "members")
+	saFullName := fmt.Sprintf("system:serviceaccount:%s:%s", projectNamespace, gardenerServiceAccountName)
+	hasMember := false
+	for _, m := range members {
+		member, ok := m.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if name, _, _ := unstructured.NestedString(member, "name"); name == saFullName {
+			hasMember = true
+			break
+		}
 	}
-	if err := r.gardenerClient.Get(ctx, types.NamespacedName{Name: rb.Name, Namespace: rb.Namespace}, rb); err != nil {
-		if !apierrors.IsNotFound(err) {
+	if !hasMember {
+		members = append(members, map[string]interface{}{
+			"apiGroup": "",
+			"kind":     "ServiceAccount",
+			"name":     saFullName,
+			"role":     "admin",
+		})
+		if err := unstructured.SetNestedSlice(project.Object, members, "spec", "members"); err != nil {
+			return ctrl.Result{}, errors.NewOperatorError(err, false, true)
+		}
+		if err := r.gardenerClient.Update(ctx, project); err != nil {
+			log.Error().Err(err).Str("name", projectName).Msg("failed to add SA as project member")
 			return ctrl.Result{}, errors.NewOperatorError(err, true, true)
 		}
-		rb.RoleRef = rbacv1.RoleRef{
-			APIGroup: "rbac.authorization.k8s.io",
-			Kind:     "ClusterRole",
-			Name:     "admin",
-		}
-		rb.Subjects = []rbacv1.Subject{
-			{
-				Kind:      "ServiceAccount",
-				Name:      gardenerServiceAccountName,
-				Namespace: projectNamespace,
-			},
-		}
-		if err := r.gardenerClient.Create(ctx, rb); err != nil {
-			if !apierrors.IsAlreadyExists(err) {
-				log.Error().Err(err).Str("name", rb.Name).Str("namespace", rb.Namespace).Msg("failed to create RoleBinding")
-				return ctrl.Result{}, errors.NewOperatorError(err, true, true)
-			}
-		}
-		log.Info().Str("name", rb.Name).Str("namespace", rb.Namespace).Msg("RoleBinding created")
+		log.Info().Str("sa", saFullName).Str("project", projectName).Msg("added SA as project member with admin role")
 	}
 
 	gardenerProject.Status.Phase = gardenerv1alpha1.GardenerProjectPhaseProjectReady

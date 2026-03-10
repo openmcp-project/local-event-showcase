@@ -154,6 +154,33 @@ func (r *SetupSyncAgentSubroutine) Process(ctx context.Context, runtimeObj runti
 	}
 	log.Info().Msg("SetupSyncAgent: kcp-kubeconfig secret created/updated")
 
+	// Bind the sync agent service account to cluster-admin so it can watch/sync arbitrary resources
+	syncAgentCRB := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "api-syncagent-cluster-admin",
+		},
+	}
+	_, err = controllerutil.CreateOrUpdate(ctx, onboardingClient, syncAgentCRB, func() error {
+		syncAgentCRB.RoleRef = rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "ClusterRole",
+			Name:     "cluster-admin",
+		}
+		syncAgentCRB.Subjects = []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Name:      "api-syncagent",
+				Namespace: "default",
+			},
+		}
+		return nil
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("SetupSyncAgent: failed to create/update cluster-admin binding")
+		return ctrl.Result{}, errors.NewOperatorError(err, true, true)
+	}
+	log.Info().Msg("SetupSyncAgent: cluster-admin binding for api-syncagent created/updated")
+
 	helmClient, err := createHelmClient(mcpKubeconfig)
 	if err != nil {
 		log.Error().Err(err).Msg("SetupSyncAgent: failed to create helm client")
@@ -177,6 +204,15 @@ image:
 		if r.cfg.SyncAgent.ImageTag != "" {
 			valuesYaml += fmt.Sprintf(`
   tag: "%s"`, r.cfg.SyncAgent.ImageTag)
+		}
+	}
+
+	if len(r.cfg.SyncAgent.APIExportHostPortOverrides) > 0 {
+		valuesYaml += `
+extraFlags:`
+		for _, override := range r.cfg.SyncAgent.APIExportHostPortOverrides {
+			valuesYaml += fmt.Sprintf(`
+  - "--apiexport-hostport-override=%s"`, override)
 		}
 	}
 

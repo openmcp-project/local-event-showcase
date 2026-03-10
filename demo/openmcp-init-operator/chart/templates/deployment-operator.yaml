@@ -63,6 +63,9 @@ spec:
           {{- with .Values.syncAgent.imageTag }}
           - "--sync-agent-image-tag={{ . }}"
           {{- end }}
+          {{- range .Values.syncAgent.apiExportHostPortOverrides }}
+          - "--sync-agent-apiexport-hostport-override={{ . }}"
+          {{- end }}
           {{- with .Values.mcp.kubeconfigSecret }}
           - "--mcp-kubeconfig=/var/opt/mcp/config"
           {{- end }}

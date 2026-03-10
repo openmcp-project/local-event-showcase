@@ -15,9 +15,10 @@ type SubroutinesConfig struct {
 }
 
 type SyncAgentConfig struct {
-	ChartURL        string
-	ImageRepository string
-	ImageTag        string
+	ChartURL                   string
+	ImageRepository            string
+	ImageTag                   string
+	APIExportHostPortOverrides []string
 }
 
 type KCPConfig struct {
@@ -84,5 +85,6 @@ func (c *OperatorConfig) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&c.SyncAgent.ChartURL, "sync-agent-chart-url", c.SyncAgent.ChartURL, "Helm chart URL for the api-syncagent")
 	fs.StringVar(&c.SyncAgent.ImageRepository, "sync-agent-image-repository", c.SyncAgent.ImageRepository, "Override image repository for the api-syncagent")
 	fs.StringVar(&c.SyncAgent.ImageTag, "sync-agent-image-tag", c.SyncAgent.ImageTag, "Override image tag for the api-syncagent")
+	fs.StringSliceVar(&c.SyncAgent.APIExportHostPortOverrides, "sync-agent-apiexport-hostport-override", c.SyncAgent.APIExportHostPortOverrides, "Override host:port in APIExportEndpointSlice URLs (format: original=new, can be specified multiple times)")
 	fs.StringVar(&c.RuntimeNamespace, "runtime-namespace", c.RuntimeNamespace, "Namespace for runtime resources")
 }
