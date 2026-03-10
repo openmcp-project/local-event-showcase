@@ -85,6 +85,14 @@ if ! grep -q 'ipv4_address: 172.18.255.53' "$COMPOSE_FILE" 2>/dev/null; then
     rm -f "${COMPOSE_FILE}.bak"
 fi
 
+# 3. Disable IPv6 port bindings for bind9 — Docker Desktop on macOS cannot bind
+#    to fd00:ff::53 on the loopback interface (IPv6 addresses are not mirrored into the VM).
+if grep -q '^\s*- "\[fd00:ff::53\]:53:53' "$COMPOSE_FILE" 2>/dev/null; then
+    log "Patching docker-compose.yaml: disabling bind9 IPv6 port bindings (unsupported on Docker Desktop macOS)..."
+    sed -i.bak 's|^\(\s*\)- "\[fd00:ff::53\]:53:53/\(.*\)"$|\1# - "[fd00:ff::53]:53:53/\2"  # disabled: Docker Desktop macOS|' "$COMPOSE_FILE"
+    rm -f "${COMPOSE_FILE}.bak"
+fi
+
 # Check if gardener-local kind cluster exists and Gardener is running
 if ! kind get clusters 2>/dev/null | grep -q "^gardener-local$"; then
     log "Creating Kind cluster and starting Gardener..."
