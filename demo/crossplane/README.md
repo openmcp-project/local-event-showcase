@@ -17,16 +17,15 @@ GardenerShoot (Claim)
             └─ Shoot (core.gardener.cloud/v1beta1)
 ```
 
-Crossplane's `provider-kubernetes` uses `InjectedIdentity` (in-cluster credentials) to talk to the Gardener API, which is aggregated into the kube-apiserver. A `function-patch-and-transform` pipeline patches Claim parameters into the Shoot spec.
+Crossplane's `provider-kubernetes` uses `InjectedIdentity` (in-cluster credentials) to talk to the Gardener API, which is aggregated into the kube-apiserver. The Composition uses `spec.resources` patching to map Claim parameters into the Shoot spec.
 
 ## Directory Structure
 
 ```
 demo/crossplane/
-├── 01-provider/          # Crossplane provider + function setup
+├── 01-provider/          # Crossplane provider setup
 │   ├── deployment-runtime-config.yaml   # SA name for deterministic RBAC binding
 │   ├── provider-kubernetes.yaml         # provider-kubernetes v0.15.0
-│   ├── function-patch-and-transform.yaml # Required for Crossplane v2 pipeline mode
 │   └── provider-config.yaml             # InjectedIdentity (in-cluster) credentials
 ├── 02-rbac/              # RBAC for provider-kubernetes to manage Shoots
 │   ├── clusterrole-shoot-admin.yaml       # CRUD on shoots, read on projects/seeds/cloudprofiles
@@ -46,7 +45,7 @@ demo/crossplane/
 task crossplane:install
 ```
 
-This installs everything: Crossplane, provider-kubernetes, function-patch-and-transform, RBAC, XRD, and Composition.
+This installs everything: Crossplane, provider-kubernetes, RBAC, XRD, and Composition.
 
 ### Create a Shoot
 
@@ -91,21 +90,19 @@ If you prefer to apply manifests individually rather than using `task crossplane
 helm repo add crossplane-stable https://charts.crossplane.io/stable
 helm repo update crossplane-stable
 helm install crossplane crossplane-stable/crossplane \
+  --version 1.20.5 \
   --namespace crossplane-system --create-namespace \
   --kube-context kind-gardener-local --wait
 ```
 
-### 2. Install Provider + Function
+### 2. Install Provider
 
 ```bash
 kubectl --context kind-gardener-local apply -f demo/crossplane/01-provider/deployment-runtime-config.yaml
 kubectl --context kind-gardener-local apply -f demo/crossplane/01-provider/provider-kubernetes.yaml
-kubectl --context kind-gardener-local apply -f demo/crossplane/01-provider/function-patch-and-transform.yaml
 
-# Wait for both to become healthy
+# Wait for provider to become healthy
 kubectl --context kind-gardener-local wait provider.pkg.crossplane.io/provider-kubernetes \
-  --for=condition=Healthy --timeout=180s
-kubectl --context kind-gardener-local wait function.pkg.crossplane.io/function-patch-and-transform \
   --for=condition=Healthy --timeout=180s
 ```
 

@@ -8,103 +8,95 @@ spec:
   compositeTypeRef:
     apiVersion: demo.local/v1alpha1
     kind: XGardenerShoot
-  mode: Pipeline
-  pipeline:
-    - step: patch-and-transform
-      functionRef:
-        name: function-patch-and-transform
-      input:
-        apiVersion: pt.fn.crossplane.io/v1beta1
-        kind: Resources
-        resources:
-          - name: shoot
-            base:
-              apiVersion: kubernetes.crossplane.io/v1alpha2
-              kind: Object
+  resources:
+    - name: shoot
+      base:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        spec:
+          providerConfigRef:
+            name: gardener-local
+          forProvider:
+            manifest:
+              apiVersion: core.gardener.cloud/v1beta1
+              kind: Shoot
+              metadata:
+                name: ""
+                namespace: ""
+                annotations:
+                  shoot.gardener.cloud/cloud-config-execution-max-delay-seconds: "0"
+                  confirmation.gardener.cloud/deletion: "true"
               spec:
-                providerConfigRef:
-                  name: gardener-local
-                forProvider:
-                  manifest:
-                    apiVersion: core.gardener.cloud/v1beta1
-                    kind: Shoot
-                    metadata:
-                      name: ""
-                      namespace: ""
-                      annotations:
-                        shoot.gardener.cloud/cloud-config-execution-max-delay-seconds: "0"
-                        confirmation.gardener.cloud/deletion: "true"
-                    spec:
-                      cloudProfile:
-                        name: local
-                      credentialsBindingName: local
-                      region: local
-                      purpose: evaluation
-                      hibernation:
-                        enabled: false
-                      networking:
-                        type: calico
-                        nodes: 10.0.0.0/16
-                      provider:
+                cloudProfile:
+                  name: local
+                credentialsBindingName: local
+                region: local
+                purpose: evaluation
+                hibernation:
+                  enabled: false
+                networking:
+                  type: calico
+                  nodes: 10.0.0.0/16
+                provider:
+                  type: local
+                  workers:
+                    - name: local
+                      machine:
                         type: local
-                        workers:
-                          - name: local
-                            machine:
-                              type: local
-                            cri:
-                              name: containerd
-                            minimum: 1
-                            maximum: 2
-                            maxSurge: 1
-                            maxUnavailable: 0
-                      kubernetes:
-                        version: ""
-                        kubelet:
-                          seccompDefault: true
-                          serializeImagePulls: false
-                          registryPullQPS: 10
-                          registryBurst: 20
-                          protectKernelDefaults: true
-                          streamingConnectionIdleTimeout: 5m
-                      maintenance:
-                        autoUpdate:
-                          kubernetesVersion: false
-            patches:
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.shootName
-                toFieldPath: spec.forProvider.manifest.metadata.name
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.projectName
-                toFieldPath: spec.forProvider.manifest.metadata.namespace
-                transforms:
-                  - type: string
-                    string:
-                      type: Format
-                      fmt: "garden-%s"
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.kubernetesVersion
-                toFieldPath: spec.forProvider.manifest.spec.kubernetes.version
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.purpose
-                toFieldPath: spec.forProvider.manifest.spec.purpose
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.hibernationEnabled
-                toFieldPath: spec.forProvider.manifest.spec.hibernation.enabled
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.workerName
-                toFieldPath: spec.forProvider.manifest.spec.provider.workers[0].name
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.workerMinimum
-                toFieldPath: spec.forProvider.manifest.spec.provider.workers[0].minimum
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.workerMaximum
-                toFieldPath: spec.forProvider.manifest.spec.provider.workers[0].maximum
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.workerMaxSurge
-                toFieldPath: spec.forProvider.manifest.spec.provider.workers[0].maxSurge
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.workerMaxUnavailable
-                toFieldPath: spec.forProvider.manifest.spec.provider.workers[0].maxUnavailable
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.parameters.autoUpdateKubernetesVersion
-                toFieldPath: spec.forProvider.manifest.spec.maintenance.autoUpdate.kubernetesVersion
+                      cri:
+                        name: containerd
+                      minimum: 1
+                      maximum: 2
+                      maxSurge: 1
+                      maxUnavailable: 0
+                kubernetes:
+                  version: ""
+                  kubelet:
+                    seccompDefault: true
+                    serializeImagePulls: false
+                    registryPullQPS: 10
+                    registryBurst: 20
+                    protectKernelDefaults: true
+                    streamingConnectionIdleTimeout: 5m
+                maintenance:
+                  autoUpdate:
+                    kubernetesVersion: false
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.shootName
+          toFieldPath: spec.forProvider.manifest.metadata.name
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.projectName
+          toFieldPath: spec.forProvider.manifest.metadata.namespace
+          transforms:
+            - type: string
+              string:
+                type: Format
+                fmt: "garden-%s"
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.kubernetesVersion
+          toFieldPath: spec.forProvider.manifest.spec.kubernetes.version
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.purpose
+          toFieldPath: spec.forProvider.manifest.spec.purpose
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.hibernationEnabled
+          toFieldPath: spec.forProvider.manifest.spec.hibernation.enabled
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.workerName
+          toFieldPath: spec.forProvider.manifest.spec.provider.workers[0].name
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.workerMinimum
+          toFieldPath: spec.forProvider.manifest.spec.provider.workers[0].minimum
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.workerMaximum
+          toFieldPath: spec.forProvider.manifest.spec.provider.workers[0].maximum
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.workerMaxSurge
+          toFieldPath: spec.forProvider.manifest.spec.provider.workers[0].maxSurge
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.workerMaxUnavailable
+          toFieldPath: spec.forProvider.manifest.spec.provider.workers[0].maxUnavailable
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.autoUpdateKubernetesVersion
+          toFieldPath: spec.forProvider.manifest.spec.maintenance.autoUpdate.kubernetesVersion

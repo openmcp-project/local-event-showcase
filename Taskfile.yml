@@ -411,14 +411,13 @@ tasks:
           echo "Crossplane already installed"
         else
           helm install crossplane crossplane-stable/crossplane \
+            --version 1.20.5 \
             --namespace crossplane-system --create-namespace \
             --kube-context kind-gardener-local --wait
         fi
       - kubectl --context kind-gardener-local apply -f demo/crossplane/01-provider/deployment-runtime-config.yaml
       - kubectl --context kind-gardener-local apply -f demo/crossplane/01-provider/provider-kubernetes.yaml
-      - kubectl --context kind-gardener-local apply -f demo/crossplane/01-provider/function-patch-and-transform.yaml
       - kubectl --context kind-gardener-local wait provider.pkg.crossplane.io/provider-kubernetes --for=condition=Healthy --timeout=180s
-      - kubectl --context kind-gardener-local wait function.pkg.crossplane.io/function-patch-and-transform --for=condition=Healthy --timeout=180s
       - kubectl --context kind-gardener-local apply -f demo/crossplane/01-provider/provider-config.yaml
       - kubectl --context kind-gardener-local apply -f demo/crossplane/02-rbac/
       - kubectl --context kind-gardener-local apply -f demo/crossplane/03-xrd/definition.yaml
@@ -453,7 +452,6 @@ tasks:
       - kubectl --context kind-gardener-local delete -f demo/crossplane/02-rbac/ --ignore-not-found
       - kubectl --context kind-gardener-local delete -f demo/crossplane/01-provider/provider-config.yaml --ignore-not-found
       - kubectl --context kind-gardener-local delete -f demo/crossplane/01-provider/provider-kubernetes.yaml --ignore-not-found
-      - kubectl --context kind-gardener-local delete -f demo/crossplane/01-provider/function-patch-and-transform.yaml --ignore-not-found
       - kubectl --context kind-gardener-local delete -f demo/crossplane/01-provider/deployment-runtime-config.yaml --ignore-not-found
       - helm uninstall crossplane --namespace crossplane-system --kube-context kind-gardener-local || true
       - kubectl --context kind-gardener-local delete namespace crossplane-system --ignore-not-found
