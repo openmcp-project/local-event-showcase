@@ -1,0 +1,10 @@
+apiVersion: demo.local/v1alpha1
+kind: GardenerShoot
+metadata:
+  name: my-test-shoot
+  namespace: default
+spec:
+  parameters:
+    projectName: local
+    shootName: crossplane-test
+    kubernetesVersion: "1.31.1"

@@ -400,3 +400,61 @@ tasks:
           cd demo/external/platform-mesh/helm-charts && git checkout feat/local-event-showcase
         fi
       - task --dir demo/external/platform-mesh/helm-charts local-setup:cached:showcase:iterate
+
+  crossplane:install:
+    desc: Install Crossplane + provider-kubernetes + XRD/Composition on kind-gardener-local
+    cmds:
+      - helm repo add crossplane-stable https://charts.crossplane.io/stable
+      - helm repo update crossplane-stable
+      - |
+        if helm status crossplane --namespace crossplane-system --kube-context kind-gardener-local >/dev/null 2>&1; then
+          echo "Crossplane already installed"
+        else
+          helm install crossplane crossplane-stable/crossplane \
+            --namespace crossplane-system --create-namespace \
+            --kube-context kind-gardener-local --wait
+        fi
+      - kubectl --context kind-gardener-local apply -f demo/crossplane/01-provider/deployment-runtime-config.yaml
+      - kubectl --context kind-gardener-local apply -f demo/crossplane/01-provider/provider-kubernetes.yaml
+      - kubectl --context kind-gardener-local apply -f demo/crossplane/01-provider/function-patch-and-transform.yaml
+      - kubectl --context kind-gardener-local wait provider.pkg.crossplane.io/provider-kubernetes --for=condition=Healthy --timeout=180s
+      - kubectl --context kind-gardener-local wait function.pkg.crossplane.io/function-patch-and-transform --for=condition=Healthy --timeout=180s
+      - kubectl --context kind-gardener-local apply -f demo/crossplane/01-provider/provider-config.yaml
+      - kubectl --context kind-gardener-local apply -f demo/crossplane/02-rbac/
+      - kubectl --context kind-gardener-local apply -f demo/crossplane/03-xrd/definition.yaml
+      - kubectl --context kind-gardener-local wait compositeresourcedefinition xgardenershoots.demo.local --for=condition=Established --timeout=60s
+      - kubectl --context kind-gardener-local apply -f demo/crossplane/03-xrd/composition.yaml
+      - echo "Crossplane + Gardener Shoot XRD installed successfully"
+
+  crossplane:test-claim:
+    desc: Apply example GardenerShoot Claim and watch status
+    cmds:
+      - kubectl --context kind-gardener-local apply -f demo/crossplane/04-claims/example-shoot-claim.yaml
+      - |
+        echo "Waiting for Shoot to appear..."
+        for i in $(seq 1 30); do
+          if kubectl --context kind-gardener-local -n garden-local get shoot crossplane-test >/dev/null 2>&1; then
+            echo "Shoot created!"
+            kubectl --context kind-gardener-local -n garden-local get shoot crossplane-test
+            exit 0
+          fi
+          sleep 2
+        done
+        echo "Timed out waiting for Shoot"
+        exit 1
+
+  crossplane:cleanup:
+    desc: Delete Claim, XRD, provider, and uninstall Crossplane from kind-gardener-local
+    prompt: This will remove Crossplane and all related resources. Are you sure?
+    cmds:
+      - kubectl --context kind-gardener-local delete -f demo/crossplane/04-claims/example-shoot-claim.yaml --ignore-not-found
+      - kubectl --context kind-gardener-local delete -f demo/crossplane/03-xrd/composition.yaml --ignore-not-found
+      - kubectl --context kind-gardener-local delete -f demo/crossplane/03-xrd/definition.yaml --ignore-not-found
+      - kubectl --context kind-gardener-local delete -f demo/crossplane/02-rbac/ --ignore-not-found
+      - kubectl --context kind-gardener-local delete -f demo/crossplane/01-provider/provider-config.yaml --ignore-not-found
+      - kubectl --context kind-gardener-local delete -f demo/crossplane/01-provider/provider-kubernetes.yaml --ignore-not-found
+      - kubectl --context kind-gardener-local delete -f demo/crossplane/01-provider/function-patch-and-transform.yaml --ignore-not-found
+      - kubectl --context kind-gardener-local delete -f demo/crossplane/01-provider/deployment-runtime-config.yaml --ignore-not-found
+      - helm uninstall crossplane --namespace crossplane-system --kube-context kind-gardener-local || true
+      - kubectl --context kind-gardener-local delete namespace crossplane-system --ignore-not-found
+      - echo "Crossplane cleanup complete"

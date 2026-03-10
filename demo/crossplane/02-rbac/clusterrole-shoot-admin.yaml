@@ -1,0 +1,37 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: crossplane-provider-kubernetes-shoot-admin
+rules:
+  - apiGroups:
+      - core.gardener.cloud
+    resources:
+      - shoots
+      - shoots/status
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - core.gardener.cloud
+    resources:
+      - cloudprofiles
+      - projects
+      - seeds
+      - secretbindings
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - security.gardener.cloud
+    resources:
+      - credentialsbindings
+    verbs:
+      - get
+      - list
+      - watch

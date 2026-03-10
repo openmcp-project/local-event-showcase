@@ -1,0 +1,47 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xgardenershoots.demo.local
+spec:
+  group: demo.local
+  names:
+    kind: XGardenerShoot
+    plural: xgardenershoots
+  claimNames:
+    kind: GardenerShoot
+    plural: gardenershoots
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  properties:
+                    projectName:
+                      type: string
+                      description: "Name of the Gardener project (must already exist). Shoot will be created in namespace garden-<projectName>."
+                    shootName:
+                      type: string
+                      description: "Name for the Gardener Shoot resource."
+                    kubernetesVersion:
+                      type: string
+                      description: "Kubernetes version for the Shoot."
+                      default: "1.31.1"
+                    workerMinimum:
+                      type: integer
+                      description: "Minimum number of worker nodes."
+                      default: 1
+                    workerMaximum:
+                      type: integer
+                      description: "Maximum number of worker nodes."
+                      default: 2
+                  required:
+                    - projectName
+                    - shootName
