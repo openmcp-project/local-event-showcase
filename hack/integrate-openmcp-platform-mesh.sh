@@ -506,5 +506,31 @@ else
     warn "gardener-local kind cluster not found, skipping gardener-init-operator deployment"
 fi
 
+# ─── Onboarding UI (deployed to platform-mesh cluster) ───
+ONBOARDING_UI_DIR="${PROJECT_DIR}/demo/openmcp-onboarding-ui"
+ONBOARDING_UI_IMAGE="openmcp-onboarding-ui:local-$(date +%s)"
+
+log "Building openmcp-onboarding-ui Docker image..."
+docker build -t "${ONBOARDING_UI_IMAGE}" "${ONBOARDING_UI_DIR}"
+log "Built Docker image ${ONBOARDING_UI_IMAGE} ✓"
+
+log "Loading Docker image into platform-mesh cluster..."
+kind load docker-image "${ONBOARDING_UI_IMAGE}" --name platform-mesh
+log "Loaded Docker image into platform-mesh ✓"
+
+log "Deploying openmcp-onboarding-ui to platform-mesh..."
+helm upgrade --install openmcp-onboarding-ui "${ONBOARDING_UI_DIR}/chart" \
+    --kubeconfig="${PLATFORM_MESH_KUBECONFIG}" \
+    --namespace="platform-mesh-system" \
+    --set image.name="${ONBOARDING_UI_IMAGE%:*}" \
+    --set image.tag="${ONBOARDING_UI_IMAGE#*:}" \
+    --set image.pullPolicy="Never"
+log "Deployed openmcp-onboarding-ui ✓"
+
+log "Waiting for openmcp-onboarding-ui deployment to be ready..."
+KUBECONFIG="${PLATFORM_MESH_KUBECONFIG}" kubectl rollout status deployment/openmcp-onboarding-ui \
+    --namespace="platform-mesh-system" --timeout=120s
+log "Onboarding UI is ready ✓"
+
 log "Integration complete!"
 log "Portal URL: https://portal.localhost:8443/"

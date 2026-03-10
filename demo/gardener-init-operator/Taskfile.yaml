@@ -74,11 +74,10 @@ tasks:
       - task: lint
       - task: test
   docker:kind:
-    desc: "Build container image with current tag from kind cluster and load it"
+    desc: "Build container image, load into kind cluster, and restart deployment"
     vars:
       CONTAINER_RUNTIME: '{{.CONTAINER_RUNTIME | default "docker"}}'
-      KIND_CLUSTER:
-        sh: kind get clusters 2>/dev/null | grep '^onboarding' | head -1
+      KIND_CLUSTER: '{{.KIND_CLUSTER | default "gardener-local"}}'
       KIND_CONTEXT: kind-{{.KIND_CLUSTER}}
       DEPLOYMENT_NAME: '{{.DEPLOYMENT_NAME | default "gardener-init-operator"}}'
       DEPLOYMENT_NAMESPACE: '{{.DEPLOYMENT_NAMESPACE | default "openmcp-system"}}'

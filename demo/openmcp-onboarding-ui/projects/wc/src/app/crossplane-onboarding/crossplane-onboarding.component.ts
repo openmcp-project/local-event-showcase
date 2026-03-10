@@ -2,6 +2,9 @@ import {
   CrossplaneOnboardingService,
   CrossplaneCatalog,
   CrossplaneStatus,
+  APIBindingDetail,
+  PermissionClaim,
+  AcceptablePermissionClaim,
 } from '../services/crossplane-onboarding.service';
 import { LuigiContext } from '../services/apollo-factory';
 import {
@@ -90,6 +93,7 @@ type OnboardingState =
     .config-row {
       display: flex;
       justify-content: space-between;
+      align-items: center;
       padding: 0.5rem 0;
     }
 
@@ -98,6 +102,9 @@ type OnboardingState =
     }
 
     .config-label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
       color: var(--sapContent_LabelColor, #6a6d70);
       font-size: var(--sapFontSmallSize, 0.75rem);
     }
@@ -190,6 +197,43 @@ type OnboardingState =
     }
   `,
   template: `
+    @if (binding() && (pendingClaims().length > 0 || acceptedClaims().length > 0)) {
+      <div class="onboarding-card" style="margin-bottom: 1rem;">
+        <div class="card-header">
+          <fd-icon glyph="key"></fd-icon>
+          <h2>Permission Claims</h2>
+        </div>
+        <div class="card-description">
+          The Crossplane service requests access to the following resources in your workspace.
+        </div>
+        <div class="config-section">
+          @for (claim of acceptedClaims(); track claim.resource + claim.group) {
+            <div class="config-row">
+              <span class="config-label">
+                <fd-icon glyph="accept" style="color: var(--sapPositiveColor)"></fd-icon>
+                {{ claim.group || 'core' }} / {{ claim.resource }}
+              </span>
+              <span class="config-value" style="color: var(--sapPositiveTextColor)">Accepted</span>
+            </div>
+          }
+          @for (claim of pendingClaims(); track claim.resource + claim.group) {
+            <div class="config-row">
+              <span class="config-label">
+                <fd-icon glyph="pending"></fd-icon>
+                {{ claim.group || 'core' }} / {{ claim.resource }}
+              </span>
+              <span class="config-value">
+                <button fd-button fdType="transparent" label="Accept"
+                  [disabled]="approvingClaim() === (claim.resource + claim.group)"
+                  (click)="onAcceptClaim(claim)">
+                </button>
+              </span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
     @switch (state()) {
       @case ('loading') {
         <div class="loading-container">
@@ -359,6 +403,7 @@ type OnboardingState =
 export class CrossplaneOnboardingComponent implements OnDestroy {
   private onboardingService = inject(CrossplaneOnboardingService);
   private watchSub?: Subscription;
+  private bindingWatchSub?: Subscription;
   private luigiContext!: LuigiContext;
 
   state = signal<OnboardingState>('loading');
@@ -367,6 +412,11 @@ export class CrossplaneOnboardingComponent implements OnDestroy {
   catalog = signal<CrossplaneCatalog | null>(null);
   selectedVersion = signal('');
   selectedProviderVersions = signal<Record<string, string>>({});
+
+  binding = signal<APIBindingDetail | null>(null);
+  pendingClaims = signal<PermissionClaim[]>([]);
+  acceptedClaims = signal<AcceptablePermissionClaim[]>([]);
+  approvingClaim = signal('');
 
   @Input()
   LuigiClient!: LuigiClient;
@@ -380,6 +430,7 @@ export class CrossplaneOnboardingComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.watchSub?.unsubscribe();
+    this.bindingWatchSub?.unsubscribe();
   }
 
   onActivate(): void {
@@ -418,6 +469,25 @@ export class CrossplaneOnboardingComponent implements OnDestroy {
       });
   }
 
+  onAcceptClaim(claim: PermissionClaim): void {
+    const currentBinding = this.binding();
+    if (!currentBinding) return;
+
+    this.approvingClaim.set(claim.resource + claim.group);
+    this.error.set('');
+    this.onboardingService
+      .acceptPermissionClaim(currentBinding, claim)
+      .subscribe({
+        next: () => {
+          this.approvingClaim.set('');
+        },
+        error: (err) => {
+          this.error.set(`Failed to accept permission claim: ${err.message}`);
+          this.approvingClaim.set('');
+        },
+      });
+  }
+
   private checkState(): void {
     this.state.set('loading');
     this.onboardingService.checkAPIBinding().subscribe({
@@ -425,6 +495,9 @@ export class CrossplaneOnboardingComponent implements OnDestroy {
         if (!binding) {
           this.state.set('activate');
         } else {
+          this.binding.set(binding);
+          this.computeClaims(binding);
+          this.startWatchingBinding();
           this.checkCrossplaneState();
         }
       },
@@ -433,6 +506,40 @@ export class CrossplaneOnboardingComponent implements OnDestroy {
         this.state.set('activate');
       },
     });
+  }
+
+  private computeClaims(binding: APIBindingDetail): void {
+    const exportClaims = binding.status?.exportPermissionClaims ?? [];
+    const specClaims = binding.spec?.permissionClaims ?? [];
+
+    const accepted = specClaims.filter((c) => c.state === 'Accepted');
+    this.acceptedClaims.set(accepted);
+
+    const pending = exportClaims.filter(
+      (ec) =>
+        !accepted.some(
+          (ac) =>
+            ac.group === ec.group &&
+            ac.resource === ec.resource &&
+            ac.identityHash === ec.identityHash,
+        ),
+    );
+    this.pendingClaims.set(pending);
+  }
+
+  private startWatchingBinding(): void {
+    this.bindingWatchSub?.unsubscribe();
+    this.bindingWatchSub = this.onboardingService
+      .watchAPIBinding()
+      .subscribe({
+        next: (event) => {
+          this.binding.set(event.object);
+          this.computeClaims(event.object);
+        },
+        error: () => {
+          // Subscription failed silently — query-based flow still works
+        },
+      });
   }
 
   private checkCrossplaneState(): void {
@@ -517,6 +624,9 @@ export class CrossplaneOnboardingComponent implements OnDestroy {
     this.onboardingService.checkAPIBinding().subscribe({
       next: (binding) => {
         if (binding?.status?.phase === 'Bound') {
+          this.binding.set(binding);
+          this.computeClaims(binding);
+          this.startWatchingBinding();
           this.checkCrossplaneState();
         } else {
           setTimeout(() => this.pollAPIBindingReady(), 2000);

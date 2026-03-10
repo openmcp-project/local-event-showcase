@@ -43,7 +43,7 @@ type GardenerProjectStatus struct {
 // GardenerProject is the Schema for the gardenerprojects API
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:scope=Cluster
+// +kubebuilder:resource:scope=Namespaced
 // +kubebuilder:printcolumn:JSONPath=`.status.phase`,name="Phase",type=string
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:metadata:labels="openmcp.cloud/cluster=onboarding"

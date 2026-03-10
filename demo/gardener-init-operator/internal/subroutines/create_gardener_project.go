@@ -2,7 +2,6 @@ package subroutines
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/platform-mesh/golang-commons/controller/lifecycle/runtimeobject"
@@ -88,6 +87,21 @@ func (r *CreateGardenerProjectSubroutine) Finalize(ctx context.Context, runtimeO
 
 	deletionTimestamp := project.GetDeletionTimestamp()
 	if deletionTimestamp == nil || deletionTimestamp.IsZero() {
+		// Gardener requires this annotation before a Project can be deleted.
+		annotations := project.GetAnnotations()
+		if annotations == nil {
+			annotations = map[string]string{}
+		}
+		if _, ok := annotations["confirmation.gardener.cloud/deletion"]; !ok {
+			annotations["confirmation.gardener.cloud/deletion"] = "true"
+			project.SetAnnotations(annotations)
+			if err := r.gardenerClient.Update(ctx, project); err != nil {
+				log.Error().Err(err).Str("name", projectName).Msg("failed to set deletion confirmation annotation")
+				return ctrl.Result{}, errors.NewOperatorError(err, true, true)
+			}
+			log.Info().Str("name", projectName).Msg("set deletion confirmation annotation on Gardener Project")
+		}
+
 		log.Info().Str("name", projectName).Msg("deleting Gardener Project")
 		if err := r.gardenerClient.Delete(ctx, project); err != nil {
 			if !apierrors.IsNotFound(err) {
@@ -157,11 +171,12 @@ func (r *CreateGardenerProjectSubroutine) Process(ctx context.Context, runtimeOb
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
 
-	// Step 3: Get the project namespace from the project status
+	// Step 3: Get the project namespace from the project spec
 	projectNamespace, _, _ := unstructured.NestedString(project.Object, "spec", "namespace")
 	if projectNamespace == "" {
-		// Gardener sets spec.namespace to garden-<projectName> once the project is ready
-		projectNamespace = fmt.Sprintf("garden-%s", projectName)
+		// Gardener sets spec.namespace once the project is ready; wait for it
+		log.Info().Str("name", projectName).Msg("project namespace not yet set in spec, requeuing")
+		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
 
 	ns := &corev1.Namespace{}
@@ -198,24 +213,26 @@ func (r *CreateGardenerProjectSubroutine) Process(ctx context.Context, runtimeOb
 	// Gardener's project controller creates the RBAC in the project namespace
 	// automatically, which avoids RBAC escalation issues with manual RoleBinding creation.
 	members, _, _ := unstructured.NestedSlice(project.Object, "spec", "members")
-	saFullName := fmt.Sprintf("system:serviceaccount:%s:%s", projectNamespace, gardenerServiceAccountName)
 	hasMember := false
 	for _, m := range members {
 		member, ok := m.(map[string]interface{})
 		if !ok {
 			continue
 		}
-		if name, _, _ := unstructured.NestedString(member, "name"); name == saFullName {
+		name, _, _ := unstructured.NestedString(member, "name")
+		ns, _, _ := unstructured.NestedString(member, "namespace")
+		if name == gardenerServiceAccountName && ns == projectNamespace {
 			hasMember = true
 			break
 		}
 	}
 	if !hasMember {
 		members = append(members, map[string]interface{}{
-			"apiGroup": "",
-			"kind":     "ServiceAccount",
-			"name":     saFullName,
-			"role":     "admin",
+			"apiGroup":  "",
+			"kind":      "ServiceAccount",
+			"name":      gardenerServiceAccountName,
+			"namespace": projectNamespace,
+			"role":      "admin",
 		})
 		if err := unstructured.SetNestedSlice(project.Object, members, "spec", "members"); err != nil {
 			return ctrl.Result{}, errors.NewOperatorError(err, false, true)
@@ -224,7 +241,7 @@ func (r *CreateGardenerProjectSubroutine) Process(ctx context.Context, runtimeOb
 			log.Error().Err(err).Str("name", projectName).Msg("failed to add SA as project member")
 			return ctrl.Result{}, errors.NewOperatorError(err, true, true)
 		}
-		log.Info().Str("sa", saFullName).Str("project", projectName).Msg("added SA as project member with admin role")
+		log.Info().Str("sa", gardenerServiceAccountName).Str("namespace", projectNamespace).Str("project", projectName).Msg("added SA as project member with admin role")
 	}
 
 	gardenerProject.Status.Phase = gardenerv1alpha1.GardenerProjectPhaseProjectReady

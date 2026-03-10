@@ -10,6 +10,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
@@ -58,7 +60,23 @@ func (r *SetupGardenerAccessSubroutine) Process(ctx context.Context, runtimeObj 
 	if projectName == "" {
 		return ctrl.Result{}, errors.NewOperatorError(errors.New("projectName not set in status — CreateGardenerProject must run first"), false, true)
 	}
-	projectNamespace := fmt.Sprintf("garden-%s", projectName)
+
+	// Look up the project namespace from the Gardener Project resource
+	project := &unstructured.Unstructured{}
+	project.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "core.gardener.cloud",
+		Version: "v1beta1",
+		Kind:    "Project",
+	})
+	if err := r.gardenerClient.Get(ctx, types.NamespacedName{Name: projectName}, project); err != nil {
+		log.Error().Err(err).Str("name", projectName).Msg("SetupGardenerAccess: failed to get Gardener Project")
+		return ctrl.Result{}, errors.NewOperatorError(err, true, true)
+	}
+	projectNamespace, _, _ := unstructured.NestedString(project.Object, "spec", "namespace")
+	if projectNamespace == "" {
+		log.Info().Str("name", projectName).Msg("SetupGardenerAccess: project namespace not yet set, requeuing")
+		return ctrl.Result{RequeueAfter: 5 * 1e9}, nil
+	}
 
 	log.Info().
 		Str("projectName", projectName).
@@ -142,7 +160,7 @@ func (r *SetupGardenerAccessSubroutine) Process(ctx context.Context, runtimeObj 
 	kubeconfigSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      gardenerKubeconfigSecretName,
-			Namespace: r.cfg.RuntimeNamespace,
+			Namespace: gardenerProject.Namespace,
 		},
 	}
 

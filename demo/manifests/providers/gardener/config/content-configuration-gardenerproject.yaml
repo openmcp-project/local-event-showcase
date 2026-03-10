@@ -39,9 +39,9 @@ spec:
                     "group": "gardener.cloud",
                     "version": "v1alpha1",
                     "kind": "GardenerProject",
-                    "plural": "gardenerprojects",
+                    "plural": "GardenerProjects",
                     "singular": "gardenerproject",
-                    "scope": "Cluster"
+                    "scope": "Namespaced"
                   }
                 }
               }

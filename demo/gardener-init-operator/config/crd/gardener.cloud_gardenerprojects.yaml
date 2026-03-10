@@ -14,7 +14,7 @@ spec:
     listKind: GardenerProjectList
     plural: gardenerprojects
     singular: gardenerproject
-  scope: Cluster
+  scope: Namespaced
   versions:
   - additionalPrinterColumns:
     - jsonPath: .status.phase

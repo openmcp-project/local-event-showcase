@@ -4,9 +4,32 @@ import { Apollo } from 'apollo-angular';
 import { Observable, map, of, catchError } from 'rxjs';
 import { gql } from '@apollo/client/core';
 
-export interface APIBindingStatus {
-  metadata: { name: string };
-  status?: { phase: string };
+export interface PermissionClaim {
+  group: string;
+  resource: string;
+  verbs: string[];
+  identityHash: string;
+}
+
+export interface AcceptablePermissionClaim extends PermissionClaim {
+  state: 'Accepted' | 'Rejected';
+}
+
+export interface APIBindingDetail {
+  metadata: { name: string; resourceVersion: string };
+  spec: {
+    permissionClaims: AcceptablePermissionClaim[] | null;
+    reference: { export: { name: string } };
+  };
+  status: {
+    phase: string;
+    exportPermissionClaims: PermissionClaim[] | null;
+  };
+}
+
+export interface APIBindingEvent {
+  type: 'ADDED' | 'MODIFIED' | 'DELETED';
+  object: APIBindingDetail;
 }
 
 export interface CrossplaneStatus {
@@ -35,9 +58,30 @@ const CHECK_API_BINDING = gql`
         APIBinding(name: "crossplane.services.openmcp.cloud") {
           metadata {
             name
+            resourceVersion
+          }
+          spec {
+            permissionClaims {
+              group
+              resource
+              verbs
+              identityHash
+              state
+            }
+            reference {
+              export {
+                name
+              }
+            }
           }
           status {
             phase
+            exportPermissionClaims {
+              group
+              resource
+              verbs
+              identityHash
+            }
           }
         }
       }
@@ -63,6 +107,46 @@ const CREATE_API_BINDING = gql`
         ) {
           metadata {
             name
+          }
+        }
+      }
+    }
+  }
+`;
+
+const WATCH_API_BINDING = gql`
+  subscription {
+    apis_kcp_io_v1alpha2_apibinding(
+      name: "crossplane.services.openmcp.cloud"
+      subscribeToAll: true
+    ) {
+      type
+      object {
+        metadata {
+          name
+          resourceVersion
+        }
+        spec {
+          permissionClaims {
+            group
+            resource
+            verbs
+            identityHash
+            state
+          }
+          reference {
+            export {
+              name
+            }
+          }
+        }
+        status {
+          phase
+          exportPermissionClaims {
+            group
+            resource
+            verbs
+            identityHash
           }
         }
       }
@@ -151,11 +235,11 @@ export class CrossplaneOnboardingService {
     this.apollo = this.apolloFactory.apollo(context);
   }
 
-  public checkAPIBinding(): Observable<APIBindingStatus | null> {
+  public checkAPIBinding(): Observable<APIBindingDetail | null> {
     return this.apollo
       .query<{
         apis_kcp_io: {
-          v1alpha2: { APIBinding: APIBindingStatus | null };
+          v1alpha2: { APIBinding: APIBindingDetail | null };
         };
       }>({
         query: CHECK_API_BINDING,
@@ -172,6 +256,20 @@ export class CrossplaneOnboardingService {
       );
   }
 
+  public watchAPIBinding(): Observable<APIBindingEvent> {
+    return this.apollo
+      .subscribe<{
+        apis_kcp_io_v1alpha2_apibinding: APIBindingEvent;
+      }>({
+        query: WATCH_API_BINDING,
+      })
+      .pipe(
+        map(
+          (result) => result.data!.apis_kcp_io_v1alpha2_apibinding,
+        ),
+      );
+  }
+
   public createAPIBinding(): Observable<{ metadata: { name: string } }> {
     return this.apollo
       .mutate<{
@@ -185,6 +283,70 @@ export class CrossplaneOnboardingService {
       })
       .pipe(
         map((result) => result.data!.apis_kcp_io.v1alpha2.createAPIBinding),
+      );
+  }
+
+  public acceptPermissionClaim(
+    binding: APIBindingDetail,
+    claim: PermissionClaim,
+  ): Observable<{ metadata: { name: string; resourceVersion: string } }> {
+    const existingClaims = (binding.spec.permissionClaims ?? []).filter(
+      (c) => c.state === 'Accepted',
+    );
+    const allClaims = [
+      ...existingClaims,
+      { ...claim, state: 'Accepted' as const },
+    ];
+
+    const claimsInput = allClaims
+      .map(
+        (c) =>
+          `{ group: "${c.group}", resource: "${c.resource}", verbs: [${c.verbs.map((v) => `"${v}"`).join(', ')}], identityHash: "${c.identityHash}", state: "Accepted", selector: { matchAll: true } }`,
+      )
+      .join(',\n              ');
+
+    const mutation = gql`
+      mutation {
+        apis_kcp_io {
+          v1alpha2 {
+            updateAPIBinding(
+              name: "crossplane.services.openmcp.cloud"
+              object: {
+                metadata: { resourceVersion: "${binding.metadata.resourceVersion}" }
+                spec: {
+                  reference: { export: { name: "crossplane.services.openmcp.cloud" } }
+                  permissionClaims: [
+                    ${claimsInput}
+                  ]
+                }
+              }
+            ) {
+              metadata {
+                name
+                resourceVersion
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    return this.apollo
+      .mutate<{
+        apis_kcp_io: {
+          v1alpha2: {
+            updateAPIBinding: {
+              metadata: { name: string; resourceVersion: string };
+            };
+          };
+        };
+      }>({
+        mutation,
+      })
+      .pipe(
+        map(
+          (result) => result.data!.apis_kcp_io.v1alpha2.updateAPIBinding,
+        ),
       );
   }
 

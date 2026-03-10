@@ -1,7 +1,7 @@
 apiVersion: apis.kcp.io/v1alpha1
 kind: APIResourceSchema
 metadata:
-  name: v260309-373266d.gardenerprojects.gardener.cloud
+  name: v260310-e532c57.gardenerprojects.gardener.cloud
 spec:
   group: gardener.cloud
   names:
@@ -9,7 +9,7 @@ spec:
     listKind: GardenerProjectList
     plural: gardenerprojects
     singular: gardenerproject
-  scope: Cluster
+  scope: Namespaced
   versions:
   - additionalPrinterColumns:
     - jsonPath: .status.phase
