@@ -55,22 +55,30 @@ tasks:
       - rm -f ./config/resources/apiexport-openmcp.cloud.yaml ./config/resources/apiexport-openmcp-internal.cloud.yaml
       # Start from the crossplane APIExport as a base (has spec.resources with crossplane entries)
       - cp ./config/resources/apiexport-crossplane.services.openmcp.cloud.yaml ./config/resources/apiexport-openmcp.cloud.yaml
-      # Merge spec.resources from the core APIExport into the combined file
+      # Merge spec.resources from per-group APIExports into the combined file
       - |
-        CORE_RESOURCES=$(yq -o=json '.spec.resources[]' ./config/resources/apiexport-core.openmcp.cloud.yaml 2>/dev/null)
-        if [ -n "$CORE_RESOURCES" ]; then
-          yq -i '.spec.resources += load("./config/resources/apiexport-core.openmcp.cloud.yaml").spec.resources' ./config/resources/apiexport-openmcp.cloud.yaml
-        fi
+        for EXPORT_FILE in \
+          ./config/resources/apiexport-core.openmcp.cloud.yaml \
+          ./config/resources/apiexport-kro.services.openmcp.cloud.yaml \
+          ./config/resources/apiexport-flux.services.openmcp.cloud.yaml \
+          ./config/resources/apiexport-ocm.services.openmcp.cloud.yaml; do
+          if [ -f "$EXPORT_FILE" ]; then
+            RESOURCES=$(yq -o=json '.spec.resources[]' "$EXPORT_FILE" 2>/dev/null)
+            if [ -n "$RESOURCES" ]; then
+              yq -i ".spec.resources += load(\"$EXPORT_FILE\").spec.resources" ./config/resources/apiexport-openmcp.cloud.yaml
+            fi
+          fi
+        done
       - "yq -i '.metadata.name = \"openmcp.cloud\"' ./config/resources/apiexport-openmcp.cloud.yaml"
       - "yq -i '.metadata.labels.\"ui.platform-mesh.io/content-for\" = \"openmcp.cloud\"' ./config/resources/apiexport-openmcp.cloud.yaml"
-      - "yq -i '.spec.permissionClaims = [{\"group\": \"apis.kcp.io\", \"resource\": \"apiexports\", \"verbs\": [\"*\"]}, {\"group\": \"ui.platform-mesh.io\", \"resource\": \"contentconfigurations\", \"verbs\": [\"*\"]}, {\"group\": \"rbac.authorization.k8s.io\", \"resource\": \"clusterroles\", \"verbs\": [\"*\"]}, {\"group\": \"rbac.authorization.k8s.io\", \"resource\": \"clusterrolebindings\", \"verbs\": [\"*\"]}]' ./config/resources/apiexport-openmcp.cloud.yaml"
+      - "yq -i '.spec.permissionClaims = [{\"group\": \"apis.kcp.io\", \"resource\": \"apiexports\", \"verbs\": [\"*\"]}, {\"group\": \"ui.platform-mesh.io\", \"resource\": \"contentconfigurations\", \"verbs\": [\"*\"]}, {\"group\": \"rbac.authorization.k8s.io\", \"resource\": \"clusterroles\", \"verbs\": [\"*\"]}, {\"group\": \"rbac.authorization.k8s.io\", \"resource\": \"clusterrolebindings\", \"verbs\": [\"*\"]}, {\"group\": \"apiextensions.k8s.io\", \"resource\": \"customresourcedefinitions\", \"verbs\": [\"*\"]}]' ./config/resources/apiexport-openmcp.cloud.yaml"
       # Create internal APIExport (only crossplanecatalogs, CRD-backed, self-bound in provider workspace)
       - cp ./config/resources/apiexport-openmcp.cloud.yaml ./config/resources/apiexport-openmcp-internal.cloud.yaml
       - "yq -i '.metadata.name = \"openmcp-internal.cloud\"' ./config/resources/apiexport-openmcp-internal.cloud.yaml"
       - "yq -i 'del(.metadata.labels)' ./config/resources/apiexport-openmcp-internal.cloud.yaml"
       - "yq -i 'del(.spec.permissionClaims)' ./config/resources/apiexport-openmcp-internal.cloud.yaml"
-      - "yq -i '.spec.resources = [.spec.resources[] | select(.name == \"crossplanecatalogs\")]' ./config/resources/apiexport-openmcp-internal.cloud.yaml"
-      - rm -f ./config/resources/apiexport-crossplane.services.openmcp.cloud.yaml ./config/resources/apiexport-core.openmcp.cloud.yaml
+      - "yq -i '.spec.resources = [.spec.resources[] | select(.name == \"crossplanecatalogs\" or .name == \"krocatalogs\" or .name == \"fluxcatalogs\" or .name == \"ocmcontrollercatalogs\")]' ./config/resources/apiexport-openmcp-internal.cloud.yaml"
+      - rm -f ./config/resources/apiexport-crossplane.services.openmcp.cloud.yaml ./config/resources/apiexport-core.openmcp.cloud.yaml ./config/resources/apiexport-kro.services.openmcp.cloud.yaml ./config/resources/apiexport-flux.services.openmcp.cloud.yaml ./config/resources/apiexport-ocm.services.openmcp.cloud.yaml
   build:
     cmds:
       - go build ./...
@@ -112,11 +120,11 @@ tasks:
       CONTAINER_RUNTIME: '{{.CONTAINER_RUNTIME | default "docker"}}'
       KIND_CLUSTER:
         sh: kind get clusters 2>/dev/null | grep '^onboarding' | head -1
-      KIND_CONTEXT: kind-{{.KIND_CLUSTER}}
+      KUBECONFIG_PATH: '{{.KUBECONFIG_PATH | default "../../hack/.secret/kubeconfigs/onboarding.kubeconfig"}}'
       DEPLOYMENT_NAME: '{{.DEPLOYMENT_NAME | default "openmcp-init-operator"}}'
       DEPLOYMENT_NAMESPACE: '{{.DEPLOYMENT_NAMESPACE | default "openmcp-system"}}'
       IMAGE_TAG:
-        sh: kubectl --context {{.KIND_CONTEXT}} get deployment {{.DEPLOYMENT_NAME}} -n {{.DEPLOYMENT_NAMESPACE}} -o jsonpath='{.spec.template.spec.containers[0].image}' | cut -d':' -f2
+        sh: KUBECONFIG={{.KUBECONFIG_PATH}} kubectl get deployment {{.DEPLOYMENT_NAME}} -n {{.DEPLOYMENT_NAMESPACE}} -o jsonpath='{.spec.template.spec.containers[0].image}' | cut -d':' -f2
       IMAGE_NAME: openmcp-init-operator:{{.IMAGE_TAG}}
     cmds:
       - echo "Building image with tag {{.IMAGE_TAG}} using {{.CONTAINER_RUNTIME}}"
@@ -129,7 +137,7 @@ tasks:
         else
           kind load docker-image {{.IMAGE_NAME}} --name {{.KIND_CLUSTER}}
         fi
-      - kubectl --context {{.KIND_CONTEXT}} rollout restart deployment/{{.DEPLOYMENT_NAME}} -n {{.DEPLOYMENT_NAMESPACE}}
+      - KUBECONFIG={{.KUBECONFIG_PATH}} kubectl rollout restart deployment/{{.DEPLOYMENT_NAME}} -n {{.DEPLOYMENT_NAMESPACE}}
       - echo "Image loaded and deployment restarted"
 
   start-kcp:

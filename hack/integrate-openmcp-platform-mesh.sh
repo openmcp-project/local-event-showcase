@@ -168,8 +168,8 @@ log "Applying internal APIExport to openmcp provider workspace..."
 KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${APIEXPORT_INTERNAL_FILE}" --server="${OPENMCP_WORKSPACE_URL}" --server-side --force-conflicts
 log "Applied internal APIExport ✓"
 
-# Step 3: Self-bind to internal export (all CRD-backed — crossplanecatalogs is writable here)
-log "Creating APIBinding to internal export (CRD-backed, writable locally)..."
+# Step 3: Self-bind to internal export (all CRD-backed — crossplanecatalogs, krocatalogs, fluxcatalogs, ocmcontrollercatalogs)
+log "Applying APIBinding to internal export..."
 cat <<EOF | KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply --server="${OPENMCP_WORKSPACE_URL}" -f -
 apiVersion: apis.kcp.io/v1alpha2
 kind: APIBinding
@@ -181,7 +181,7 @@ spec:
       path: root:providers:openmcp
       name: openmcp-internal.cloud
 EOF
-log "Created self-binding ✓"
+log "Applied self-binding ✓"
 
 log "Waiting for APIBinding to be ready..."
 KUBECONFIG="${KCP_KUBECONFIG}" kubectl wait --for=condition=Ready apibinding/openmcp-internal.cloud \
@@ -193,43 +193,74 @@ log "Applying instance manifests..."
 KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${OPENMCP_INSTANCES_DIR}" --server="${OPENMCP_WORKSPACE_URL}" --server-side --force-conflicts
 log "Applied instance manifests ✓"
 
-# Step 5: Apply CachedResource for crossplanecatalogs (replicates CRD data to cache)
-log "Applying CachedResource for crossplanecatalogs..."
-KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${OPENMCP_API_DIR}/cachedresource-crossplanecatalogs.yaml" \
-    --server="${OPENMCP_WORKSPACE_URL}" --server-side --force-conflicts
-log "Applied CachedResource ✓"
+# Step 5: Apply CachedResources (replicates CRD data to cache for consumer read-only access)
+# NOTE: CachedResources are currently broken in local KCP. These steps are commented out
+# but ready to enable once the CachedResource controller works in the local setup.
+# When re-enabling, also uncomment Steps 6 and 7 below.
+
+# log "Applying CachedResources..."
+# KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${OPENMCP_API_DIR}/cachedresource-crossplanecatalogs.yaml" \
+#     --server="${OPENMCP_WORKSPACE_URL}" --server-side --force-conflicts
+# KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${OPENMCP_API_DIR}/cachedresource-krocatalogs.yaml" \
+#     --server="${OPENMCP_WORKSPACE_URL}" --server-side --force-conflicts
+# KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${OPENMCP_API_DIR}/cachedresource-fluxcatalogs.yaml" \
+#     --server="${OPENMCP_WORKSPACE_URL}" --server-side --force-conflicts
+# KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${OPENMCP_API_DIR}/cachedresource-ocmcontrollercatalogs.yaml" \
+#     --server="${OPENMCP_WORKSPACE_URL}" --server-side --force-conflicts
+# log "Applied CachedResources ✓"
+warn "Skipping CachedResource apply (broken in local KCP)"
 
 # Step 6: Wait for CachedResource identityHash
-log "Waiting for CachedResource identityHash..."
-for i in $(seq 1 30); do
-    CACHED_IDENTITY_HASH=$(KUBECONFIG="${KCP_KUBECONFIG}" kubectl get cachedresource crossplanecatalogs-v1alpha1 \
-        --server="${OPENMCP_WORKSPACE_URL}" \
-        -o jsonpath='{.status.identityHash}' 2>/dev/null)
-    if [ -n "${CACHED_IDENTITY_HASH}" ]; then
-        break
-    fi
-    if [ "$i" -eq 30 ]; then
-        error "Timed out waiting for CachedResource identityHash"
-        exit 1
-    fi
-    sleep 2
-done
-log "CachedResource identityHash: ${CACHED_IDENTITY_HASH}"
+# NOTE: Commented out — depends on CachedResources (Step 5) which are broken in local KCP.
+# When CachedResources work, uncomment this block for each catalog type.
 
-# Step 7: Patch consumer APIExport with virtual storage identityHash, then apply once
-log "Patching consumer APIExport with virtual storage for crossplanecatalogs..."
-yq -i '(.spec.resources[] | select(.name == "crossplanecatalogs")).storage = {
-  "virtual": {
-    "reference": {
-      "apiGroup": "cache.kcp.io",
-      "kind": "CachedResourceEndpointSlice",
-      "name": "crossplanecatalogs-v1alpha1"
-    },
-    "identityHash": "'"${CACHED_IDENTITY_HASH}"'"
-  }
-}' "${APIEXPORT_FILE}"
+# log "Waiting for CachedResource identityHash..."
+# for CACHED_RESOURCE_NAME in crossplanecatalogs-v1alpha1 krocatalogs-v1alpha1 fluxcatalogs-v1alpha1 ocmcontrollercatalogs-v1alpha1; do
+#     for i in $(seq 1 30); do
+#         CACHED_IDENTITY_HASH=$(KUBECONFIG="${KCP_KUBECONFIG}" kubectl get cachedresource "${CACHED_RESOURCE_NAME}" \
+#             --server="${OPENMCP_WORKSPACE_URL}" \
+#             -o jsonpath='{.status.identityHash}' 2>/dev/null)
+#         if [ -n "${CACHED_IDENTITY_HASH}" ]; then
+#             break
+#         fi
+#         if [ "$i" -eq 30 ]; then
+#             error "Timed out waiting for CachedResource identityHash for ${CACHED_RESOURCE_NAME}"
+#             exit 1
+#         fi
+#         sleep 2
+#     done
+#     log "CachedResource ${CACHED_RESOURCE_NAME} identityHash: ${CACHED_IDENTITY_HASH}"
+# done
+warn "Skipping CachedResource identityHash wait (broken in local KCP)"
+
+# Step 7: Patch consumer APIExport with virtual storage identityHash
+# NOTE: Commented out — depends on CachedResources (Step 5) which are broken in local KCP.
+# When CachedResources work, uncomment and repeat for each catalog type:
+# crossplanecatalogs, krocatalogs, fluxcatalogs, ocmcontrollercatalogs
+
+# log "Patching consumer APIExport with virtual storage for catalogs..."
+# for CATALOG_NAME in crossplanecatalogs krocatalogs fluxcatalogs ocmcontrollercatalogs; do
+#     CACHED_IDENTITY_HASH=$(KUBECONFIG="${KCP_KUBECONFIG}" kubectl get cachedresource "${CATALOG_NAME}-v1alpha1" \
+#         --server="${OPENMCP_WORKSPACE_URL}" \
+#         -o jsonpath='{.status.identityHash}' 2>/dev/null)
+#     yq -i '(.spec.resources[] | select(.name == "'"${CATALOG_NAME}"'")).storage = {
+#       "virtual": {
+#         "reference": {
+#           "apiGroup": "cache.kcp.io",
+#           "kind": "CachedResourceEndpointSlice",
+#           "name": "'"${CATALOG_NAME}"'-v1alpha1"
+#         },
+#         "identityHash": "'"${CACHED_IDENTITY_HASH}"'"
+#       }
+#     }' "${APIEXPORT_FILE}"
+# done
+# KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${APIEXPORT_FILE}" --server="${OPENMCP_WORKSPACE_URL}" --server-side --force-conflicts
+# log "Applied consumer APIExport with virtual storage ✓"
+
+# Instead, just apply the consumer APIExport as-is (CRD-backed storage, no virtual storage)
+log "Applying consumer APIExport (CRD-backed, no virtual storage)..."
 KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${APIEXPORT_FILE}" --server="${OPENMCP_WORKSPACE_URL}" --server-side --force-conflicts
-log "Applied consumer APIExport with virtual storage ✓"
+log "Applied consumer APIExport ✓"
 
 # Step 8: Config manifests (ContentConfiguration, RBAC) for openmcp provider
 log "Applying config manifests..."
@@ -427,6 +458,9 @@ helm upgrade --install openmcp-init-operator "${OPERATOR_DIR}/chart" \
     --set syncAgent.imageRepository="kind-registry:5002/kcp-dev/api-syncagent" \
     --set syncAgent.imageTag="${API_SYNCAGENT_TAG}" \
     --set "syncAgent.apiExportHostPortOverrides={localhost:8443=localhost:31000}" \
+    --set kro.chartURL="oci://registry.k8s.io/kro/charts/kro" \
+    --set flux.chartURL="oci://ghcr.io/fluxcd-community/charts/flux2" \
+    --set ocm.chartURL="oci://ghcr.io/open-component-model/kubernetes/controller/chart" \
     --set runtime.namespace="default" \
     --set log.level="debug" \
     --set log.noJson=true

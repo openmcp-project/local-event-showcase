@@ -14,6 +14,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	corev1alpha1 "github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/api/core/v1alpha1"
+	fluxv1alpha1 "github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/api/flux/v1alpha1"
+	krov1alpha1 "github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/api/kro/v1alpha1"
+	ocmv1alpha1 "github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/api/ocm/v1alpha1"
 	crossplanev1alpha1 "github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/api/v1alpha1"
 	"github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/cmd/operator"
 	"github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/internal/config"
@@ -39,6 +42,9 @@ func init() {
 	utilruntime.Must(mcpv2alpha1.AddToScheme(scheme))
 	utilruntime.Must(corev1alpha1.AddToScheme(scheme))
 	utilruntime.Must(crossplanev1alpha1.AddToScheme(scheme))
+	utilruntime.Must(krov1alpha1.AddToScheme(scheme))
+	utilruntime.Must(fluxv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(ocmv1alpha1.AddToScheme(scheme))
 
 	defaultCfg = platformmeshconfig.NewDefaultConfig()
 	operatorCfg = config.NewOperatorConfig()

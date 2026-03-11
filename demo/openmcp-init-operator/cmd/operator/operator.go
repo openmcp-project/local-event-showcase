@@ -211,6 +211,24 @@ func RunController(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	kroReconciler := controller.NewKROReconciler(*operatorCfg, mgr, onboardingClient, log)
+	if err = kroReconciler.SetupWithManager(mgr, defaultCfg, log); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "KROReconciler")
+		os.Exit(1)
+	}
+
+	fluxReconciler := controller.NewFluxReconciler(*operatorCfg, mgr, onboardingClient, log)
+	if err = fluxReconciler.SetupWithManager(mgr, defaultCfg, log); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "FluxReconciler")
+		os.Exit(1)
+	}
+
+	ocmControllerReconciler := controller.NewOCMControllerReconciler(*operatorCfg, mgr, onboardingClient, log)
+	if err = ocmControllerReconciler.SetupWithManager(mgr, defaultCfg, log); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "OCMControllerReconciler")
+		os.Exit(1)
+	}
+
 	// +kubebuilder:scaffold:builder
 	if metricsCertWatcher != nil {
 		setupLog.Info("Adding metrics certificate watcher to local manager")

@@ -66,6 +66,33 @@ spec:
           {{- range .Values.syncAgent.apiExportHostPortOverrides }}
           - "--sync-agent-apiexport-hostport-override={{ . }}"
           {{- end }}
+          {{- with .Values.kro.chartURL }}
+          - "--kro-chart-url={{ . }}"
+          {{- end }}
+          {{- with .Values.kro.imageRepository }}
+          - "--kro-image-repository={{ . }}"
+          {{- end }}
+          {{- with .Values.kro.imageTag }}
+          - "--kro-image-tag={{ . }}"
+          {{- end }}
+          {{- with .Values.flux.chartURL }}
+          - "--flux-chart-url={{ . }}"
+          {{- end }}
+          {{- with .Values.flux.imageRepository }}
+          - "--flux-image-repository={{ . }}"
+          {{- end }}
+          {{- with .Values.flux.imageTag }}
+          - "--flux-image-tag={{ . }}"
+          {{- end }}
+          {{- with .Values.ocm.chartURL }}
+          - "--ocm-chart-url={{ . }}"
+          {{- end }}
+          {{- with .Values.ocm.imageRepository }}
+          - "--ocm-image-repository={{ . }}"
+          {{- end }}
+          {{- with .Values.ocm.imageTag }}
+          - "--ocm-image-tag={{ . }}"
+          {{- end }}
           {{- with .Values.mcp.kubeconfigSecret }}
           - "--mcp-kubeconfig=/var/opt/mcp/config"
           {{- end }}

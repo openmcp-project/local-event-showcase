@@ -1,0 +1,42 @@
+apiVersion: ui.platform-mesh.io/v1alpha1
+kind: ContentConfiguration
+metadata:
+  labels:
+    ui.platform-mesh.io/entity: core_platform-mesh_io_account
+    ui.platform-mesh.io/content-for: openmcp.cloud
+  name: openmcp-kro-onboarding
+spec:
+  inlineConfiguration:
+    contentType: json
+    content: |-
+      {
+        "name": "openmcp-kro-onboarding",
+        "luigiConfigFragment": {
+          "data": {
+            "nodes": [
+              {
+                "label": "KRO",
+                "pathSegment": "kro",
+                "icon": "developer-settings",
+                "order": 200,
+                "entityType": "main.core_platform-mesh_io_account",
+                "category": {
+                  "id": "openmcp-tools",
+                  "isGroup": true,
+                  "label": "OpenMCP Tools",
+                  "order": 750
+                },
+                "loadingIndicator": {
+                  "enabled": false
+                },
+                "url": "/ui/openmcp/wc/main.js",
+                "webcomponent": {
+                  "selfRegistered": true,
+                  "type": "module",
+                  "tagName": "kro-onboarding"
+                }
+              }
+            ]
+          }
+        }
+      }

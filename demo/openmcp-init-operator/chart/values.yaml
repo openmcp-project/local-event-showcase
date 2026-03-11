@@ -15,6 +15,21 @@ syncAgent:
   imageTag: ""
   apiExportHostPortOverrides: []
 
+kro:
+  chartURL: ""
+  imageRepository: ""
+  imageTag: ""
+
+flux:
+  chartURL: ""
+  imageRepository: ""
+  imageTag: ""
+
+ocm:
+  chartURL: ""
+  imageRepository: ""
+  imageTag: ""
+
 mcp:
   kubeconfigSecret: ""
   issuerURL: ""

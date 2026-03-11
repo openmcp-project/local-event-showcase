@@ -10,12 +10,7 @@ spec:
       name: crossplanecatalogs
       schema: v260308-657c3cf.crossplanecatalogs.crossplane.services.openmcp.cloud
       storage:
-        virtual:
-          reference:
-            apiGroup: cache.kcp.io
-            kind: CachedResourceEndpointSlice
-            name: crossplanecatalogs-v1alpha1
-          identityHash: 15223003454d8ecf91de2e2e44058c8f25870b4a5d05b2e8ae680d7ac441677f
+        crd: {}
     - group: crossplane.services.openmcp.cloud
       name: crossplanes
       schema: v260218-a16964f.crossplanes.crossplane.services.openmcp.cloud
@@ -24,6 +19,36 @@ spec:
     - group: core.openmcp.cloud
       name: managedcontrolplanes
       schema: v260308-d0e7cae.managedcontrolplanes.core.openmcp.cloud
+      storage:
+        crd: {}
+    - group: kro.services.openmcp.cloud
+      name: krocatalogs
+      schema: v260311-2892093.krocatalogs.kro.services.openmcp.cloud
+      storage:
+        crd: {}
+    - group: kro.services.openmcp.cloud
+      name: kros
+      schema: v260311-2892093.kros.kro.services.openmcp.cloud
+      storage:
+        crd: {}
+    - group: flux.services.openmcp.cloud
+      name: fluxcatalogs
+      schema: v260311-2892093.fluxcatalogs.flux.services.openmcp.cloud
+      storage:
+        crd: {}
+    - group: flux.services.openmcp.cloud
+      name: fluxes
+      schema: v260311-2892093.fluxes.flux.services.openmcp.cloud
+      storage:
+        crd: {}
+    - group: ocm.services.openmcp.cloud
+      name: ocmcontrollercatalogs
+      schema: v260311-2892093.ocmcontrollercatalogs.ocm.services.openmcp.cloud
+      storage:
+        crd: {}
+    - group: ocm.services.openmcp.cloud
+      name: ocmcontrollers
+      schema: v260311-2892093.ocmcontrollers.ocm.services.openmcp.cloud
       storage:
         crd: {}
   permissionClaims:
@@ -42,6 +67,10 @@ spec:
         - '*'
     - group: rbac.authorization.k8s.io
       resource: clusterrolebindings
+      verbs:
+        - '*'
+    - group: apiextensions.k8s.io
+      resource: customresourcedefinitions
       verbs:
         - '*'
 status: {}
