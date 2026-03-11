@@ -136,17 +136,8 @@ func buildToolContentConfiguration(toolName string, contentFor string, entry too
 			"label":   entry.CategoryLabel,
 			"order":   entry.CategoryOrder,
 		},
-		"url": "https://{context.organization}.portal.localhost:8443/ui/generic-resource/#/",
-		"context": map[string]any{
-			"resourceDefinition": map[string]any{
-				"group":    entry.Group,
-				"version":  entry.Version,
-				"kind":     entry.Kind,
-				"plural":   entry.Plural,
-				"singular": strings.ToLower(entry.Kind),
-				"scope":    entry.Scope,
-			},
-		},
+		"url":     "https://{context.organization}.portal.localhost:8443/ui/generic-resource/#/",
+		"context": buildContext(entry),
 	}
 
 	fragment := map[string]any{
@@ -184,4 +175,17 @@ func buildToolContentConfiguration(toolName string, contentFor string, entry too
 	}
 
 	return cc, nil
+}
+
+func buildContext(entry tool.ContentConfigEntry) map[string]any {
+	return map[string]any{
+		"resourceDefinition": map[string]any{
+			"group":    entry.Group,
+			"version":  entry.Version,
+			"kind":     entry.Kind,
+			"plural":   entry.Plural,
+			"singular": strings.ToLower(entry.Kind),
+			"scope":    entry.Scope,
+		},
+	}
 }

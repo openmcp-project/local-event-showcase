@@ -37,7 +37,7 @@ var (
 	}
 
 	kroContentConfigs = []tool.ContentConfigEntry{
-		{Group: "kro.run", Version: "v1alpha1", Kind: "ResourceGraphDefinition", Plural: "resourcegraphdefinitions", DisplayLabel: "Resource Graph Definitions", Icon: "org-chart", Order: 100, PathSegment: "resourcegraphdefinitions", CategoryID: "kro-resources", CategoryLabel: "KRO Resources", CategoryOrder: 830, Scope: "Cluster"},
+		{Group: "kro.run", Version: "v1alpha1", Kind: "ResourceGraphDefinition", Plural: "ResourceGraphDefinitions", DisplayLabel: "Resource Graph Definitions", Icon: "org-chart", Order: 100, PathSegment: "resourcegraphdefinitions", CategoryID: "kro-resources", CategoryLabel: "KRO Resources", CategoryOrder: 830, Scope: "Cluster"},
 	}
 )
 
