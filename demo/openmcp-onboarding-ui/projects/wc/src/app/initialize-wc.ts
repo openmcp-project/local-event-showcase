@@ -2,6 +2,7 @@ import { CrossplaneOnboardingComponent } from './crossplane-onboarding/crossplan
 import { KROOnboardingComponent } from './kro-onboarding/kro-onboarding.component';
 import { FluxOnboardingComponent } from './flux-onboarding/flux-onboarding.component';
 import { OCMOnboardingComponent } from './ocm-onboarding/ocm-onboarding.component';
+import { FeaturesComponent } from './features/features.component';
 import { Injector, inject } from '@angular/core';
 import { createCustomElement } from '@angular/elements';
 
@@ -13,6 +14,7 @@ export function initializeWC() {
   const kroEl = createCustomElement(KROOnboardingComponent, { injector });
   const fluxEl = createCustomElement(FluxOnboardingComponent, { injector });
   const ocmEl = createCustomElement(OCMOnboardingComponent, { injector });
+  const featuresEl = createCustomElement(FeaturesComponent, { injector });
 
   // @ts-expect-error global
   window.Luigi._registerWebcomponent(source, crossplaneEl);
@@ -20,4 +22,5 @@ export function initializeWC() {
   customElements.define('kro-onboarding', kroEl);
   customElements.define('flux-onboarding', fluxEl);
   customElements.define('ocm-onboarding', ocmEl);
+  customElements.define('features-view', featuresEl);
 }

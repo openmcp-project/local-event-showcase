@@ -48,6 +48,7 @@ tasks:
     internal: true
     cmds:
       - "yq -i '.spec.permissionClaims = [{\"resource\": \"secrets\", \"verbs\": [\"*\"]}]' ./config/resources/apiexport-gardener.cloud.yaml"
+      - "yq -i '.metadata.labels.\"ui.platform-mesh.io/content-for\" = \"gardener.cloud\"' ./config/resources/apiexport-gardener.cloud.yaml"
   build:
     cmds:
       - go build ./...

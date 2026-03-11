@@ -135,4 +135,17 @@ export class KROOnboardingService {
         map((result) => result.data!.kro_services_openmcp_cloud_v1alpha1_kro),
       );
   }
+
+  public deleteKRO(): Observable<void> {
+    const mutation = gql`
+      mutation {
+        kro_services_openmcp_cloud {
+          v1alpha1 {
+            deleteKRO(name: "default")
+          }
+        }
+      }
+    `;
+    return this.apollo.mutate({ mutation }).pipe(map(() => void 0));
+  }
 }

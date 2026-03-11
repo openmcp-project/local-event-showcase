@@ -18,7 +18,7 @@ spec:
                 "label": "Gardener Project",
                 "pathSegment": "gardenerprojects",
                 "navigationContext": "gardenerprojects",
-                "icon": "tree",
+                "icon": "https://dashboard.garden.canary.k8s.ondemand.com/static/assets/logo.svg",
                 "order": 100,
                 "hideSideNav": false,
                 "keepSelectedForChildren": true,

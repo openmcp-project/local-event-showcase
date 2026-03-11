@@ -27,8 +27,8 @@ import (
 
 const (
 	DeploySyncSubroutineName = "DeploySyncAgent"
-	apiExportName            = "crossplane.services.openmcp.cloud"
-	apiExportBindRoleName    = "crossplane-apiexport-bind"
+	apiExportName            = "services.openmcp.cloud"
+	apiExportBindRoleName    = "services-apiexport-bind"
 )
 
 type SetupSyncAgentSubroutine struct {

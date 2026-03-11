@@ -35,7 +35,7 @@ const (
 	entityLabel     = "ui.platform-mesh.io/entity"
 	entityValue     = "core_platform-mesh_io_account"
 	contentForLabel = "ui.platform-mesh.io/content-for"
-	contentForValue = "crossplane.services.openmcp.cloud"
+	contentForValue = "services.openmcp.cloud"
 )
 
 //+kubebuilder:rbac:groups=ui.platform-mesh.io,resources=contentconfigurations,verbs=get;list;watch;create;update;patch;delete
@@ -179,12 +179,12 @@ func buildContentConfiguration(prefix string, resource ResourcesToPublish, meta 
 		"hideSideNav":             false,
 		"keepSelectedForChildren": true,
 		"virtualTree":             true,
-		"entityType":              "main.core_platform-mesh_io_account",
+		"entityType":              "main.core_platform-mesh_io_account.core_openmcp_cloud_managedcontrolplane",
 		"loadingIndicator":        map[string]any{"enabled": false},
 		"category": map[string]any{
-			"id":      "crossplane",
+			"id":      "k8s-provider",
 			"isGroup": true,
-			"label":   "Crossplane",
+			"label":   "Kubernetes Provider",
 			"order":   800,
 		},
 		"url": "https://{context.organization}.portal.localhost:8443/ui/generic-resource/#/",

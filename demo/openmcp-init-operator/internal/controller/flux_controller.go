@@ -36,7 +36,13 @@ var (
 		HelmReleaseName: "flux",
 	}
 
-	fluxContentConfigs []tool.ContentConfigEntry
+	fluxContentConfigs = []tool.ContentConfigEntry{
+		{Group: "source.toolkit.fluxcd.io", Version: "v1", Kind: "GitRepository", Plural: "gitrepositories", DisplayLabel: "Git Repositories", Icon: "source-code", Order: 100, PathSegment: "gitrepositories", CategoryID: "flux-sources", CategoryLabel: "Flux Sources", CategoryOrder: 810, Scope: "Namespaced"},
+		{Group: "source.toolkit.fluxcd.io", Version: "v1", Kind: "HelmRepository", Plural: "helmrepositories", DisplayLabel: "Helm Repositories", Icon: "database", Order: 110, PathSegment: "helmrepositories", CategoryID: "flux-sources", CategoryLabel: "Flux Sources", CategoryOrder: 810, Scope: "Namespaced"},
+		{Group: "source.toolkit.fluxcd.io", Version: "v1beta2", Kind: "OCIRepository", Plural: "ocirepositories", DisplayLabel: "OCI Repositories", Icon: "shipping-status", Order: 120, PathSegment: "ocirepositories", CategoryID: "flux-sources", CategoryLabel: "Flux Sources", CategoryOrder: 810, Scope: "Namespaced"},
+		{Group: "kustomize.toolkit.fluxcd.io", Version: "v1", Kind: "Kustomization", Plural: "kustomizations", DisplayLabel: "Kustomizations", Icon: "customize", Order: 200, PathSegment: "kustomizations", CategoryID: "flux-delivery", CategoryLabel: "Flux Delivery", CategoryOrder: 820, Scope: "Namespaced"},
+		{Group: "helm.toolkit.fluxcd.io", Version: "v2", Kind: "HelmRelease", Plural: "helmreleases", DisplayLabel: "Helm Releases", Icon: "deploy", Order: 210, PathSegment: "helmreleases", CategoryID: "flux-delivery", CategoryLabel: "Flux Delivery", CategoryOrder: 820, Scope: "Namespaced"},
+	}
 )
 
 type FluxReconciler struct {
@@ -84,7 +90,7 @@ func NewFluxReconciler(cfg config.OperatorConfig, mgr mcmanager.Manager, onboard
 		subs = append(subs, subroutines.NewInstallToolSubroutine(provider, onboardingClient, &cfg, &toolCfg))
 	}
 	if cfg.Subroutines.DeployContentConfigurations.Enabled {
-		subs = append(subs, subroutines.NewDeployToolContentConfigurationsSubroutine(provider, "flux", "flux.services.openmcp.cloud", fluxContentConfigs, "flux.openmcp.io/managed-content-configurations"))
+		subs = append(subs, subroutines.NewDeployToolContentConfigurationsSubroutine(provider, "flux", "services.openmcp.cloud", fluxContentConfigs, "flux.openmcp.io/managed-content-configurations"))
 	}
 
 	return &FluxReconciler{

@@ -52,7 +52,7 @@ func (d *DeployToolContentConfigurationsSubroutine) Finalizers(_ runtimeobject.R
 	return []string{d.finalizerName}
 }
 
-func (d *DeployToolContentConfigurationsSubroutine) Process(ctx context.Context, _ runtimeobject.RuntimeObject) (ctrl.Result, errors.OperatorError) {
+func (d *DeployToolContentConfigurationsSubroutine) Process(ctx context.Context, runtimeObj runtimeobject.RuntimeObject) (ctrl.Result, errors.OperatorError) {
 	log := logger.LoadLoggerFromContext(ctx)
 
 	kcpClient, err := d.kcpProvider.KCPClientFromContext(ctx)
@@ -83,6 +83,7 @@ func (d *DeployToolContentConfigurationsSubroutine) Process(ctx context.Context,
 		log.Info().Str("name", cc.GetName()).Msg("ContentConfiguration created/updated")
 	}
 
+	setPhase(runtimeObj, "Ready")
 	return ctrl.Result{}, nil
 }
 
@@ -127,7 +128,7 @@ func buildToolContentConfiguration(toolName string, contentFor string, entry too
 		"hideSideNav":             false,
 		"keepSelectedForChildren": true,
 		"virtualTree":             true,
-		"entityType":              "main.core_platform-mesh_io_account",
+		"entityType":              "main.core_platform-mesh_io_account.core_openmcp_cloud_managedcontrolplane",
 		"loadingIndicator":        map[string]any{"enabled": false},
 		"category": map[string]any{
 			"id":      entry.CategoryID,
@@ -143,7 +144,7 @@ func buildToolContentConfiguration(toolName string, contentFor string, entry too
 				"kind":     entry.Kind,
 				"plural":   entry.Plural,
 				"singular": strings.ToLower(entry.Kind),
-				"scope":    "Cluster",
+				"scope":    entry.Scope,
 			},
 		},
 	}

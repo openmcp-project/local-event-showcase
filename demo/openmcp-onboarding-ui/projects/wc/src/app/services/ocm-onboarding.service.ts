@@ -138,4 +138,17 @@ export class OCMOnboardingService {
         map((result) => result.data!.ocm_services_openmcp_cloud_v1alpha1_ocmcontroller),
       );
   }
+
+  public deleteOCMController(): Observable<void> {
+    const mutation = gql`
+      mutation {
+        ocm_services_openmcp_cloud {
+          v1alpha1 {
+            deleteOCMController(name: "default")
+          }
+        }
+      }
+    `;
+    return this.apollo.mutate({ mutation }).pipe(map(() => void 0));
+  }
 }

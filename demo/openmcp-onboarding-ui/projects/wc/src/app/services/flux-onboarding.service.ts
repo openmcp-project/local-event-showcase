@@ -140,4 +140,17 @@ export class FluxOnboardingService {
         map((result) => result.data!.flux_services_openmcp_cloud_v1alpha1_flux),
       );
   }
+
+  public deleteFlux(): Observable<void> {
+    const mutation = gql`
+      mutation {
+        flux_services_openmcp_cloud {
+          v1alpha1 {
+            deleteFlux(name: "default")
+          }
+        }
+      }
+    `;
+    return this.apollo.mutate({ mutation }).pipe(map(() => void 0));
+  }
 }

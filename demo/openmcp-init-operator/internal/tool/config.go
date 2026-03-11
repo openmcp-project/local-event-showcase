@@ -14,6 +14,7 @@ type ToolConfig struct {
 	FinalizerPrefix string
 	HelmChartURL    string
 	HelmReleaseName string
+	SkipCRDs        bool // Skip CRD installation via Helm (CRDs deployed separately to KCP workspace)
 	HelmValuesFunc  func(version string, kcpKubeconfig string, platformMeshIP string) map[string]any
 	PostInstallFunc func(ctx context.Context, mcpClient client.Client, kubeconfigSecret string, platformMeshIP string) error
 	ContentConfigs  []ContentConfigEntry
@@ -32,4 +33,5 @@ type ContentConfigEntry struct {
 	CategoryID    string
 	CategoryLabel string
 	CategoryOrder int
+	Scope         string // "Cluster" or "Namespaced"
 }

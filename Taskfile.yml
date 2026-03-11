@@ -348,6 +348,31 @@ tasks:
         done
       - rm -rf {{.OPENMCP_KUBECONFIG_DIR}}
 
+  deploy-ui:
+    desc: Build and redeploy only the openmcp-onboarding-ui to the platform-mesh cluster
+    vars:
+      PLATFORM_MESH_KUBECONFIG: hack/.secret/kubeconfigs/platform-mesh.kubeconfig
+      ONBOARDING_UI_DIR: demo/openmcp-onboarding-ui
+      ONBOARDING_UI_IMAGE:
+        sh: echo "openmcp-onboarding-ui:local-$(date +%s)"
+    cmds:
+      - |
+        if [ ! -f {{.PLATFORM_MESH_KUBECONFIG}} ]; then
+          echo "Error: {{.PLATFORM_MESH_KUBECONFIG}} not found. Run 'task integrate' first."
+          exit 1
+        fi
+      - docker build -t {{.ONBOARDING_UI_IMAGE}} {{.ONBOARDING_UI_DIR}}
+      - kind load docker-image {{.ONBOARDING_UI_IMAGE}} --name platform-mesh
+      - |
+        IMAGE="{{.ONBOARDING_UI_IMAGE}}"
+        helm upgrade --install openmcp-onboarding-ui {{.ONBOARDING_UI_DIR}}/chart \
+          --kubeconfig={{.PLATFORM_MESH_KUBECONFIG}} \
+          --namespace=platform-mesh-system \
+          --set image.name="${IMAGE%:*}" \
+          --set image.tag="${IMAGE#*:}" \
+          --set image.pullPolicy=Never
+      - KUBECONFIG={{.PLATFORM_MESH_KUBECONFIG}} kubectl rollout status deployment/openmcp-onboarding-ui --namespace=platform-mesh-system --timeout=120s
+
   integrate:
     desc: Run the openmcp platform-mesh integration script
     cmds:

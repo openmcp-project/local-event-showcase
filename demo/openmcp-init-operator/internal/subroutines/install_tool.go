@@ -176,7 +176,8 @@ func (s *InstallToolSubroutine) Process(ctx context.Context, runtimeObj runtimeo
 		ChartName:   s.toolCfg.HelmChartURL,
 		Version:     chartVersion,
 		Namespace:   "default",
-		UpgradeCRDs: true,
+		SkipCRDs:    s.toolCfg.SkipCRDs,
+		UpgradeCRDs: !s.toolCfg.SkipCRDs,
 		ValuesYaml:  valuesYaml,
 	}, nil)
 	if err != nil {
@@ -193,7 +194,6 @@ func (s *InstallToolSubroutine) Process(ctx context.Context, runtimeObj runtimeo
 	}
 
 	log.Info().Str("tool", s.toolCfg.Name).Msg("InstallTool: completed")
-	setPhase(runtimeObj, "Ready")
 	return ctrl.Result{}, nil
 }
 

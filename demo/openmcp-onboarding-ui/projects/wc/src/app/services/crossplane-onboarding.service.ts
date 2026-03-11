@@ -55,7 +55,7 @@ const CHECK_API_BINDING = gql`
   query {
     apis_kcp_io {
       v1alpha2 {
-        APIBinding(name: "crossplane.services.openmcp.cloud") {
+        APIBinding(name: "services.openmcp.cloud") {
           metadata {
             name
             resourceVersion
@@ -95,11 +95,11 @@ const CREATE_API_BINDING = gql`
       v1alpha2 {
         createAPIBinding(
           object: {
-            metadata: { name: "crossplane.services.openmcp.cloud" }
+            metadata: { name: "services.openmcp.cloud" }
             spec: {
               reference: {
                 export: {
-                  name: "crossplane.services.openmcp.cloud"
+                  name: "services.openmcp.cloud"
                 }
               }
             }
@@ -117,7 +117,7 @@ const CREATE_API_BINDING = gql`
 const WATCH_API_BINDING = gql`
   subscription {
     apis_kcp_io_v1alpha2_apibinding(
-      name: "crossplane.services.openmcp.cloud"
+      name: "services.openmcp.cloud"
       subscribeToAll: true
     ) {
       type
@@ -310,11 +310,11 @@ export class CrossplaneOnboardingService {
         apis_kcp_io {
           v1alpha2 {
             updateAPIBinding(
-              name: "crossplane.services.openmcp.cloud"
+              name: "services.openmcp.cloud"
               object: {
                 metadata: { resourceVersion: "${binding.metadata.resourceVersion}" }
                 spec: {
-                  reference: { export: { name: "crossplane.services.openmcp.cloud" } }
+                  reference: { export: { name: "services.openmcp.cloud" } }
                   permissionClaims: [
                     ${claimsInput}
                   ]
@@ -440,5 +440,18 @@ export class CrossplaneOnboardingService {
       .pipe(
         map((result) => result.data!.crossplane_services_openmcp_cloud_v1alpha1_crossplane),
       );
+  }
+
+  public deleteCrossplane(): Observable<void> {
+    const mutation = gql`
+      mutation {
+        crossplane_services_openmcp_cloud {
+          v1alpha1 {
+            deleteCrossplane(name: "default")
+          }
+        }
+      }
+    `;
+    return this.apollo.mutate({ mutation }).pipe(map(() => void 0));
   }
 }
