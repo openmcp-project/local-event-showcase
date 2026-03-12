@@ -2,6 +2,10 @@
 
 # local-event-showcase
 
+## Disclaimer
+
+The content of this repository is purely meant for showcase and demonstration purposes. It is not recommended for production use.
+
 ## About this project
 
 This repo contains scripts and documentation on how to setup a local platform of Gardener, OpenMCP and Platform Mesh to use in a showcase on conferences or events.
