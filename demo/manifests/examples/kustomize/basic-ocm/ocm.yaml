@@ -1,0 +1,156 @@
+# OCM Repository — points to the OCI registry hosting the platform-mesh components
+apiVersion: delivery.ocm.software/v1alpha1
+kind: Repository
+metadata:
+  name: platform-mesh
+  namespace: default
+spec:
+  repositorySpec:
+    baseUrl: ghcr.io/platform-mesh
+    type: OCIRegistry
+  interval: 1m
+
+---
+# OCM Component — resolves a specific component version from the repository
+apiVersion: delivery.ocm.software/v1alpha1
+kind: Component
+metadata:
+  name: platform-mesh
+  namespace: default
+spec:
+  repositoryRef:
+    name: platform-mesh
+  component: github.com/platform-mesh/platform-mesh
+  semver: "0.3.0-build.578"
+  interval: 1m
+  ocmConfig:
+    - apiVersion: delivery.ocm.software/v1alpha1
+      kind: Repository
+      name: platform-mesh
+      namespace: default
+
+---
+# OCM Resource — platform-mesh-operator Helm chart
+apiVersion: delivery.ocm.software/v1alpha1
+kind: Resource
+metadata:
+  name: platform-mesh-operator
+  namespace: default
+  labels:
+    artifact: chart
+spec:
+  componentRef:
+    name: platform-mesh
+  interval: 3m
+  resource:
+    byReference:
+      referencePath:
+        - name: platform-mesh-operator
+      resource:
+        name: chart
+  skipVerify: true
+
+---
+# OCM Resource — platform-mesh-operator container image
+apiVersion: delivery.ocm.software/v1alpha1
+kind: Resource
+metadata:
+  name: platform-mesh-operator-image
+  namespace: default
+  labels:
+    artifact: image
+spec:
+  componentRef:
+    name: platform-mesh
+  interval: 3m
+  resource:
+    byReference:
+      referencePath:
+        - name: platform-mesh-operator
+      resource:
+        name: image
+  skipVerify: true
+
+---
+# OCM Resource — account-operator Helm chart
+apiVersion: delivery.ocm.software/v1alpha1
+kind: Resource
+metadata:
+  name: account-operator
+  namespace: default
+  labels:
+    artifact: chart
+spec:
+  componentRef:
+    name: platform-mesh
+  interval: 3m
+  resource:
+    byReference:
+      referencePath:
+        - name: account-operator
+      resource:
+        name: chart
+  skipVerify: true
+
+---
+# OCM Resource — account-operator container image
+apiVersion: delivery.ocm.software/v1alpha1
+kind: Resource
+metadata:
+  name: account-operator-image
+  namespace: default
+  labels:
+    artifact: image
+spec:
+  componentRef:
+    name: platform-mesh
+  interval: 3m
+  resource:
+    byReference:
+      referencePath:
+        - name: account-operator
+      resource:
+        name: image
+  skipVerify: true
+
+---
+# OCM Resource — keycloak Helm chart
+apiVersion: delivery.ocm.software/v1alpha1
+kind: Resource
+metadata:
+  name: keycloak
+  namespace: default
+  labels:
+    artifact: chart
+spec:
+  componentRef:
+    name: platform-mesh
+  interval: 3m
+  resource:
+    byReference:
+      referencePath:
+        - name: keycloak
+      resource:
+        name: chart
+  skipVerify: true
+
+---
+# OCM Resource — keycloak container image
+apiVersion: delivery.ocm.software/v1alpha1
+kind: Resource
+metadata:
+  name: keycloak-image
+  namespace: default
+  labels:
+    artifact: image
+spec:
+  componentRef:
+    name: platform-mesh
+  interval: 3m
+  resource:
+    byReference:
+      referencePath:
+        - name: keycloak
+      resource:
+        name: image
+  skipVerify: true

@@ -37,10 +37,10 @@ var (
 	}
 
 	ocmContentConfigs = []tool.ContentConfigEntry{
-		{Group: "delivery.ocm.software", Version: "v1alpha1", Kind: "Component", Plural: "components", DisplayLabel: "Components", Icon: "product", Order: 100, PathSegment: "components", CategoryID: "ocm-delivery", CategoryLabel: "OCM Delivery", CategoryOrder: 840, Scope: "Namespaced"},
-		{Group: "delivery.ocm.software", Version: "v1alpha1", Kind: "Resource", Plural: "resources", DisplayLabel: "Resources", Icon: "document", Order: 110, PathSegment: "resources", CategoryID: "ocm-delivery", CategoryLabel: "OCM Delivery", CategoryOrder: 840, Scope: "Namespaced"},
-		{Group: "delivery.ocm.software", Version: "v1alpha1", Kind: "Repository", Plural: "repositories", DisplayLabel: "Repositories", Icon: "folder-full", Order: 120, PathSegment: "repositories", CategoryID: "ocm-delivery", CategoryLabel: "OCM Delivery", CategoryOrder: 840, Scope: "Namespaced"},
-		{Group: "delivery.ocm.software", Version: "v1alpha1", Kind: "Deployer", Plural: "deployers", DisplayLabel: "Deployers", Icon: "deploy", Order: 130, PathSegment: "deployers", CategoryID: "ocm-delivery", CategoryLabel: "OCM Delivery", CategoryOrder: 840, Scope: "Cluster"},
+		{Group: "delivery.ocm.software", Version: "v1alpha1", Kind: "Component", Plural: "Components", DisplayLabel: "Components", Icon: "product", Order: 100, PathSegment: "components", CategoryID: "ocm-delivery", CategoryLabel: "OCM Delivery", CategoryOrder: 840, Scope: "Namespaced"},
+		{Group: "delivery.ocm.software", Version: "v1alpha1", Kind: "Resource", Plural: "Resources", DisplayLabel: "Resources", Icon: "document", Order: 110, PathSegment: "resources", CategoryID: "ocm-delivery", CategoryLabel: "OCM Delivery", CategoryOrder: 840, Scope: "Namespaced"},
+		{Group: "delivery.ocm.software", Version: "v1alpha1", Kind: "Repository", Plural: "Repositories", DisplayLabel: "Repositories", Icon: "folder-full", Order: 120, PathSegment: "repositories", CategoryID: "ocm-delivery", CategoryLabel: "OCM Delivery", CategoryOrder: 840, Scope: "Namespaced"},
+		{Group: "delivery.ocm.software", Version: "v1alpha1", Kind: "Deployer", Plural: "Deployers", DisplayLabel: "Deployers", Icon: "deploy", Order: 130, PathSegment: "deployers", CategoryID: "ocm-delivery", CategoryLabel: "OCM Delivery", CategoryOrder: 840, Scope: "Cluster"},
 	}
 )
 

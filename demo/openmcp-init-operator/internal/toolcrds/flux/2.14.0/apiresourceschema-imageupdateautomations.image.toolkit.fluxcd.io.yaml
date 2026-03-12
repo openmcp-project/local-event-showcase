@@ -1,7 +1,7 @@
 apiVersion: apis.kcp.io/v1alpha1
 kind: APIResourceSchema
 metadata:
-  name: v260311-6f8b788.imageupdateautomations.image.toolkit.fluxcd.io
+  name: v260312-1222c77.imageupdateautomations.image.toolkit.fluxcd.io
 spec:
   group: image.toolkit.fluxcd.io
   names:

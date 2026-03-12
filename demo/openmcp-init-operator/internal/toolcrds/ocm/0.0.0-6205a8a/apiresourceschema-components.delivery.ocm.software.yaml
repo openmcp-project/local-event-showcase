@@ -1,7 +1,7 @@
 apiVersion: apis.kcp.io/v1alpha1
 kind: APIResourceSchema
 metadata:
-  name: v260311-6f8b788.components.delivery.ocm.software
+  name: v260312-1222c77.components.delivery.ocm.software
 spec:
   group: delivery.ocm.software
   names:
