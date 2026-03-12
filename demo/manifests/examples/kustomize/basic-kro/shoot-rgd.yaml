@@ -53,7 +53,7 @@ spec:
           credentials:
             source: Secret
             secretRef:
-              name: gardener-project-kubeconfig
+              name: gardener-project-${schema.metadata.name}-kubeconfig
               namespace: ${schema.metadata.namespace}
               key: kubeconfig
 
