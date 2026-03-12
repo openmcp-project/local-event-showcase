@@ -1,7 +1,7 @@
 apiVersion: apis.kcp.io/v1alpha1
 kind: APIResourceSchema
 metadata:
-  name: v260312-1222c77.gitrepositories.source.toolkit.fluxcd.io
+  name: v260312-e1a46fc.gitrepositories.source.toolkit.fluxcd.io
 spec:
   group: source.toolkit.fluxcd.io
   names:

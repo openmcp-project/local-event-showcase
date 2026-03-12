@@ -157,6 +157,56 @@ func TestDeployContentConfigurationsSubroutine_Process(t *testing.T) {
 				assert.Equal(t, "json", inline["contentType"])
 			},
 		},
+		{
+			name: "creates ContentConfigurations for provider-gardener-auth",
+			providers: []*crossplanev1alpha1.CrossplaneProviderConfig{
+				{Name: "provider-gardener-auth", Version: "0.0.6"},
+			},
+			validate: func(t *testing.T, kcpClient client.Client) {
+				expectedNames := []string{
+					"openmcp-crossplane-gardener-auth-adminkubeconfigrequest",
+					"openmcp-crossplane-gardener-auth-providerconfig",
+					"openmcp-crossplane-gardener-auth-providerconfigusage",
+					"openmcp-crossplane-gardener-auth-storeconfig",
+				}
+				ctx := context.Background()
+				for _, name := range expectedNames {
+					cc := newCC(name)
+					err := kcpClient.Get(ctx, types.NamespacedName{Name: name}, cc)
+					require.NoError(t, err, "ContentConfiguration %q should exist", name)
+
+					labels := cc.GetLabels()
+					assert.Equal(t, entityValue, labels[entityLabel], "entity label for %s", name)
+					assert.Equal(t, contentForValue, labels[contentForLabel], "content-for label for %s", name)
+				}
+			},
+		},
+		{
+			name: "creates ContentConfigurations for both providers",
+			providers: []*crossplanev1alpha1.CrossplaneProviderConfig{
+				{Name: "provider-kubernetes", Version: "0.15.0"},
+				{Name: "provider-gardener-auth", Version: "0.0.6"},
+			},
+			validate: func(t *testing.T, kcpClient client.Client) {
+				k8sNames := []string{
+					"openmcp-crossplane-k8s-providerconfig",
+					"openmcp-crossplane-k8s-object",
+					"openmcp-crossplane-k8s-observedobjectcollection",
+				}
+				gardenerNames := []string{
+					"openmcp-crossplane-gardener-auth-adminkubeconfigrequest",
+					"openmcp-crossplane-gardener-auth-providerconfig",
+					"openmcp-crossplane-gardener-auth-providerconfigusage",
+					"openmcp-crossplane-gardener-auth-storeconfig",
+				}
+				ctx := context.Background()
+				for _, name := range append(k8sNames, gardenerNames...) {
+					cc := newCC(name)
+					err := kcpClient.Get(ctx, types.NamespacedName{Name: name}, cc)
+					require.NoError(t, err, "ContentConfiguration %q should exist", name)
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {

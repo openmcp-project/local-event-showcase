@@ -128,6 +128,27 @@ func TestCreateCrossplaneSubroutine_Process(t *testing.T) {
 			existingObjects: nil,
 			expectError:     false,
 		},
+		{
+			name: "filters out manual provider gardener-auth from MCP",
+			sourceCrossplane: &crossplanev1alpha1.Crossplane{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "source-crossplane",
+					Namespace: "source-namespace",
+				},
+				Spec: crossplanev1alpha1.CrossplaneSpec{
+					Version: "1.15.0",
+					Providers: []*crossplanev1alpha1.CrossplaneProviderConfig{
+						{Name: "provider-kubernetes", Version: "0.15.0"},
+						{Name: "provider-gardener-auth", Version: "0.0.6"},
+					},
+				},
+			},
+			existingObjects: nil,
+			expectError:     false,
+			validateResult: func(t *testing.T, builder *fake.ClientBuilder, result ctrl.Result) {
+				assert.Equal(t, ctrl.Result{}, result)
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -161,7 +182,7 @@ func TestCreateCrossplaneSubroutine_Process(t *testing.T) {
 				err := mcpClient.Get(ctx, types.NamespacedName{Name: clusterID, Namespace: mcpNamespace}, targetCrossplane)
 				require.NoError(t, err)
 				assert.Equal(t, tt.sourceCrossplane.Spec.Version, targetCrossplane.Spec.Version)
-				assert.Equal(t, len(tt.sourceCrossplane.Spec.Providers), len(targetCrossplane.Spec.Providers))
+				assert.Equal(t, len(filterManualProviders(tt.sourceCrossplane.Spec.Providers)), len(targetCrossplane.Spec.Providers))
 			}
 
 			if tt.validateResult != nil {

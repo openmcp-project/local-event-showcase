@@ -9,3 +9,6 @@ spec:
     - name: provider-kubernetes
       versions:
         - "v0.15.0"
+    - name: provider-gardener-auth
+      versions:
+        - "0.0.6"

@@ -74,6 +74,11 @@ func (i *InitializePublishedResourcesSubroutine) finalizeResources(ctx context.C
 		}
 	}
 
+	// Clean up manual provider resources from the MCP cluster.
+	if err := deleteGardenerAuthProvider(ctx, mcpClient); err != nil {
+		return ctrl.Result{}, errors.NewOperatorError(err, true, true)
+	}
+
 	return ctrl.Result{}, nil
 }
 
@@ -177,6 +182,15 @@ func (i *InitializePublishedResourcesSubroutine) initializeResources(ctx context
 		}
 	}
 
+	// Install manual providers directly on the MCP cluster.
+	for _, mp := range getManualProviders(crossplane.Spec.Providers) {
+		if mp.Name == gardenerAuthProviderName {
+			if err := ensureGardenerAuthProvider(ctx, mcpClient, mp.Version); err != nil {
+				return ctrl.Result{}, errors.NewOperatorError(err, true, true)
+			}
+		}
+	}
+
 	return ctrl.Result{}, nil
 }
 
@@ -261,6 +275,10 @@ var providerResourceMap = map[string]providerResources{
 		prefix:    "k8s",
 		resources: k8sProviderResourcesToPublish,
 	},
+	gardenerAuthProviderName: {
+		prefix:    "gardener-auth",
+		resources: gardenerAuthProviderResourcesToPublish,
+	},
 }
 
 func resourcesToPublishForProviders(providers []*crossplanev1alpha1.CrossplaneProviderConfig) []providerResources {
@@ -296,6 +314,29 @@ var k8sProviderResourcesToPublish = []ResourcesToPublish{
 	{
 		Group:   "kubernetes.crossplane.io",
 		Kind:    "ObservedObjectCollection",
+		Version: "v1alpha1",
+	},
+}
+
+var gardenerAuthProviderResourcesToPublish = []ResourcesToPublish{
+	{
+		Group:   "gardener.orchestrate.cloud.sap",
+		Kind:    "AdminKubeconfigRequest",
+		Version: "v1alpha1",
+	},
+	{
+		Group:   "gardener.orchestrate.cloud.sap",
+		Kind:    "ProviderConfig",
+		Version: "v1alpha1",
+	},
+	{
+		Group:   "gardener.orchestrate.cloud.sap",
+		Kind:    "ProviderConfigUsage",
+		Version: "v1alpha1",
+	},
+	{
+		Group:   "gardener.orchestrate.cloud.sap",
+		Kind:    "StoreConfig",
 		Version: "v1alpha1",
 	},
 }

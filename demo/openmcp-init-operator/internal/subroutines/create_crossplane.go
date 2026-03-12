@@ -100,7 +100,7 @@ func (r *CreateCrossplaneSubroutine) Process(ctx context.Context, runtimeObj run
 
 	_, err := controllerutil.CreateOrUpdate(ctx, r.onboardingClient, targetCrossplane, func() error {
 		targetCrossplane.Spec.Version = sourceCrossplane.Spec.Version
-		targetCrossplane.Spec.Providers = deepCopyProviders(sourceCrossplane.Spec.Providers)
+		targetCrossplane.Spec.Providers = deepCopyProviders(filterManualProviders(sourceCrossplane.Spec.Providers))
 		return nil
 	})
 	if err != nil {

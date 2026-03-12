@@ -70,8 +70,12 @@ func (d *DeployContentConfigurationsSubroutine) Process(ctx context.Context, run
 
 	resources := resourcesToPublishForProviders(sourceCrossplane.Spec.Providers)
 	for _, entry := range resources {
+		providerMeta, ok := contentConfigMetadataByProvider[entry.prefix]
+		if !ok {
+			continue
+		}
 		for _, resource := range entry.resources {
-			meta, ok := contentConfigMetadataMap[resource.Kind]
+			meta, ok := providerMeta[resource.Kind]
 			if !ok {
 				continue
 			}
@@ -114,8 +118,12 @@ func (d *DeployContentConfigurationsSubroutine) Finalize(ctx context.Context, ru
 
 	resources := resourcesToPublishForProviders(sourceCrossplane.Spec.Providers)
 	for _, entry := range resources {
+		providerMeta, ok := contentConfigMetadataByProvider[entry.prefix]
+		if !ok {
+			continue
+		}
 		for _, resource := range entry.resources {
-			if _, ok := contentConfigMetadataMap[resource.Kind]; !ok {
+			if _, ok := providerMeta[resource.Kind]; !ok {
 				continue
 			}
 
@@ -142,24 +150,52 @@ type contentConfigMeta struct {
 	PathSegment  string
 }
 
-var contentConfigMetadataMap = map[string]contentConfigMeta{
-	"ProviderConfig": {
-		DisplayLabel: "ProviderConfigs",
-		Icon:         "settings",
-		Order:        100,
-		PathSegment:  "providerconfigs",
+var contentConfigMetadataByProvider = map[string]map[string]contentConfigMeta{
+	"k8s": {
+		"ProviderConfig": {
+			DisplayLabel: "ProviderConfigs",
+			Icon:         "settings",
+			Order:        100,
+			PathSegment:  "providerconfigs",
+		},
+		"Object": {
+			DisplayLabel: "Objects",
+			Icon:         "document",
+			Order:        110,
+			PathSegment:  "objects",
+		},
+		"ObservedObjectCollection": {
+			DisplayLabel: "ObservedObjectCollections",
+			Icon:         "list",
+			Order:        120,
+			PathSegment:  "observedobjectcollections",
+		},
 	},
-	"Object": {
-		DisplayLabel: "Objects",
-		Icon:         "document",
-		Order:        110,
-		PathSegment:  "objects",
-	},
-	"ObservedObjectCollection": {
-		DisplayLabel: "ObservedObjectCollections",
-		Icon:         "list",
-		Order:        120,
-		PathSegment:  "observedobjectcollections",
+	"gardener-auth": {
+		"AdminKubeconfigRequest": {
+			DisplayLabel: "Admin Kubeconfig Requests",
+			Icon:         "key-user-settings",
+			Order:        200,
+			PathSegment:  "adminkubeconfigrequests",
+		},
+		"ProviderConfig": {
+			DisplayLabel: "ProviderConfigs",
+			Icon:         "settings",
+			Order:        210,
+			PathSegment:  "gardener-providerconfigs",
+		},
+		"ProviderConfigUsage": {
+			DisplayLabel: "ProviderConfigUsages",
+			Icon:         "connected",
+			Order:        220,
+			PathSegment:  "providerconfigusages",
+		},
+		"StoreConfig": {
+			DisplayLabel: "StoreConfigs",
+			Icon:         "database",
+			Order:        230,
+			PathSegment:  "storeconfigs",
+		},
 	},
 }
 
@@ -182,10 +218,10 @@ func buildContentConfiguration(prefix string, resource ResourcesToPublish, meta 
 		"entityType":              "main.core_platform-mesh_io_account.core_openmcp_cloud_managedcontrolplane",
 		"loadingIndicator":        map[string]any{"enabled": false},
 		"category": map[string]any{
-			"id":      "k8s-provider",
+			"id":      prefix + "-provider",
 			"isGroup": true,
-			"label":   "Kubernetes Provider",
-			"order":   800,
+			"label":   categoryLabelForPrefix(prefix),
+			"order":   categoryOrderForPrefix(prefix),
 		},
 		"url": "https://{context.organization}.portal.localhost:8443/ui/generic-resource/#/",
 		"context": map[string]any{
@@ -235,4 +271,26 @@ func buildContentConfiguration(prefix string, resource ResourcesToPublish, meta 
 	}
 
 	return cc, nil
+}
+
+func categoryLabelForPrefix(prefix string) string {
+	switch prefix {
+	case "k8s":
+		return "Kubernetes Provider"
+	case "gardener-auth":
+		return "Gardener Auth Provider"
+	default:
+		return prefix + " Provider"
+	}
+}
+
+func categoryOrderForPrefix(prefix string) int {
+	switch prefix {
+	case "k8s":
+		return 800
+	case "gardener-auth":
+		return 810
+	default:
+		return 900
+	}
 }

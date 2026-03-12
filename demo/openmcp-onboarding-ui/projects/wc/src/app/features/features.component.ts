@@ -261,10 +261,35 @@ interface PermissionClaimWithBinding extends PermissionClaim {
       color: var(--sapTextColor, #32363a);
     }
 
-    .tile-claims {
+    .version-label {
+      font-size: var(--sapFontSmallSize, 0.75rem);
+      color: var(--sapContent_LabelColor, #6a6d70);
+    }
+
+    .tile-section {
       border-top: 1px solid var(--sapList_BorderColor, #e4e4e4);
       padding-top: 0.5rem;
       margin-top: 0.25rem;
+    }
+
+    .tile-section-header {
+      font-size: var(--sapFontSmallSize, 0.75rem);
+      font-weight: bold;
+      color: var(--sapContent_LabelColor, #6a6d70);
+      margin-bottom: 0.25rem;
+    }
+
+    .provider-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.125rem 0;
+      font-size: var(--sapFontSmallSize, 0.75rem);
+      color: var(--sapTextColor, #32363a);
+    }
+
+    .provider-version {
+      color: var(--sapContent_LabelColor, #6a6d70);
     }
 
     .claim-row {
@@ -396,16 +421,21 @@ interface PermissionClaimWithBinding extends PermissionClaim {
               </div>
               <div class="tile-description">{{ tool.description }}</div>
               <div class="tile-footer">
-                <span class="status-badge" [class]="tool.state">
-                  @switch (tool.state) {
-                    @case ('active') { Active }
-                    @case ('provisioning') { Provisioning }
-                    @case ('creating') { Installing }
-                    @case ('configuring') { Configuring }
-                    @case ('disabling') { Disabling }
-                    @case ('not-enabled') { Not Enabled }
+                <div>
+                  <span class="status-badge" [class]="tool.state">
+                    @switch (tool.state) {
+                      @case ('active') { Active }
+                      @case ('provisioning') { Provisioning }
+                      @case ('creating') { Installing }
+                      @case ('configuring') { Configuring }
+                      @case ('disabling') { Disabling }
+                      @case ('not-enabled') { Not Enabled }
+                    }
+                  </span>
+                  @if (getInstalledVersion(tool.id); as version) {
+                    <span class="version-label">{{ version }}</span>
                   }
-                </span>
+                </div>
                 @if (tool.state === 'not-enabled') {
                   <button fd-button fdType="emphasized" label="Enable"
                     (click)="onEnableTool(tool.id)"></button>
@@ -417,7 +447,8 @@ interface PermissionClaimWithBinding extends PermissionClaim {
                 }
               </div>
               @if (getToolAcceptedClaims(tool.id).length > 0 || getToolPendingClaims(tool.id).length > 0) {
-                <div class="tile-claims">
+                <div class="tile-section">
+                  <div class="tile-section-header">Permission Claims</div>
                   @for (claim of getToolAcceptedClaims(tool.id); track claim.resource + claim.group) {
                     <div class="claim-row">
                       <span class="claim-label">
@@ -437,6 +468,17 @@ interface PermissionClaimWithBinding extends PermissionClaim {
                         [disabled]="approvingClaim() === (claim.resource + claim.group)"
                         (click)="onAcceptClaim(claim)">
                       </button>
+                    </div>
+                  }
+                </div>
+              }
+              @if (tool.id === 'crossplane' && getInstalledProviders().length > 0) {
+                <div class="tile-section">
+                  <div class="tile-section-header">Installed Providers</div>
+                  @for (p of getInstalledProviders(); track p.name) {
+                    <div class="provider-row">
+                      <span>{{ p.name }}</span>
+                      <span class="provider-version">{{ p.version }}</span>
                     </div>
                   }
                 </div>
@@ -590,9 +632,9 @@ export class FeaturesComponent implements OnDestroy {
   // Crossplane-specific config
   crossplaneCatalog = signal<CrossplaneCatalog | null>(null);
   crossplaneSelectedVersion = signal('v1.20.1');
-  crossplaneSelectedProviderVersions = signal<Record<string, string>>({ 'provider-kubernetes': 'v0.15.0' });
+  crossplaneSelectedProviderVersions = signal<Record<string, string>>({ 'provider-kubernetes': 'v0.15.0', 'provider-gardener-auth': '0.0.6' });
   readonly crossplaneDefaultVersions = [{ version: 'v1.20.1' }];
-  readonly crossplaneDefaultProviders = [{ name: 'provider-kubernetes', versions: ['v0.15.0'] }];
+  readonly crossplaneDefaultProviders = [{ name: 'provider-kubernetes', versions: ['v0.15.0'] }, { name: 'provider-gardener-auth', versions: ['0.0.6'] }];
 
   // Generic tool version selection
   selectedVersions = signal<Record<string, string>>({
@@ -752,6 +794,20 @@ export class FeaturesComponent implements OnDestroy {
       case 'kro': return this.kroStatus()?.status?.phase ?? '';
       case 'flux': return this.fluxStatus()?.status?.phase ?? '';
       case 'ocm-controller': return this.ocmStatus()?.status?.phase ?? '';
+      default: return '';
+    }
+  }
+
+  getInstalledProviders(): { name: string; version: string }[] {
+    return this.crossplaneStatus()?.spec?.providers ?? [];
+  }
+
+  getInstalledVersion(toolId: string): string {
+    switch (toolId) {
+      case 'crossplane': return this.crossplaneStatus()?.spec?.version ?? '';
+      case 'kro': return this.kroStatus()?.spec?.version ?? '';
+      case 'flux': return this.fluxStatus()?.spec?.version ?? '';
+      case 'ocm-controller': return this.ocmStatus()?.spec?.version ?? '';
       default: return '';
     }
   }
