@@ -29,13 +29,9 @@ cp .env.example .env
   ```
   task openmcp:clone-distro
   ```
-3. Set up Gardener locally (clones Gardener into `demo/external/gardener`, creates a `gardener-local` Kind cluster, and starts Gardener)
+3. Set up Gardener locally (clones Gardener into `demo/external/gardener`, creates a `gardener-local` Kind cluster, and starts Gardener)  and Install Platform-mesh
   ```
-  task gardener:local
-  ```
-4. Install Platform-mesh
-  ```
-  task platform-mesh:local openmcp:local integrate
+  task gardener:local platform-mesh:local openmcp:local integrate
   ```
 
 

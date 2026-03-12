@@ -14,7 +14,8 @@ type ToolConfig struct {
 	FinalizerPrefix string
 	HelmChartURL    string
 	HelmReleaseName string
-	SkipCRDs        bool // Skip CRD installation via Helm (CRDs deployed separately to KCP workspace)
+	APIExportName   string // Name for the per-tool APIExport (e.g. "kro.services.openmcp.cloud")
+	SkipCRDs        bool   // Skip CRD installation via Helm (CRDs deployed separately to KCP workspace)
 	HelmValuesFunc  func(version string, kcpKubeconfig string, platformMeshIP string) map[string]any
 	PostInstallFunc func(ctx context.Context, mcpClient client.Client, kubeconfigSecret string, platformMeshIP string) error
 	ContentConfigs  []ContentConfigEntry

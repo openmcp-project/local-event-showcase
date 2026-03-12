@@ -56,11 +56,15 @@ spec:
       resource: apiexports
       verbs:
         - '*'
+    - group: apis.kcp.io
+      resource: apiresourceschemas
+      verbs:
+        - '*'
     - group: ui.platform-mesh.io
       resource: contentconfigurations
       verbs:
         - '*'
-      identityHash: 97ffe938465162ca1131b0021abd357e5e2b36a009da159743c26ec35bd1284d
+      identityHash: d8b40fb666bdb4441b73925ef9373110d2c10120174a7cf2976e870002e77ba0
     - group: rbac.authorization.k8s.io
       resource: clusterroles
       verbs:

@@ -56,6 +56,10 @@ spec:
       resource: apiexports
       verbs:
         - '*'
+    - group: apis.kcp.io
+      resource: apiresourceschemas
+      verbs:
+        - '*'
     - group: ui.platform-mesh.io
       resource: contentconfigurations
       verbs:

@@ -89,6 +89,59 @@ rules:
   - "update"
   - "patch"
   - "delete"
+- apiGroups:
+  - "apis.kcp.io"
+  resources:
+  - apiresourceschemas
+  - apiexports
+  - apibindings
+  verbs:
+  - "get"
+  - "list"
+  - "watch"
+  - "create"
+  - "update"
+  - "patch"
+  - "delete"
+- apiGroups:
+  - "kro.services.openmcp.cloud"
+  resources:
+  - kros
+  - kros/status
+  verbs:
+  - "get"
+  - "list"
+  - "watch"
+  - "create"
+  - "update"
+  - "patch"
+  - "delete"
+- apiGroups:
+  - "flux.services.openmcp.cloud"
+  resources:
+  - fluxes
+  - fluxes/status
+  verbs:
+  - "get"
+  - "list"
+  - "watch"
+  - "create"
+  - "update"
+  - "patch"
+  - "delete"
+- apiGroups:
+  - "ocm.services.openmcp.cloud"
+  resources:
+  - ocmcontrollers
+  - ocmcontrollers/status
+  verbs:
+  - "get"
+  - "list"
+  - "watch"
+  - "create"
+  - "update"
+  - "patch"
+  - "delete"
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1

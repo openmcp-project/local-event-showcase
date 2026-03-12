@@ -7,7 +7,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { Observable, Subscription, forkJoin, map } from 'rxjs';
+import { Observable, Subscription, forkJoin, map, switchMap } from 'rxjs';
 import { LuigiClient } from '@luigi-project/client/luigi-element';
 import { sendCustomMessage } from '@luigi-project/client/luigi-client';
 import { ButtonComponent } from '@fundamental-ngx/core/button';
@@ -28,7 +28,7 @@ import { KROOnboardingService, KROStatus } from '../services/kro-onboarding.serv
 import { FluxOnboardingService, FluxStatus } from '../services/flux-onboarding.service';
 import { OCMOnboardingService, OCMControllerStatus } from '../services/ocm-onboarding.service';
 
-type FeaturesState = 'loading' | 'activate' | 'activating' | 'features';
+type FeaturesState = 'loading' | 'features';
 type ToolState = 'not-enabled' | 'configuring' | 'creating' | 'provisioning' | 'active' | 'disabling';
 
 interface ToolCard {
@@ -48,6 +48,11 @@ interface VersionEntry {
 
 interface ToolWatchEvent {
   object: { status?: { phase?: string } };
+}
+
+interface PermissionClaimWithBinding extends PermissionClaim {
+  bindingName: string;
+  bindingResourceVersion: string;
 }
 
 @Component({
@@ -256,6 +261,27 @@ interface ToolWatchEvent {
       color: var(--sapTextColor, #32363a);
     }
 
+    .tile-claims {
+      border-top: 1px solid var(--sapList_BorderColor, #e4e4e4);
+      padding-top: 0.5rem;
+      margin-top: 0.25rem;
+    }
+
+    .claim-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.25rem 0;
+      font-size: var(--sapFontSmallSize, 0.75rem);
+    }
+
+    .claim-label {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      color: var(--sapContent_LabelColor, #6a6d70);
+    }
+
     .loading-container {
       display: flex;
       flex-direction: column;
@@ -350,28 +376,6 @@ interface ToolWatchEvent {
         </div>
       }
 
-      @case ('activate') {
-        <div class="onboarding-card">
-          <div class="card-header">
-            <fd-icon glyph="activate"></fd-icon>
-            <h2>Enable OpenMCP Services</h2>
-          </div>
-          <div class="card-description">
-            Activate the OpenMCP service APIs to start using tools like Crossplane, Flux, KRO,
-            and OCM Controller in your workspace.
-          </div>
-          <button fd-button label="Enable Services" fdType="emphasized"
-            (click)="onActivate()"></button>
-        </div>
-      }
-
-      @case ('activating') {
-        <div class="loading-container">
-          <fd-busy-indicator [loading]="true" size="m"></fd-busy-indicator>
-          <span>Activating OpenMCP services...</span>
-        </div>
-      }
-
       @case ('features') {
         <div class="features-header">
           <h2>Features</h2>
@@ -412,6 +416,31 @@ interface ToolWatchEvent {
                     (click)="onDisableTool(tool.id)"></button>
                 }
               </div>
+              @if (getToolAcceptedClaims(tool.id).length > 0 || getToolPendingClaims(tool.id).length > 0) {
+                <div class="tile-claims">
+                  @for (claim of getToolAcceptedClaims(tool.id); track claim.resource + claim.group) {
+                    <div class="claim-row">
+                      <span class="claim-label">
+                        <fd-icon glyph="accept" style="color: var(--sapPositiveColor)"></fd-icon>
+                        {{ claim.group || 'core' }} / {{ claim.resource }}
+                      </span>
+                      <span style="color: var(--sapPositiveTextColor); font-size: var(--sapFontSmallSize, 0.75rem)">Accepted</span>
+                    </div>
+                  }
+                  @for (claim of getToolPendingClaims(tool.id); track claim.resource + claim.group) {
+                    <div class="claim-row">
+                      <span class="claim-label">
+                        <fd-icon glyph="pending"></fd-icon>
+                        {{ claim.group || 'core' }} / {{ claim.resource }}
+                      </span>
+                      <button fd-button fdType="transparent" label="Accept"
+                        [disabled]="approvingClaim() === (claim.resource + claim.group)"
+                        (click)="onAcceptClaim(claim)">
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
             </div>
           }
         </div>
@@ -520,39 +549,6 @@ interface ToolWatchEvent {
           </div>
         }
 
-        @if (binding() && (pendingClaims().length > 0 || acceptedClaims().length > 0)) {
-          <div class="features-header" style="margin-top: 2rem;">
-            <h2>Permission Claims</h2>
-            <p>The OpenMCP services request access to the following resources in your workspace.</p>
-          </div>
-          <div class="onboarding-card">
-            <div class="config-section">
-              @for (claim of acceptedClaims(); track claim.resource + claim.group) {
-                <div class="config-row">
-                  <span class="config-label">
-                    <fd-icon glyph="accept" style="color: var(--sapPositiveColor)"></fd-icon>
-                    {{ claim.group || 'core' }} / {{ claim.resource }}
-                  </span>
-                  <span class="config-value" style="color: var(--sapPositiveTextColor)">Accepted</span>
-                </div>
-              }
-              @for (claim of pendingClaims(); track claim.resource + claim.group) {
-                <div class="config-row">
-                  <span class="config-label">
-                    <fd-icon glyph="pending"></fd-icon>
-                    {{ claim.group || 'core' }} / {{ claim.resource }}
-                  </span>
-                  <span class="config-value">
-                    <button fd-button fdType="transparent" label="Accept"
-                      [disabled]="approvingClaim() === (claim.resource + claim.group)"
-                      (click)="onAcceptClaim(claim)">
-                    </button>
-                  </span>
-                </div>
-              }
-            </div>
-          </div>
-        }
       }
     }
 
@@ -570,7 +566,7 @@ export class FeaturesComponent implements OnDestroy {
   private fluxService = inject(FluxOnboardingService);
   private ocmService = inject(OCMOnboardingService);
 
-  private bindingWatchSub?: Subscription;
+  private bindingWatchSubs = new Map<string, Subscription>();
   private toolWatchSubs = new Map<string, Subscription>();
   private luigiContext!: LuigiContext;
 
@@ -582,9 +578,7 @@ export class FeaturesComponent implements OnDestroy {
   drawerOpen = signal(false);
 
   // APIBinding state
-  binding = signal<APIBindingDetail | null>(null);
-  pendingClaims = signal<PermissionClaim[]>([]);
-  acceptedClaims = signal<AcceptablePermissionClaim[]>([]);
+  bindings = signal<APIBindingDetail[]>([]);
   approvingClaim = signal('');
 
   // Tool status tracking
@@ -613,6 +607,13 @@ export class FeaturesComponent implements OnDestroy {
     'ocm-controller': [{ version: 'v0.29.0', chartVersion: '0.0.0-6205a8a' }],
   };
 
+  private readonly toolExportNames: Record<string, string> = {
+    crossplane: 'crossplane.services.openmcp.cloud',
+    kro: 'kro.services.openmcp.cloud',
+    flux: 'flux.services.openmcp.cloud',
+    'ocm-controller': 'ocm.services.openmcp.cloud',
+  };
+
   tools = signal<ToolCard[]>([
     { id: 'crossplane', name: 'Crossplane', icon: 'cloud', logoUrl: 'https://raw.githubusercontent.com/cncf/artwork/main/projects/crossplane/icon/color/crossplane-icon-color.svg', description: 'Provision and manage cloud infrastructure using Kubernetes-native APIs and resource compositions.', state: 'not-enabled' },
     { id: 'kro', name: 'KRO', icon: 'developer-settings', textLogo: 'kro', description: 'Define and manage custom resource compositions in your workspace with Kube Resource Orchestrator.', state: 'not-enabled' },
@@ -633,11 +634,11 @@ export class FeaturesComponent implements OnDestroy {
     this.kroService.initialize(ctx);
     this.fluxService.initialize(ctx);
     this.ocmService.initialize(ctx);
-    this.checkAPIBinding();
+    this.checkAPIBindings();
   }
 
   ngOnDestroy(): void {
-    this.bindingWatchSub?.unsubscribe();
+    this.bindingWatchSubs.forEach((sub) => sub.unsubscribe());
     this.toolWatchSubs.forEach((sub) => sub.unsubscribe());
   }
 
@@ -647,28 +648,53 @@ export class FeaturesComponent implements OnDestroy {
     return this.tools().find((t) => t.id === id) ?? null;
   }
 
-  // --- APIBinding activation ---
+  getToolPendingClaims(toolId: string): PermissionClaimWithBinding[] {
+    const exportName = this.toolExportNames[toolId];
+    if (!exportName) return [];
+    const binding = this.bindings().find((b) => b.metadata.name === exportName);
+    if (!binding) return [];
 
-  onActivate(): void {
-    this.state.set('activating');
-    this.error.set('');
-    this.crossplaneService.createAPIBinding().subscribe({
-      next: () => this.pollAPIBindingReady(),
-      error: (err: Error) => {
-        this.error.set(`Failed to activate OpenMCP services: ${err.message}`);
-        this.state.set('activate');
-      },
-    });
+    const exportClaims = binding.status?.exportPermissionClaims ?? [];
+    const specClaims = binding.spec?.permissionClaims ?? [];
+    const accepted = specClaims.filter((c) => c.state === 'Accepted');
+
+    return exportClaims
+      .filter(
+        (ec) =>
+          !accepted.some(
+            (ac) =>
+              ac.group === ec.group &&
+              ac.resource === ec.resource &&
+              ac.identityHash === ec.identityHash,
+          ),
+      )
+      .map((p) => ({
+        ...p,
+        bindingName: binding.metadata.name,
+        bindingResourceVersion: binding.metadata.resourceVersion,
+      }));
   }
 
-  onAcceptClaim(claim: PermissionClaim): void {
-    const currentBinding = this.binding();
+  getToolAcceptedClaims(toolId: string): AcceptablePermissionClaim[] {
+    const exportName = this.toolExportNames[toolId];
+    if (!exportName) return [];
+    const binding = this.bindings().find((b) => b.metadata.name === exportName);
+    if (!binding) return [];
+
+    return (binding.spec?.permissionClaims ?? []).filter((c) => c.state === 'Accepted');
+  }
+
+  onAcceptClaim(claim: PermissionClaimWithBinding): void {
+    const bindingName = claim.bindingName;
+    const currentBinding = this.bindings().find(
+      (b) => b.metadata.name === bindingName,
+    );
     if (!currentBinding) return;
 
     this.approvingClaim.set(claim.resource + claim.group);
     this.error.set('');
     this.crossplaneService
-      .acceptPermissionClaim(currentBinding, claim)
+      .acceptPermissionClaim(bindingName, currentBinding, claim)
       .subscribe({
         next: () => this.approvingClaim.set(''),
         error: (err: Error) => {
@@ -736,8 +762,14 @@ export class FeaturesComponent implements OnDestroy {
     const providers = Object.entries(this.crossplaneSelectedProviderVersions())
       .filter(([, version]) => !!version)
       .map(([name, version]) => ({ name, version }));
+    const exportName = this.toolExportNames['crossplane'];
     this.crossplaneService
-      .createCrossplane(this.crossplaneSelectedVersion(), providers)
+      .createAPIBinding(exportName)
+      .pipe(
+        switchMap(() =>
+          this.crossplaneService.createCrossplane(this.crossplaneSelectedVersion(), providers),
+        ),
+      )
       .subscribe({
         next: () => this.startWatchingTool('crossplane'),
         error: (err: Error) => {
@@ -754,7 +786,7 @@ export class FeaturesComponent implements OnDestroy {
     const entry = this.toolVersions[toolId]?.find((v) => v.version === version);
     const chartVersion = entry?.chartVersion;
 
-    let create$;
+    let create$: Observable<{ metadata: { name: string } }>;
     switch (toolId) {
       case 'kro':
         create$ = this.kroService.createKRO(version, chartVersion);
@@ -769,13 +801,17 @@ export class FeaturesComponent implements OnDestroy {
         return;
     }
 
-    create$.subscribe({
-      next: () => this.startWatchingTool(toolId),
-      error: (err: Error) => {
-        this.error.set(`Failed to install ${toolId}: ${err.message}`);
-        this.updateToolState(toolId, 'configuring');
-      },
-    });
+    const exportName = this.toolExportNames[toolId];
+    this.crossplaneService
+      .createAPIBinding(exportName)
+      .pipe(switchMap(() => create$))
+      .subscribe({
+        next: () => this.startWatchingTool(toolId),
+        error: (err: Error) => {
+          this.error.set(`Failed to install ${toolId}: ${err.message}`);
+          this.updateToolState(toolId, 'configuring');
+        },
+      });
   }
 
   onDisableTool(toolId: string): void {
@@ -815,74 +851,57 @@ export class FeaturesComponent implements OnDestroy {
 
   // --- Private methods ---
 
-  private checkAPIBinding(): void {
+  private isServiceBinding(binding: APIBindingDetail): boolean {
+    return binding.metadata.name.endsWith('.services.openmcp.cloud');
+  }
+
+  private checkAPIBindings(): void {
     this.state.set('loading');
-    this.crossplaneService.checkAPIBinding().subscribe({
-      next: (binding) => {
-        if (!binding) {
-          this.state.set('activate');
-        } else {
-          this.binding.set(binding);
-          this.computeClaims(binding);
-          this.startWatchingBinding();
-          this.state.set('features');
-          this.checkAllStatuses();
-        }
+    this.crossplaneService.listAPIBindings().subscribe({
+      next: (allBindings) => {
+        const bindings = allBindings.filter((b) => this.isServiceBinding(b));
+        this.bindings.set(bindings);
+        this.state.set('features');
+        this.checkAllStatuses();
       },
       error: (err: Error) => {
-        this.error.set(`Failed to check API binding: ${err.message}`);
-        this.state.set('activate');
+        this.error.set(`Failed to check API bindings: ${err.message}`);
+        this.state.set('features');
       },
     });
   }
 
-  private computeClaims(binding: APIBindingDetail): void {
-    const exportClaims = binding.status?.exportPermissionClaims ?? [];
-    const specClaims = binding.spec?.permissionClaims ?? [];
-    const accepted = specClaims.filter((c) => c.state === 'Accepted');
-    this.acceptedClaims.set(accepted);
-    const pending = exportClaims.filter(
-      (ec) =>
-        !accepted.some(
-          (ac) =>
-            ac.group === ec.group &&
-            ac.resource === ec.resource &&
-            ac.identityHash === ec.identityHash,
-        ),
-    );
-    this.pendingClaims.set(pending);
-  }
+  private startWatchingBinding(toolId: string): void {
+    const exportName = this.toolExportNames[toolId];
+    if (!exportName) return;
 
-  private startWatchingBinding(): void {
-    this.bindingWatchSub?.unsubscribe();
-    this.bindingWatchSub = this.crossplaneService
-      .watchAPIBinding()
+    // Don't double-subscribe
+    if (this.bindingWatchSubs.has(toolId)) return;
+
+    const sub = this.crossplaneService
+      .watchAPIBinding(exportName)
       .subscribe({
         next: (event) => {
-          this.binding.set(event.object);
-          this.computeClaims(event.object);
+          this.bindings.update((prev) => {
+            const idx = prev.findIndex(
+              (b) => b.metadata.name === event.object.metadata.name,
+            );
+            if (event.type === 'DELETED') {
+              return prev.filter(
+                (b) => b.metadata.name !== event.object.metadata.name,
+              );
+            }
+            if (idx >= 0) {
+              const updated = [...prev];
+              updated[idx] = event.object;
+              return updated;
+            }
+            return [...prev, event.object];
+          });
         },
         error: () => {},
       });
-  }
-
-  private pollAPIBindingReady(): void {
-    this.crossplaneService.checkAPIBinding().subscribe({
-      next: (binding) => {
-        if (binding?.status?.phase === 'Bound') {
-          this.binding.set(binding);
-          this.computeClaims(binding);
-          this.startWatchingBinding();
-          this.state.set('features');
-          this.checkAllStatuses();
-        } else {
-          setTimeout(() => this.pollAPIBindingReady(), 2000);
-        }
-      },
-      error: () => {
-        setTimeout(() => this.pollAPIBindingReady(), 2000);
-      },
-    });
+    this.bindingWatchSubs.set(toolId, sub);
   }
 
   private checkAllStatuses(): void {
@@ -898,37 +917,45 @@ export class FeaturesComponent implements OnDestroy {
         if (results.crossplane?.status?.phase === 'Ready') {
           this.crossplaneStatus.set(results.crossplane);
           updated[0] = { ...updated[0], state: 'active' };
+          this.startWatchingBinding('crossplane');
         } else if (results.crossplane) {
           this.crossplaneStatus.set(results.crossplane);
           updated[0] = { ...updated[0], state: 'provisioning' };
           this.startWatchingTool('crossplane');
+          this.startWatchingBinding('crossplane');
         }
 
         if (results.kro?.status?.phase === 'Ready') {
           this.kroStatus.set(results.kro);
           updated[1] = { ...updated[1], state: 'active' };
+          this.startWatchingBinding('kro');
         } else if (results.kro) {
           this.kroStatus.set(results.kro);
           updated[1] = { ...updated[1], state: 'provisioning' };
           this.startWatchingTool('kro');
+          this.startWatchingBinding('kro');
         }
 
         if (results.flux?.status?.phase === 'Ready') {
           this.fluxStatus.set(results.flux);
           updated[2] = { ...updated[2], state: 'active' };
+          this.startWatchingBinding('flux');
         } else if (results.flux) {
           this.fluxStatus.set(results.flux);
           updated[2] = { ...updated[2], state: 'provisioning' };
           this.startWatchingTool('flux');
+          this.startWatchingBinding('flux');
         }
 
         if (results.ocm?.status?.phase === 'Ready') {
           this.ocmStatus.set(results.ocm);
           updated[3] = { ...updated[3], state: 'active' };
+          this.startWatchingBinding('ocm-controller');
         } else if (results.ocm) {
           this.ocmStatus.set(results.ocm);
           updated[3] = { ...updated[3], state: 'provisioning' };
           this.startWatchingTool('ocm-controller');
+          this.startWatchingBinding('ocm-controller');
         }
 
         this.tools.set(updated);
@@ -981,6 +1008,7 @@ export class FeaturesComponent implements OnDestroy {
 
   private startWatchingTool(toolId: string): void {
     this.updateToolState(toolId, 'provisioning');
+    this.startWatchingBinding(toolId);
     const existing = this.toolWatchSubs.get(toolId);
     existing?.unsubscribe();
 

@@ -35,7 +35,7 @@ const (
 	entityLabel     = "ui.platform-mesh.io/entity"
 	entityValue     = "core_platform-mesh_io_account"
 	contentForLabel = "ui.platform-mesh.io/content-for"
-	contentForValue = "services.openmcp.cloud"
+	contentForValue = "crossplane.services.openmcp.cloud"
 )
 
 //+kubebuilder:rbac:groups=ui.platform-mesh.io,resources=contentconfigurations,verbs=get;list;watch;create;update;patch;delete

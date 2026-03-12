@@ -27,9 +27,17 @@ import (
 
 const (
 	DeploySyncSubroutineName = "DeploySyncAgent"
-	apiExportName            = "services.openmcp.cloud"
 	apiExportBindRoleName    = "services-apiexport-bind"
 )
+
+// workspaceAPIExports lists all APIExport names to create in each user workspace.
+// The sync-agent uses the first entry as its apiExportEndpointSliceName.
+var workspaceAPIExports = []string{
+	"crossplane.services.openmcp.cloud",
+	"kro.services.openmcp.cloud",
+	"flux.services.openmcp.cloud",
+	"ocm.services.openmcp.cloud",
+}
 
 type SetupSyncAgentSubroutine struct {
 	cfg              *config.OperatorConfig
@@ -195,7 +203,7 @@ hostAliases:
   values:
     - ip: "%s"
       hostnames:
-        - "localhost"`, apiExportName, r.cfg.KCP.PlatformMeshIP)
+        - "localhost"`, workspaceAPIExports[0], r.cfg.KCP.PlatformMeshIP)
 
 	if r.cfg.SyncAgent.ImageRepository != "" {
 		valuesYaml += fmt.Sprintf(`
@@ -243,21 +251,24 @@ func (r *SetupSyncAgentSubroutine) ensureWorkspaceAPIExport(ctx context.Context)
 		return err
 	}
 	kcpClient := cluster.GetClient()
-	apiExport := &apisv1alpha1.APIExport{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: apiExportName,
-		},
-	}
 
-	log.Info().Str("apiExportName", apiExportName).Msg("ensureWorkspaceAPIExport: creating or updating APIExport")
-	result, err := controllerutil.CreateOrUpdate(ctx, kcpClient, apiExport, func() error {
-		return nil
-	})
-	if err != nil {
-		log.Error().Err(err).Str("apiExportName", apiExportName).Msg("ensureWorkspaceAPIExport: CreateOrUpdate failed")
-		return err
+	for _, exportName := range workspaceAPIExports {
+		apiExport := &apisv1alpha1.APIExport{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: exportName,
+			},
+		}
+
+		log.Info().Str("apiExportName", exportName).Msg("ensureWorkspaceAPIExport: creating or updating APIExport")
+		result, createErr := controllerutil.CreateOrUpdate(ctx, kcpClient, apiExport, func() error {
+			return nil
+		})
+		if createErr != nil {
+			log.Error().Err(createErr).Str("apiExportName", exportName).Msg("ensureWorkspaceAPIExport: CreateOrUpdate failed")
+			return createErr
+		}
+		log.Info().Str("apiExportName", exportName).Str("result", string(result)).Msg("ensureWorkspaceAPIExport: CreateOrUpdate completed")
 	}
-	log.Info().Str("apiExportName", apiExportName).Str("result", string(result)).Msg("ensureWorkspaceAPIExport: CreateOrUpdate completed")
 
 	if err := r.ensureAPIExportBindRBAC(ctx, kcpClient); err != nil {
 		return err

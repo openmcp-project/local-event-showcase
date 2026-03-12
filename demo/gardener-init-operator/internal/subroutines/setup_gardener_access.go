@@ -26,7 +26,7 @@ import (
 
 const (
 	SetupGardenerAccessSubroutineName = "SetupGardenerAccess"
-	gardenerKubeconfigSecretName      = "gardener-project-kubeconfig"
+	gardenerKubeconfigSecretPrefix    = "gardener-project"
 	saTokenSecretPrefix               = "openmcp-token"
 )
 
@@ -157,9 +157,10 @@ func (r *SetupGardenerAccessSubroutine) Process(ctx context.Context, runtimeObj 
 	}
 	kcpClient := kcpCluster.GetClient()
 
+	kubeconfigSecretName := fmt.Sprintf("%s-%s-kubeconfig", gardenerKubeconfigSecretPrefix, gardenerProject.Name)
 	kubeconfigSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      gardenerKubeconfigSecretName,
+			Name:      kubeconfigSecretName,
 			Namespace: gardenerProject.Namespace,
 		},
 	}

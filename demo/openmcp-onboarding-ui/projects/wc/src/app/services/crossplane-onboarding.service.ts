@@ -55,7 +55,7 @@ const CHECK_API_BINDING = gql`
   query {
     apis_kcp_io {
       v1alpha2 {
-        APIBinding(name: "services.openmcp.cloud") {
+        APIBinding(name: "crossplane.services.openmcp.cloud") {
           metadata {
             name
             resourceVersion
@@ -89,64 +89,39 @@ const CHECK_API_BINDING = gql`
   }
 `;
 
-const CREATE_API_BINDING = gql`
-  mutation {
+const LIST_API_BINDINGS = gql`
+  query {
     apis_kcp_io {
       v1alpha2 {
-        createAPIBinding(
-          object: {
-            metadata: { name: "services.openmcp.cloud" }
-            spec: {
-              reference: {
-                export: {
-                  name: "services.openmcp.cloud"
+        APIBindings {
+          items {
+            metadata {
+              name
+              resourceVersion
+            }
+            spec {
+              permissionClaims {
+                group
+                resource
+                verbs
+                identityHash
+                state
+              }
+              reference {
+                export {
+                  name
                 }
               }
             }
-          }
-        ) {
-          metadata {
-            name
-          }
-        }
-      }
-    }
-  }
-`;
-
-const WATCH_API_BINDING = gql`
-  subscription {
-    apis_kcp_io_v1alpha2_apibinding(
-      name: "services.openmcp.cloud"
-      subscribeToAll: true
-    ) {
-      type
-      object {
-        metadata {
-          name
-          resourceVersion
-        }
-        spec {
-          permissionClaims {
-            group
-            resource
-            verbs
-            identityHash
-            state
-          }
-          reference {
-            export {
-              name
+            status {
+              phase
+              exportPermissionClaims {
+                group
+                resource
+                verbs
+                identityHash
+              }
             }
-          }
-        }
-        status {
-          phase
-          exportPermissionClaims {
-            group
-            resource
-            verbs
-            identityHash
           }
         }
       }
@@ -256,12 +231,67 @@ export class CrossplaneOnboardingService {
       );
   }
 
-  public watchAPIBinding(): Observable<APIBindingEvent> {
+  public listAPIBindings(): Observable<APIBindingDetail[]> {
+    return this.apollo
+      .query<{
+        apis_kcp_io: {
+          v1alpha2: { APIBindings: { items: APIBindingDetail[] } };
+        };
+      }>({
+        query: LIST_API_BINDINGS,
+        fetchPolicy: 'network-only',
+      })
+      .pipe(
+        map((result) => result.data!.apis_kcp_io.v1alpha2.APIBindings.items ?? []),
+        catchError(() => of([])),
+      );
+  }
+
+  public watchAPIBinding(bindingName: string): Observable<APIBindingEvent> {
+    const query = gql`
+      subscription {
+        apis_kcp_io_v1alpha2_apibinding(
+          name: "${bindingName}"
+          subscribeToAll: true
+        ) {
+          type
+          object {
+            metadata {
+              name
+              resourceVersion
+            }
+            spec {
+              permissionClaims {
+                group
+                resource
+                verbs
+                identityHash
+                state
+              }
+              reference {
+                export {
+                  name
+                }
+              }
+            }
+            status {
+              phase
+              exportPermissionClaims {
+                group
+                resource
+                verbs
+                identityHash
+              }
+            }
+          }
+        }
+      }
+    `;
     return this.apollo
       .subscribe<{
         apis_kcp_io_v1alpha2_apibinding: APIBindingEvent;
       }>({
-        query: WATCH_API_BINDING,
+        query,
       })
       .pipe(
         map(
@@ -270,7 +300,31 @@ export class CrossplaneOnboardingService {
       );
   }
 
-  public createAPIBinding(): Observable<{ metadata: { name: string } }> {
+  public createAPIBinding(exportName: string): Observable<{ metadata: { name: string } }> {
+    const mutation = gql`
+      mutation {
+        apis_kcp_io {
+          v1alpha2 {
+            createAPIBinding(
+              object: {
+                metadata: { name: "${exportName}" }
+                spec: {
+                  reference: {
+                    export: {
+                      name: "${exportName}"
+                    }
+                  }
+                }
+              }
+            ) {
+              metadata {
+                name
+              }
+            }
+          }
+        }
+      }
+    `;
     return this.apollo
       .mutate<{
         apis_kcp_io: {
@@ -279,7 +333,7 @@ export class CrossplaneOnboardingService {
           };
         };
       }>({
-        mutation: CREATE_API_BINDING,
+        mutation,
       })
       .pipe(
         map((result) => result.data!.apis_kcp_io.v1alpha2.createAPIBinding),
@@ -287,6 +341,7 @@ export class CrossplaneOnboardingService {
   }
 
   public acceptPermissionClaim(
+    bindingName: string,
     binding: APIBindingDetail,
     claim: PermissionClaim,
   ): Observable<{ metadata: { name: string; resourceVersion: string } }> {
@@ -310,11 +365,11 @@ export class CrossplaneOnboardingService {
         apis_kcp_io {
           v1alpha2 {
             updateAPIBinding(
-              name: "services.openmcp.cloud"
+              name: "${bindingName}"
               object: {
                 metadata: { resourceVersion: "${binding.metadata.resourceVersion}" }
                 spec: {
-                  reference: { export: { name: "services.openmcp.cloud" } }
+                  reference: { export: { name: "${binding.spec.reference.export.name}" } }
                   permissionClaims: [
                     ${claimsInput}
                   ]

@@ -82,13 +82,13 @@ func NewOCMControllerReconciler(cfg config.OperatorConfig, mgr mcmanager.Manager
 	toolCfg.PostInstallFunc = ocmPostInstall
 
 	if cfg.Subroutines.DeployOCMCRDs.Enabled {
-		subs = append(subs, subroutines.NewDeployCRDsSubroutine(provider, "ocm", toolcrds.OCMCRDs, "ocm.openmcp.io/managed-crds"))
+		subs = append(subs, subroutines.NewDeployAPIResourceSchemasSubroutine(provider, "ocm", "ocm.services.openmcp.cloud", toolcrds.OCMCRDs, "ocm.openmcp.io/managed-crds"))
 	}
 	if cfg.Subroutines.InstallOCM.Enabled {
 		subs = append(subs, subroutines.NewInstallToolSubroutine(provider, onboardingClient, &cfg, &toolCfg))
 	}
 	if cfg.Subroutines.DeployContentConfigurations.Enabled {
-		subs = append(subs, subroutines.NewDeployToolContentConfigurationsSubroutine(provider, "ocm", "services.openmcp.cloud", ocmContentConfigs, "ocm.openmcp.io/managed-content-configurations"))
+		subs = append(subs, subroutines.NewDeployToolContentConfigurationsSubroutine(provider, "ocm", "ocm.services.openmcp.cloud", ocmContentConfigs, "ocm.openmcp.io/managed-content-configurations"))
 	}
 
 	return &OCMControllerReconciler{
