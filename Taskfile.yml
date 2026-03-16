@@ -19,8 +19,10 @@ vars:
   OPENMCP_OCM_COMPONENT_NAME_OPENMCP_OPERATOR: "github.com/openmcp-project/openmcp-operator"
   OPENMCP_OCM_COMPONENT_NAME_CP_KIND: "github.com/openmcp-project/cluster-provider-kind"
   OPENMCP_OCM_COMPONENT_NAME_SP_CROSSPLANE: "github.com/openmcp-project/service-provider-crossplane"
-  OPENMCP_OCM_COMPONENT_NAME_CROSSPLANE: "github.tools.sap/openmcp/releasechannel/crossplane"
-  OPENMCP_OCM_COMPONENT_VERSION_CROSSPLANE: "v1.20.1-1"
+
+  # Upstream Crossplane versions to mirror to local registry
+  CROSSPLANE_VERSION: "1.20.1"
+  CROSSPLANE_PROVIDER_KUBERNETES_VERSION: "v0.15.0"
 
 tasks:
   tmp-dir:
@@ -154,6 +156,37 @@ tasks:
         ghcr.io/openmcp-project/components//github.com/openmcp-project/service-provider-crossplane \
         {{.LOCAL_OCM_REPO}}
 
+  openmcp:mirror-crossplane:
+    desc: Mirror upstream Crossplane artifacts (Helm chart, controller image, provider-kubernetes) to the local registry
+    deps:
+      - local-registry
+    cmds:
+      - |
+        echo "Adding crossplane-stable Helm repo..."
+        helm repo add crossplane-stable https://charts.crossplane.io/stable || true
+        helm repo update crossplane-stable
+      - |
+        echo "Pulling Crossplane Helm chart v{{.CROSSPLANE_VERSION}}..."
+        rm -f {{.TMP_DIR}}/crossplane-{{.CROSSPLANE_VERSION}}.tgz
+        helm pull crossplane-stable/crossplane --version {{.CROSSPLANE_VERSION}} --destination {{.TMP_DIR}}
+      - |
+        echo "Pushing Crossplane Helm chart to local registry..."
+        helm push {{.TMP_DIR}}/crossplane-{{.CROSSPLANE_VERSION}}.tgz oci://localhost:{{.REG_PORT}}/charts \
+          --ca-file {{.TMP_DIR}}/certs/ca.crt
+      - |
+        echo "Copying Crossplane controller image to local registry..."
+        docker pull docker.io/crossplane/crossplane:v{{.CROSSPLANE_VERSION}}
+        docker tag docker.io/crossplane/crossplane:v{{.CROSSPLANE_VERSION}} \
+          localhost:{{.REG_PORT}}/crossplane/crossplane:v{{.CROSSPLANE_VERSION}}
+        docker push localhost:{{.REG_PORT}}/crossplane/crossplane:v{{.CROSSPLANE_VERSION}}
+      - |
+        echo "Copying provider-kubernetes package to local registry..."
+        docker pull xpkg.upbound.io/upbound/provider-kubernetes:{{.CROSSPLANE_PROVIDER_KUBERNETES_VERSION}}
+        docker tag xpkg.upbound.io/upbound/provider-kubernetes:{{.CROSSPLANE_PROVIDER_KUBERNETES_VERSION}} \
+          localhost:{{.REG_PORT}}/upbound/provider-kubernetes:{{.CROSSPLANE_PROVIDER_KUBERNETES_VERSION}}
+        docker push localhost:{{.REG_PORT}}/upbound/provider-kubernetes:{{.CROSSPLANE_PROVIDER_KUBERNETES_VERSION}}
+      - echo "All Crossplane artifacts mirrored to local registry"
+
   openmcp:create-platform-cluster:
     desc: Creates the platform cluster for openmcp
     cmds:
@@ -249,6 +282,7 @@ tasks:
     deps:
       - tmp-dir
       - openmcp:create-platform-cluster
+      - openmcp:mirror-crossplane
     cmds:
       - flux install --kubeconfig {{.OPENMCP_PLATFORM_CLUSTER_EXT_KUBECONFIG}}
       - task: openmcp:flux-trust-registry-ca
@@ -282,13 +316,47 @@ tasks:
         export CLUSTER_PROVIDER_KIND_IMAGE=$(ocm --config $(pwd)/{{.OCM_CONFIG}} get component --latest {{.LOCAL_OCM_REPO}}//{{.OPENMCP_OCM_COMPONENT_NAME_CP_KIND}} -oyaml | get_image_reference cluster-provider-kind-image | rewrite_image_ref)
 
         export SERVICE_PROVIDER_CROSSPLANE_IMAGE=$(ocm --config $(pwd)/{{.OCM_CONFIG}} get component --latest {{.LOCAL_OCM_REPO}}//{{.OPENMCP_OCM_COMPONENT_NAME_SP_CROSSPLANE}} -oyaml | get_image_reference service-provider-crossplane-image | rewrite_image_ref)
-        export CROSSPLANE_CHART_IMAGE=$(ocm --config $(pwd)/{{.OCM_CONFIG}} get component {{.LOCAL_OCM_REPO}}//{{.OPENMCP_OCM_COMPONENT_NAME_CROSSPLANE}}:{{.OPENMCP_OCM_COMPONENT_VERSION_CROSSPLANE}} -oyaml | get_image_reference crossplane | rewrite_image_ref)
-        export CROSSPLANE_DOCKER_IMAGE=$(ocm --config $(pwd)/{{.OCM_CONFIG}} get component {{.LOCAL_OCM_REPO}}//{{.OPENMCP_OCM_COMPONENT_NAME_CROSSPLANE}}:{{.OPENMCP_OCM_COMPONENT_VERSION_CROSSPLANE}} -oyaml | get_image_reference image-crossplane | rewrite_image_ref)
-        export CROSSPLANE_DOCKER_IMAGE_TAG=$(echo "$CROSSPLANE_DOCKER_IMAGE" | sed 's/.*:\([^@:]*\)@.*/\1/')
 
-        CROSSPLANE_PROVIDER_KUBERNETES_REF=$(ocm --config $(pwd)/{{.OCM_CONFIG}} get component --latest {{.LOCAL_OCM_REPO}}//github.tools.sap/openmcp/releasechannel/provider-kubernetes -oyaml | get_image_reference provider-kubernetes | rewrite_image_ref)
-        export CROSSPLANE_PROVIDER_KUBERNETES_IMAGE=$(echo "$CROSSPLANE_PROVIDER_KUBERNETES_REF" | sed 's/:[^/:]*@.*//')
-        export CROSSPLANE_PROVIDER_KUBERNETES_IMAGE_TAG=$(echo "$CROSSPLANE_PROVIDER_KUBERNETES_REF" | sed 's/.*:\([^@:]*\)@.*/\1/')
+        # Crossplane artifacts are mirrored directly to local registry (not from OCM)
+        export CROSSPLANE_CHART_IMAGE="{{.REG_NAME}}:{{.REG_PORT}}/charts/crossplane:{{.CROSSPLANE_VERSION}}"
+        export CROSSPLANE_DOCKER_IMAGE="{{.REG_NAME}}:{{.REG_PORT}}/crossplane/crossplane:v{{.CROSSPLANE_VERSION}}"
+        export CROSSPLANE_DOCKER_IMAGE_TAG="v{{.CROSSPLANE_VERSION}}"
+        export CROSSPLANE_PROVIDER_KUBERNETES_IMAGE="{{.REG_NAME}}:{{.REG_PORT}}/upbound/provider-kubernetes"
+        export CROSSPLANE_PROVIDER_KUBERNETES_IMAGE_TAG="{{.CROSSPLANE_PROVIDER_KUBERNETES_VERSION}}"
+
+        export OPENMCP_KIND_CONFIG_PATH=$(pwd)/{{.TMP_DIR}}/kind-config.yaml
+        export OPENMCP_CONTAINERD_CONFIG_PATH=$(pwd)/{{.TMP_DIR}}/containerd/certs.d
+
+        kubectl kustomize ./openmcp/envs/local | envsubst > {{.TMP_DIR}}/openmcp-setup.yaml
+      - bash hack/apply-with-crds.sh {{.OPENMCP_PLATFORM_CLUSTER_EXT_KUBECONFIG}} {{.TMP_DIR}}/openmcp-setup.yaml
+
+  openmcp:local:iterate:
+    desc: Re-render and re-apply the openmcp platform manifests (skips cluster creation and flux install)
+    deps:
+      - tmp-dir
+    cmds:
+      - |
+        set -x
+        get_image_reference() {
+          local resource_name="$1"
+          yq '.component.resources[] | select(.name == "'"$resource_name"'") | .access.imageReference'
+        }
+
+        rewrite_image_ref() {
+          sed 's|https\{0,1\}://localhost:[0-9]*|{{.REG_NAME}}:{{.REG_PORT}}|'
+        }
+
+        export OPENMCP_OPERATOR_IMAGE=$(ocm --config $(pwd)/{{.OCM_CONFIG}} get component --latest {{.LOCAL_OCM_REPO}}//{{.OPENMCP_OCM_COMPONENT_NAME_OPENMCP_OPERATOR}} -oyaml | get_image_reference openmcp-operator-image | rewrite_image_ref)
+        export CLUSTER_PROVIDER_KIND_IMAGE=$(ocm --config $(pwd)/{{.OCM_CONFIG}} get component --latest {{.LOCAL_OCM_REPO}}//{{.OPENMCP_OCM_COMPONENT_NAME_CP_KIND}} -oyaml | get_image_reference cluster-provider-kind-image | rewrite_image_ref)
+
+        export SERVICE_PROVIDER_CROSSPLANE_IMAGE=$(ocm --config $(pwd)/{{.OCM_CONFIG}} get component --latest {{.LOCAL_OCM_REPO}}//{{.OPENMCP_OCM_COMPONENT_NAME_SP_CROSSPLANE}} -oyaml | get_image_reference service-provider-crossplane-image | rewrite_image_ref)
+
+        # Crossplane artifacts are mirrored directly to local registry (not from OCM)
+        export CROSSPLANE_CHART_IMAGE="{{.REG_NAME}}:{{.REG_PORT}}/charts/crossplane:{{.CROSSPLANE_VERSION}}"
+        export CROSSPLANE_DOCKER_IMAGE="{{.REG_NAME}}:{{.REG_PORT}}/crossplane/crossplane:v{{.CROSSPLANE_VERSION}}"
+        export CROSSPLANE_DOCKER_IMAGE_TAG="v{{.CROSSPLANE_VERSION}}"
+        export CROSSPLANE_PROVIDER_KUBERNETES_IMAGE="{{.REG_NAME}}:{{.REG_PORT}}/upbound/provider-kubernetes"
+        export CROSSPLANE_PROVIDER_KUBERNETES_IMAGE_TAG="{{.CROSSPLANE_PROVIDER_KUBERNETES_VERSION}}"
 
         export OPENMCP_KIND_CONFIG_PATH=$(pwd)/{{.TMP_DIR}}/kind-config.yaml
         export OPENMCP_CONTAINERD_CONFIG_PATH=$(pwd)/{{.TMP_DIR}}/containerd/certs.d
