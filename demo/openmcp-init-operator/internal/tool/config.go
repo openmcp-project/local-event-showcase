@@ -30,6 +30,16 @@ type ToolConfig struct {
 	PreDeleteChecks []PreDeleteResourceCheck // Resources to check before allowing uninstall
 }
 
+// ManagedControlPlanePreDeleteChecks lists the openmcp.cloud APIExport tool resources
+// that must have zero instances before a ManagedControlPlane may be deleted:
+// Crossplane, Flux, KRO, and OCM Controller (the CRs we introduce, not their downstream resources).
+var ManagedControlPlanePreDeleteChecks = []PreDeleteResourceCheck{
+	{Group: "crossplane.services.openmcp.cloud", Version: "v1alpha1", Resource: "crossplanes"},
+	{Group: "flux.services.openmcp.cloud", Version: "v1alpha1", Resource: "fluxes"},
+	{Group: "kro.services.openmcp.cloud", Version: "v1alpha1", Resource: "kros"},
+	{Group: "ocm.services.openmcp.cloud", Version: "v1alpha1", Resource: "ocmcontrollers"},
+}
+
 // ContentConfigEntry describes a single ContentConfiguration to deploy for UI navigation.
 type ContentConfigEntry struct {
 	Group         string

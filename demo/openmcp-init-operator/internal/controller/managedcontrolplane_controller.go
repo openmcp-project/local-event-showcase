@@ -39,7 +39,7 @@ func NewManagedControlPlaneReconciler(cfg config.OperatorConfig, mgr mcmanager.M
 		Msg("ManagedControlPlaneReconciler: subroutine configuration")
 
 	if cfg.Subroutines.CreateMCP.Enabled {
-		subs = append(subs, subroutines.NewCreateMCPSubroutine(mgr.GetLocalManager().GetClient(), onboardingClient, &cfg))
+		subs = append(subs, subroutines.NewCreateMCPSubroutine(&mcManagerKCPAdapter{mgr: mgr}, onboardingClient, &cfg))
 	}
 	if cfg.Subroutines.SetupSyncAgent.Enabled {
 		subs = append(subs, subroutines.NewSetupSyncAgentSubroutine(mgr, onboardingClient, &cfg))

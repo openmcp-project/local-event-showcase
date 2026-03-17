@@ -21,6 +21,7 @@ import (
 
 	corev1alpha1 "github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/api/core/v1alpha1"
 	"github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/internal/config"
+	"github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/internal/tool"
 )
 
 const (
@@ -29,14 +30,14 @@ const (
 )
 
 type CreateMCPSubroutine struct {
-	client           client.Client
+	kcpProvider      KCPClientProvider
 	onboardingClient client.Client
 	cfg              *config.OperatorConfig
 }
 
-func NewCreateMCPSubroutine(client client.Client, onboardingClient client.Client, cfg *config.OperatorConfig) *CreateMCPSubroutine {
+func NewCreateMCPSubroutine(kcpProvider KCPClientProvider, onboardingClient client.Client, cfg *config.OperatorConfig) *CreateMCPSubroutine {
 	return &CreateMCPSubroutine{
-		client:           client,
+		kcpProvider:      kcpProvider,
 		onboardingClient: onboardingClient,
 		cfg:              cfg,
 	}
@@ -49,15 +50,29 @@ func (r *CreateMCPSubroutine) GetName() string {
 func (r *CreateMCPSubroutine) Finalize(ctx context.Context, _ runtimeobject.RuntimeObject) (ctrl.Result, errors.OperatorError) {
 	log := logger.LoadLoggerFromContext(ctx)
 
-	// Get cluster ID from multicluster context
 	clusterID, ok := mccontext.ClusterFrom(ctx)
 	if !ok {
 		return ctrl.Result{}, errors.NewOperatorError(errors.New("could not get cluster ID from context"), false, true)
 	}
 
+	// Block deletion until no openmcp.cloud tool CRs (Crossplane, Flux, KRO, OCMController) remain.
+	kcpClient, err := r.kcpProvider.KCPClientFromContext(ctx)
+	if err != nil {
+		return ctrl.Result{}, errors.NewOperatorError(err, true, true)
+	}
+	remaining, checkErr := checkRemainingResources(ctx, kcpClient, tool.ManagedControlPlanePreDeleteChecks)
+	if checkErr != nil {
+		log.Error().Err(checkErr).Msg("failed to check remaining tool resources before ManagedControlPlane deletion")
+		return ctrl.Result{}, errors.NewOperatorError(checkErr, true, true)
+	}
+	if remaining > 0 {
+		log.Info().Int("remaining", remaining).Msg("Crossplane/Flux/KRO/OCMController resources still exist in workspace, waiting before ManagedControlPlane deletion")
+		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+	}
+
 	// Check if MCP still exists
 	mcp := &mcpv2alpha1.ManagedControlPlaneV2{}
-	err := r.onboardingClient.Get(ctx, types.NamespacedName{Name: clusterID, Namespace: r.cfg.MCP.Namespace}, mcp)
+	err = r.onboardingClient.Get(ctx, types.NamespacedName{Name: clusterID, Namespace: r.cfg.MCP.Namespace}, mcp)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			log.Info().Str("name", clusterID).Msg("ManagedControlPlaneV2 already deleted, finalizer can be removed")
