@@ -128,6 +128,7 @@ spec:
                 name: ${schema.spec.name}
                 namespace: ${gardenerProject.status.projectNamespace}
                 annotations:
+                  confirmation.gardener.cloud/deletion: "true"
                   shoot.gardener.cloud/cloud-config-execution-max-delay-seconds: "0"
                   authentication.gardener.cloud/issuer: managed
               spec:
