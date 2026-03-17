@@ -44,6 +44,7 @@ func NewManagedControlPlaneReconciler(cfg config.OperatorConfig, mgr mcmanager.M
 	if cfg.Subroutines.SetupSyncAgent.Enabled {
 		subs = append(subs, subroutines.NewSetupSyncAgentSubroutine(mgr, onboardingClient, &cfg))
 	}
+	subs = append(subs, subroutines.NewConfigureCoreDNSSubroutine(onboardingClient, &cfg))
 
 	return &ManagedControlPlaneReconciler{
 		lifecycle: builder.NewBuilder(operatorName, managedControlPlaneReconcilerName, subs, log).
