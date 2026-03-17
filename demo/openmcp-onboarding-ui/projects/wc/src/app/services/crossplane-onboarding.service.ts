@@ -55,7 +55,7 @@ const CHECK_API_BINDING = gql`
   query {
     apis_kcp_io {
       v1alpha2 {
-        APIBinding(name: "crossplane.services.openmcp.cloud") {
+        APIBinding(name: "crossplane.services.opencp.cloud") {
           metadata {
             name
             resourceVersion

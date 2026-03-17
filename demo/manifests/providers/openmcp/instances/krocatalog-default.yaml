@@ -1,4 +1,4 @@
-apiVersion: kro.services.openmcp.cloud/v1alpha1
+apiVersion: kro.services.opencp.cloud/v1alpha1
 kind: KROCatalog
 metadata:
   name: default

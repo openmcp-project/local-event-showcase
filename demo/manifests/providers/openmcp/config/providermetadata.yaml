@@ -1,11 +1,11 @@
 apiVersion: ui.platform-mesh.io/v1alpha1
 kind: ProviderMetadata
 metadata:
-  name: openmcp.cloud
+  name: opencp.cloud
 spec:
-  displayName: OpenMCP
+  displayName: OpenCP
   description: |
-    Open Managed Control Plane (OpenMCP) enables extensible Infrastructure- and Configuration-as-Data capabilities as a Service. Part of ApeiroRA, leveraging the Kubernetes Resource Model to make cloud-edge resources accessible through declarative APIs and controllers.
+    Open Control Planes (OpenCP) enables extensible Infrastructure- and Configuration-as-Data capabilities as a Service. Part of ApeiroRA, leveraging the Kubernetes Resource Model to make cloud-edge resources accessible through declarative APIs and controllers.
   tags:
   - infrastructure
   - crossplane
@@ -13,11 +13,11 @@ spec:
   - multi-cluster
   - gitops
   contacts:
-  - displayName: OpenMCP Team
+  - displayName: OpenCP Team
     email: ManagedControlPlane@sap.com
     role: ["Technical Support"]
   documentation:
-  - displayName: OpenMCP Documentation
+  - displayName: OpenCP Documentation
     url: https://github.com/openmcp-project
   links:
   - displayName: GitHub Organization

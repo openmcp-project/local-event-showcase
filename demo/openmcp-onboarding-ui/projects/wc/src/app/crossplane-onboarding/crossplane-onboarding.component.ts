@@ -436,7 +436,7 @@ export class CrossplaneOnboardingComponent implements OnDestroy {
   onActivate(): void {
     this.state.set('activating');
     this.error.set('');
-    this.onboardingService.createAPIBinding('crossplane.services.openmcp.cloud').subscribe({
+    this.onboardingService.createAPIBinding('crossplane.services.opencp.cloud').subscribe({
       next: () => this.pollAPIBindingReady(),
       error: (err) => {
         this.error.set(`Failed to create API binding: ${err.message}`);
@@ -530,7 +530,7 @@ export class CrossplaneOnboardingComponent implements OnDestroy {
   private startWatchingBinding(): void {
     this.bindingWatchSub?.unsubscribe();
     this.bindingWatchSub = this.onboardingService
-      .watchAPIBinding('crossplane.services.openmcp.cloud')
+      .watchAPIBinding('crossplane.services.opencp.cloud')
       .subscribe({
         next: (event) => {
           this.binding.set(event.object);

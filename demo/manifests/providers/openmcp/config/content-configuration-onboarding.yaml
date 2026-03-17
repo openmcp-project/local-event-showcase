@@ -3,7 +3,7 @@ kind: ContentConfiguration
 metadata:
   labels:
     ui.platform-mesh.io/entity: core_platform-mesh_io_account
-    ui.platform-mesh.io/content-for: openmcp.cloud
+    ui.platform-mesh.io/content-for: opencp.cloud
   name: openmcp-onboarding
 spec:
   inlineConfiguration:
@@ -15,22 +15,22 @@ spec:
           "data": {
             "nodes": [
               {
-                "label": "OpenMCP",
+                "label": "OpenCP",
                 "pathSegment": "openmcp",
                 "icon": "https://avatars.githubusercontent.com/u/173142503?s=200&v=4",
                 "order": 800,
                 "entityType": "main.core_platform-mesh_io_account",
                 "keepSelectedForChildren": false,
                 "defineEntity": {
-                  "id": "core_openmcp_cloud_managedcontrolplane",
-                  "contextKey": "core_openmcp_cloud_managedcontrolplaneId"
+                  "id": "core_opencp_cloud_managedcontrolplane",
+                  "contextKey": "core_opencp_cloud_managedcontrolplaneId"
                 },
                 "context": {
-                  "core_openmcp_cloud_managedcontrolplaneId": "default"
+                  "core_opencp_cloud_managedcontrolplaneId": "default"
                 },
                 "navHeader": {
                   "label": "default",
-                  "type": "OpenMCP"
+                  "type": "OpenCP"
                 },
                 "loadingIndicator": {
                   "enabled": false
@@ -47,7 +47,7 @@ spec:
                     "pathSegment": "features",
                     "icon": "grid",
                     "order": 50,
-                    "entityType": "main.core_platform-mesh_io_account.core_openmcp_cloud_managedcontrolplane",
+                    "entityType": "main.core_platform-mesh_io_account.core_opencp_cloud_managedcontrolplane",
                     "loadingIndicator": {
                       "enabled": false
                     },
@@ -62,7 +62,7 @@ spec:
                     "label": "Crossplane",
                     "pathSegment": "crossplane",
                     "hideFromNav": true,
-                    "entityType": "main.core_platform-mesh_io_account.core_openmcp_cloud_managedcontrolplane",
+                    "entityType": "main.core_platform-mesh_io_account.core_opencp_cloud_managedcontrolplane",
                     "loadingIndicator": { "enabled": false },
                     "url": "/ui/openmcp/wc/main.js",
                     "webcomponent": { "selfRegistered": true, "type": "module" }
@@ -71,7 +71,7 @@ spec:
                     "label": "KRO",
                     "pathSegment": "kro",
                     "hideFromNav": true,
-                    "entityType": "main.core_platform-mesh_io_account.core_openmcp_cloud_managedcontrolplane",
+                    "entityType": "main.core_platform-mesh_io_account.core_opencp_cloud_managedcontrolplane",
                     "loadingIndicator": { "enabled": false },
                     "url": "/ui/openmcp/wc/main.js",
                     "webcomponent": { "selfRegistered": true, "type": "module", "tagName": "kro-onboarding" }
@@ -80,7 +80,7 @@ spec:
                     "label": "Flux",
                     "pathSegment": "flux",
                     "hideFromNav": true,
-                    "entityType": "main.core_platform-mesh_io_account.core_openmcp_cloud_managedcontrolplane",
+                    "entityType": "main.core_platform-mesh_io_account.core_opencp_cloud_managedcontrolplane",
                     "loadingIndicator": { "enabled": false },
                     "url": "/ui/openmcp/wc/main.js",
                     "webcomponent": { "selfRegistered": true, "type": "module", "tagName": "flux-onboarding" }
@@ -89,7 +89,7 @@ spec:
                     "label": "OCM Controller",
                     "pathSegment": "ocm-controller",
                     "hideFromNav": true,
-                    "entityType": "main.core_platform-mesh_io_account.core_openmcp_cloud_managedcontrolplane",
+                    "entityType": "main.core_platform-mesh_io_account.core_opencp_cloud_managedcontrolplane",
                     "loadingIndicator": { "enabled": false },
                     "url": "/ui/openmcp/wc/main.js",
                     "webcomponent": { "selfRegistered": true, "type": "module", "tagName": "ocm-onboarding" }

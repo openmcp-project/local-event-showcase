@@ -34,7 +34,7 @@ var (
 		Namespace:       "kro-system",
 		FinalizerPrefix: "kro.openmcp.io",
 		HelmReleaseName: "kro",
-		APIExportName:   "kro.services.openmcp.cloud",
+		APIExportName:   "kro.services.opencp.cloud",
 	}
 
 	kroContentConfigs = []tool.ContentConfigEntry{
@@ -80,13 +80,13 @@ func NewKROReconciler(cfg config.OperatorConfig, mgr mcmanager.Manager, onboardi
 	toolCfg.PostInstallFunc = kroPostInstall
 
 	if cfg.Subroutines.DeployKROCRDs.Enabled {
-		subs = append(subs, subroutines.NewDeployAPIResourceSchemasSubroutine(provider, "kro", "kro.services.openmcp.cloud", toolcrds.KROCRDs, "kro.openmcp.io/managed-crds"))
+		subs = append(subs, subroutines.NewDeployAPIResourceSchemasSubroutine(provider, "kro", "kro.services.opencp.cloud", toolcrds.KROCRDs, "kro.openmcp.io/managed-crds"))
 	}
 	if cfg.Subroutines.InstallKRO.Enabled {
 		subs = append(subs, subroutines.NewInstallToolSubroutine(provider, onboardingClient, &cfg, &toolCfg))
 	}
 	if cfg.Subroutines.DeployContentConfigurations.Enabled {
-		subs = append(subs, subroutines.NewDeployToolContentConfigurationsSubroutine(provider, "kro", "kro.services.openmcp.cloud", kroContentConfigs, "kro.openmcp.io/managed-content-configurations"))
+		subs = append(subs, subroutines.NewDeployToolContentConfigurationsSubroutine(provider, "kro", "kro.services.opencp.cloud", kroContentConfigs, "kro.openmcp.io/managed-content-configurations"))
 	}
 
 	return &KROReconciler{

@@ -1,4 +1,4 @@
-apiVersion: flux.services.openmcp.cloud/v1alpha1
+apiVersion: flux.services.opencp.cloud/v1alpha1
 kind: FluxCatalog
 metadata:
   name: default

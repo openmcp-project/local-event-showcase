@@ -14,10 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package v1alpha1 contains API Schema definitions for the crossplane.services.openmcp.cloud v1alpha1 API group.
-// Crossplane types live here; ManagedControlPlane types are in api/core/v1alpha1 (core.openmcp.cloud).
+// Package v1alpha1 contains API Schema definitions for the crossplane.services.opencp.cloud v1alpha1 API group.
+// Crossplane types live here; ManagedControlPlane types are in api/core/v1alpha1 (core.opencp.cloud).
 // +kubebuilder:object:generate=true
-// +groupName=crossplane.services.openmcp.cloud
+// +groupName=crossplane.services.opencp.cloud
 package v1alpha1
 
 import (
@@ -27,7 +27,7 @@ import (
 
 var (
 	// GroupVersion is group version used to register these objects
-	GroupVersion = schema.GroupVersion{Group: "crossplane.services.openmcp.cloud", Version: "v1alpha1"}
+	GroupVersion = schema.GroupVersion{Group: "crossplane.services.opencp.cloud", Version: "v1alpha1"}
 
 	// SchemeBuilder is used to add go types to the GroupVersionKind scheme
 	SchemeBuilder = &scheme.Builder{GroupVersion: GroupVersion}

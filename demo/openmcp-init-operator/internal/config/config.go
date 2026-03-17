@@ -80,7 +80,7 @@ func NewOperatorConfig() OperatorConfig {
 			InstallOCM:                   SubroutineToggle{Enabled: true},
 		},
 		KCP: KCPConfig{
-			APIExportEndpointSliceName: "openmcp.cloud",
+			APIExportEndpointSliceName: "opencp.cloud",
 		},
 		MCP: MCPConfig{
 			ServiceAccount: "hsp",

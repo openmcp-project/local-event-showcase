@@ -5,7 +5,7 @@ image:
   pullPolicy: ""
 
 kcp:
-  apiExportEndpointSliceName: openmcp.cloud
+  apiExportEndpointSliceName: opencp.cloud
   platformMeshIP: ""
   hostOverride: ""
 

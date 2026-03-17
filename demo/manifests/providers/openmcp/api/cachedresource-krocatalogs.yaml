@@ -3,6 +3,6 @@ kind: CachedResource
 metadata:
   name: krocatalogs-v1alpha1
 spec:
-  group: kro.services.openmcp.cloud
+  group: kro.services.opencp.cloud
   version: v1alpha1
   resource: krocatalogs

@@ -34,7 +34,7 @@ var (
 		Namespace:       "ocm-system",
 		FinalizerPrefix: "ocm.openmcp.io",
 		HelmReleaseName: "ocm-controller",
-		APIExportName:   "ocm.services.openmcp.cloud",
+		APIExportName:   "ocm.services.opencp.cloud",
 	}
 
 	ocmContentConfigs = []tool.ContentConfigEntry{
@@ -83,13 +83,13 @@ func NewOCMControllerReconciler(cfg config.OperatorConfig, mgr mcmanager.Manager
 	toolCfg.PostInstallFunc = ocmPostInstall
 
 	if cfg.Subroutines.DeployOCMCRDs.Enabled {
-		subs = append(subs, subroutines.NewDeployAPIResourceSchemasSubroutine(provider, "ocm", "ocm.services.openmcp.cloud", toolcrds.OCMCRDs, "ocm.openmcp.io/managed-crds"))
+		subs = append(subs, subroutines.NewDeployAPIResourceSchemasSubroutine(provider, "ocm", "ocm.services.opencp.cloud", toolcrds.OCMCRDs, "ocm.openmcp.io/managed-crds"))
 	}
 	if cfg.Subroutines.InstallOCM.Enabled {
 		subs = append(subs, subroutines.NewInstallToolSubroutine(provider, onboardingClient, &cfg, &toolCfg))
 	}
 	if cfg.Subroutines.DeployContentConfigurations.Enabled {
-		subs = append(subs, subroutines.NewDeployToolContentConfigurationsSubroutine(provider, "ocm", "ocm.services.openmcp.cloud", ocmContentConfigs, "ocm.openmcp.io/managed-content-configurations"))
+		subs = append(subs, subroutines.NewDeployToolContentConfigurationsSubroutine(provider, "ocm", "ocm.services.opencp.cloud", ocmContentConfigs, "ocm.openmcp.io/managed-content-configurations"))
 	}
 
 	return &OCMControllerReconciler{

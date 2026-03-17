@@ -3,6 +3,6 @@ kind: CachedResource
 metadata:
   name: crossplanecatalogs-v1alpha1
 spec:
-  group: crossplane.services.openmcp.cloud
+  group: crossplane.services.opencp.cloud
   version: v1alpha1
   resource: crossplanecatalogs

@@ -33,10 +33,10 @@ const (
 // workspaceAPIExports lists all APIExport names to create in each user workspace.
 // The sync-agent uses the first entry as its apiExportEndpointSliceName.
 var workspaceAPIExports = []string{
-	"crossplane.services.openmcp.cloud",
-	"kro.services.openmcp.cloud",
-	"flux.services.openmcp.cloud",
-	"ocm.services.openmcp.cloud",
+	"crossplane.services.opencp.cloud",
+	"kro.services.opencp.cloud",
+	"flux.services.opencp.cloud",
+	"ocm.services.opencp.cloud",
 }
 
 type SetupSyncAgentSubroutine struct {

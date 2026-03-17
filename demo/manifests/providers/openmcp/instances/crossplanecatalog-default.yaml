@@ -1,4 +1,4 @@
-apiVersion: crossplane.services.openmcp.cloud/v1alpha1
+apiVersion: crossplane.services.opencp.cloud/v1alpha1
 kind: CrossplaneCatalog
 metadata:
   name: default

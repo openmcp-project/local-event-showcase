@@ -26,7 +26,7 @@ operator match the snapshot:
                 - --health-probe-bind-address=:8081
                 - --log-level=debug
                 - --kcp-kubeconfig=/var/opt/kcp/kubeconfig
-                - --kcp-api-export-endpoint-slice-name=openmcp.cloud
+                - --kcp-api-export-endpoint-slice-name=opencp.cloud
                 - --kcp-platform-mesh-ip=
                 - --mcp-issuer-url=https://issuer.test.example.com
                 - --mcp-service-account=test-sa

@@ -3,6 +3,6 @@ kind: CachedResource
 metadata:
   name: ocmcontrollercatalogs-v1alpha1
 spec:
-  group: ocm.services.openmcp.cloud
+  group: ocm.services.opencp.cloud
   version: v1alpha1
   resource: ocmcontrollercatalogs

@@ -1,4 +1,4 @@
-apiVersion: ocm.services.openmcp.cloud/v1alpha1
+apiVersion: ocm.services.opencp.cloud/v1alpha1
 kind: OCMControllerCatalog
 metadata:
   name: default

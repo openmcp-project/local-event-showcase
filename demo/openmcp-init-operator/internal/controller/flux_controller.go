@@ -34,7 +34,7 @@ var (
 		Namespace:       "flux-system",
 		FinalizerPrefix: "flux.openmcp.io",
 		HelmReleaseName: "flux",
-		APIExportName:   "flux.services.openmcp.cloud",
+		APIExportName:   "flux.services.opencp.cloud",
 	}
 
 	fluxContentConfigs = []tool.ContentConfigEntry{
@@ -85,13 +85,13 @@ func NewFluxReconciler(cfg config.OperatorConfig, mgr mcmanager.Manager, onboard
 	toolCfg.PostInstallFunc = fluxPostInstall
 
 	if cfg.Subroutines.DeployFluxCRDs.Enabled {
-		subs = append(subs, subroutines.NewDeployAPIResourceSchemasSubroutine(provider, "flux", "flux.services.openmcp.cloud", toolcrds.FluxCRDs, "flux.openmcp.io/managed-crds"))
+		subs = append(subs, subroutines.NewDeployAPIResourceSchemasSubroutine(provider, "flux", "flux.services.opencp.cloud", toolcrds.FluxCRDs, "flux.openmcp.io/managed-crds"))
 	}
 	if cfg.Subroutines.InstallFlux.Enabled {
 		subs = append(subs, subroutines.NewInstallToolSubroutine(provider, onboardingClient, &cfg, &toolCfg))
 	}
 	if cfg.Subroutines.DeployContentConfigurations.Enabled {
-		subs = append(subs, subroutines.NewDeployToolContentConfigurationsSubroutine(provider, "flux", "flux.services.openmcp.cloud", fluxContentConfigs, "flux.openmcp.io/managed-content-configurations"))
+		subs = append(subs, subroutines.NewDeployToolContentConfigurationsSubroutine(provider, "flux", "flux.services.opencp.cloud", fluxContentConfigs, "flux.openmcp.io/managed-content-configurations"))
 	}
 
 	return &FluxReconciler{

@@ -16,7 +16,7 @@ rules:
   - "update"
   - "patch"
 - apiGroups:
-  - "core.openmcp.cloud"
+  - "core.opencp.cloud"
   resources:
   - managedcontrolplanev2s
   verbs:
@@ -28,7 +28,7 @@ rules:
   - "patch"
   - "delete"
 - apiGroups:
-  - "crossplane.services.openmcp.cloud"
+  - "crossplane.services.opencp.cloud"
   resources:
   - crossplanes
   verbs:
@@ -40,14 +40,14 @@ rules:
   - "patch"
   - "delete"
 - apiGroups:
-  - "crossplane.services.openmcp.cloud"
+  - "crossplane.services.opencp.cloud"
   resources:
   - crossplanes/status
   verbs:
   - "update"
   - "patch"
 - apiGroups:
-  - "core.openmcp.cloud"
+  - "core.opencp.cloud"
   resources:
   - managedcontrolplanes
   verbs:
@@ -59,7 +59,7 @@ rules:
   - "patch"
   - "delete"
 - apiGroups:
-  - "core.openmcp.cloud"
+  - "core.opencp.cloud"
   resources:
   - managedcontrolplanes/status
   verbs:
@@ -104,7 +104,7 @@ rules:
   - "patch"
   - "delete"
 - apiGroups:
-  - "kro.services.openmcp.cloud"
+  - "kro.services.opencp.cloud"
   resources:
   - kros
   - kros/status
@@ -117,7 +117,7 @@ rules:
   - "patch"
   - "delete"
 - apiGroups:
-  - "flux.services.openmcp.cloud"
+  - "flux.services.opencp.cloud"
   resources:
   - fluxes
   - fluxes/status
@@ -130,7 +130,7 @@ rules:
   - "patch"
   - "delete"
 - apiGroups:
-  - "ocm.services.openmcp.cloud"
+  - "ocm.services.opencp.cloud"
   resources:
   - ocmcontrollers
   - ocmcontrollers/status

@@ -57,13 +57,13 @@ func (r *CreateCrossplaneSubroutine) Finalize(ctx context.Context, _ runtimeobje
 		return ctrl.Result{}, errors.NewOperatorError(err, true, true)
 	}
 
-	bound, checkErr := apiExportHasBindings(ctx, kcpClient, "crossplane.services.openmcp.cloud")
+	bound, checkErr := apiExportHasBindings(ctx, kcpClient, "crossplane.services.opencp.cloud")
 	if checkErr != nil {
 		log.Error().Err(checkErr).Msg("failed to check APIBindings for Crossplane APIExport")
 		return ctrl.Result{}, errors.NewOperatorError(checkErr, true, true)
 	}
 	if bound {
-		log.Info().Msg("APIBindings still reference crossplane.services.openmcp.cloud, waiting before Crossplane deletion")
+		log.Info().Msg("APIBindings still reference crossplane.services.opencp.cloud, waiting before Crossplane deletion")
 		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
