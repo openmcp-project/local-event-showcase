@@ -10,10 +10,12 @@ import (
 	"github.com/platform-mesh/golang-commons/errors"
 	"github.com/platform-mesh/golang-commons/logger"
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -106,36 +108,39 @@ func (r *ConfigureCoreDNSSubroutine) Process(ctx context.Context, _ runtimeobjec
 	clusterIP := svc.Spec.ClusterIP
 	log.Info().Str("clusterIP", clusterIP).Msg("ConfigureCoreDNS: gardener-api-proxy Service ready")
 
-	// Step 2: Create/update the matching Endpoints (v1 Endpoints required for selector-less Services;
-	// Kubernetes auto-mirrors them to EndpointSlice)
-	ep := &corev1.Endpoints{ //nolint:staticcheck // v1 Endpoints required for selector-less Service routing
+	// Step 2: Create/update the EndpointSlice for the selector-less Service.
+	eps := &discoveryv1.EndpointSlice{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      gardenerProxyName,
 			Namespace: gardenerProxyNamespace,
 		},
 	}
-	_, err = controllerutil.CreateOrUpdate(ctx, mcpClient, ep, func() error {
-		ep.Subsets = []corev1.EndpointSubset{ //nolint:staticcheck // see above
+	_, err = controllerutil.CreateOrUpdate(ctx, mcpClient, eps, func() error {
+		eps.Labels = map[string]string{
+			discoveryv1.LabelServiceName: gardenerProxyName,
+		}
+		eps.AddressType = discoveryv1.AddressTypeIPv4
+		eps.Endpoints = []discoveryv1.Endpoint{
 			{
-				Addresses: []corev1.EndpointAddress{
-					{IP: r.cfg.Gardener.IP},
-				},
-				Ports: []corev1.EndpointPort{
-					{
-						Name:     "https",
-						Port:     gardenerNodePort,
-						Protocol: corev1.ProtocolTCP,
-					},
-				},
+				Addresses: []string{r.cfg.Gardener.IP},
+			},
+		}
+		port := int32(gardenerNodePort)
+		protocol := corev1.ProtocolTCP
+		eps.Ports = []discoveryv1.EndpointPort{
+			{
+				Name:     ptr.To("https"),
+				Port:     &port,
+				Protocol: &protocol,
 			},
 		}
 		return nil
 	})
 	if err != nil {
-		log.Error().Err(err).Msg("ConfigureCoreDNS: failed to create/update gardener-api-proxy Endpoints")
+		log.Error().Err(err).Msg("ConfigureCoreDNS: failed to create/update gardener-api-proxy EndpointSlice")
 		return ctrl.Result{}, errors.NewOperatorError(err, true, true)
 	}
-	log.Info().Msg("ConfigureCoreDNS: gardener-api-proxy Endpoints ready")
+	log.Info().Msg("ConfigureCoreDNS: gardener-api-proxy EndpointSlice ready")
 
 	// Step 3: Patch CoreDNS ConfigMap with template block
 	cm := &corev1.ConfigMap{}
@@ -190,14 +195,14 @@ func (r *ConfigureCoreDNSSubroutine) Finalize(ctx context.Context, _ runtimeobje
 		return ctrl.Result{}, errors.NewOperatorError(err, true, true)
 	}
 
-	// Remove Service and Endpoints
+	// Remove Service and EndpointSlice
 	svc := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: gardenerProxyName, Namespace: gardenerProxyNamespace}}
 	if deleteErr := mcpClient.Delete(ctx, svc); deleteErr != nil && !apierrors.IsNotFound(deleteErr) {
 		log.Error().Err(deleteErr).Msg("ConfigureCoreDNS: finalize failed to delete Service")
 	}
-	ep := &corev1.Endpoints{ObjectMeta: metav1.ObjectMeta{Name: gardenerProxyName, Namespace: gardenerProxyNamespace}} //nolint:staticcheck // v1 Endpoints required for selector-less Service
-	if deleteErr := mcpClient.Delete(ctx, ep); deleteErr != nil && !apierrors.IsNotFound(deleteErr) {
-		log.Error().Err(deleteErr).Msg("ConfigureCoreDNS: finalize failed to delete Endpoints")
+	eps := &discoveryv1.EndpointSlice{ObjectMeta: metav1.ObjectMeta{Name: gardenerProxyName, Namespace: gardenerProxyNamespace}}
+	if deleteErr := mcpClient.Delete(ctx, eps); deleteErr != nil && !apierrors.IsNotFound(deleteErr) {
+		log.Error().Err(deleteErr).Msg("ConfigureCoreDNS: finalize failed to delete EndpointSlice")
 	}
 
 	// Remove CoreDNS template block
