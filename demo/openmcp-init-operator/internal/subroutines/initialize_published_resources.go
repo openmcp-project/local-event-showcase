@@ -323,6 +323,15 @@ var gardenerAuthProviderResourcesToPublish = []ResourcesToPublish{
 		Group:   "gardener.orchestrate.cloud.sap",
 		Kind:    "AdminKubeconfigRequest",
 		Version: "v1alpha1",
+		RelatedResources: []RelatableResources{
+			{
+				Identifier:    "connection-secret",
+				Origin:        "service",
+				Kind:          "Secret",
+				NamePath:      "spec.writeConnectionSecretToRef.name",
+				NamespacePath: "spec.writeConnectionSecretToRef.namespace",
+			},
+		},
 	},
 	{
 		Group:   "gardener.orchestrate.cloud.sap",

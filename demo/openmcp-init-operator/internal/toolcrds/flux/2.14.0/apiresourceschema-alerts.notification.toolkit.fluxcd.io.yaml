@@ -1,7 +1,7 @@
 apiVersion: apis.kcp.io/v1alpha1
 kind: APIResourceSchema
 metadata:
-  name: v260312-e1a46fc.alerts.notification.toolkit.fluxcd.io
+  name: v260317-7646366.alerts.notification.toolkit.fluxcd.io
 spec:
   group: notification.toolkit.fluxcd.io
   names:

@@ -23,12 +23,16 @@ spec:
     status:
       phase: ${gardenerProject.status.phase}
       projectNamespace: ${gardenerProject.status.?projectNamespace}
+      kubeconfigSecretName: ${adminKubeconfigRequest.spec.writeConnectionSecretToRef.name}
     additionalPrinterColumns:
       - jsonPath: .status.phase
         name: Phase
         type: string
       - jsonPath: .status.projectNamespace
         name: ProjectNamespace
+        type: string
+      - jsonPath: .status.kubeconfigSecretName
+        name: KubeconfigSecret
         type: string
 
   resources:
@@ -106,6 +110,8 @@ spec:
                 type: ${schema.spec.providerType}
 
     - id: shoot
+      readyWhen:
+        - ${shoot.status.atProvider.manifest.status.conditions.exists(c, c.type == "SystemComponentsHealthy" && c.status == "True")}
       template:
         apiVersion: kubernetes.crossplane.io/v1alpha2
         kind: Object
@@ -152,3 +158,36 @@ spec:
                     registryBurst: 20
                     protectKernelDefaults: true
                     streamingConnectionIdleTimeout: 5m
+
+    - id: gardenerAuthProviderConfig
+      template:
+        apiVersion: gardener.orchestrate.cloud.sap/v1alpha1
+        kind: ProviderConfig
+        metadata:
+          name: gardener-${schema.metadata.namespace}-${schema.metadata.name}
+        spec:
+          credentials:
+            source: Secret
+            secretRef:
+              name: gardener-project-${schema.metadata.name}-kubeconfig
+              namespace: ${schema.metadata.namespace}
+              key: kubeconfig
+
+    - id: adminKubeconfigRequest
+      template:
+        apiVersion: gardener.orchestrate.cloud.sap/v1alpha1
+        kind: AdminKubeconfigRequest
+        metadata:
+          name: gardener-${schema.metadata.namespace}-${schema.metadata.name}
+        spec:
+          forProvider:
+            validFor: 1h
+            renewAfter: 45m
+            shootRef:
+              name: ${schema.spec.name}
+              namespace: ${gardenerProject.status.projectNamespace}
+          providerConfigRef:
+            name: ${gardenerAuthProviderConfig.metadata.name}
+          writeConnectionSecretToRef:
+            name: ${schema.spec.name}-kubeconfig
+            namespace: ${schema.metadata.namespace}
