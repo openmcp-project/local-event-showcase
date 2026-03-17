@@ -34,13 +34,14 @@ var (
 		Namespace:       "ocm-system",
 		FinalizerPrefix: "ocm.openmcp.io",
 		HelmReleaseName: "ocm-controller",
+		APIExportName:   "ocm.services.openmcp.cloud",
 	}
 
 	ocmContentConfigs = []tool.ContentConfigEntry{
 		{Group: "delivery.ocm.software", Version: "v1alpha1", Kind: "Component", Plural: "Components", DisplayLabel: "Components", Icon: "product", Order: 100, PathSegment: "components", CategoryID: "ocm-delivery", CategoryLabel: "OCM Delivery", CategoryOrder: 840, Scope: "Namespaced"},
 		{Group: "delivery.ocm.software", Version: "v1alpha1", Kind: "Resource", Plural: "Resources", DisplayLabel: "Resources", Icon: "document", Order: 110, PathSegment: "resources", CategoryID: "ocm-delivery", CategoryLabel: "OCM Delivery", CategoryOrder: 840, Scope: "Namespaced"},
 		{Group: "delivery.ocm.software", Version: "v1alpha1", Kind: "Repository", Plural: "Repositories", DisplayLabel: "Repositories", Icon: "folder-full", Order: 120, PathSegment: "repositories", CategoryID: "ocm-delivery", CategoryLabel: "OCM Delivery", CategoryOrder: 840, Scope: "Namespaced"},
-		{Group: "delivery.ocm.software", Version: "v1alpha1", Kind: "Deployer", Plural: "Deployers", DisplayLabel: "Deployers", Icon: "deploy", Order: 130, PathSegment: "deployers", CategoryID: "ocm-delivery", CategoryLabel: "OCM Delivery", CategoryOrder: 840, Scope: "Cluster"},
+		{Group: "delivery.ocm.software", Version: "v1alpha1", Kind: "Deployer", Plural: "Deployers", DisplayLabel: "Deployers", Icon: "activate", Order: 130, PathSegment: "deployers", CategoryID: "ocm-delivery", CategoryLabel: "OCM Delivery", CategoryOrder: 840, Scope: "Cluster"},
 	}
 )
 

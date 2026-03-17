@@ -26,12 +26,14 @@ const (
 )
 
 type CreateCrossplaneSubroutine struct {
+	kcpProvider      KCPClientProvider
 	onboardingClient client.Client
 	cfg              *config.OperatorConfig
 }
 
-func NewCreateCrossplaneSubroutine(onboardingClient client.Client, cfg *config.OperatorConfig) *CreateCrossplaneSubroutine {
+func NewCreateCrossplaneSubroutine(kcpProvider KCPClientProvider, onboardingClient client.Client, cfg *config.OperatorConfig) *CreateCrossplaneSubroutine {
 	return &CreateCrossplaneSubroutine{
+		kcpProvider:      kcpProvider,
 		onboardingClient: onboardingClient,
 		cfg:              cfg,
 	}
@@ -49,8 +51,24 @@ func (r *CreateCrossplaneSubroutine) Finalize(ctx context.Context, _ runtimeobje
 		return ctrl.Result{}, errors.NewOperatorError(errors.New("could not get cluster ID from context"), false, true)
 	}
 
+	// Check for remaining APIBindings to the Crossplane APIExport before deleting.
+	kcpClient, err := r.kcpProvider.KCPClientFromContext(ctx)
+	if err != nil {
+		return ctrl.Result{}, errors.NewOperatorError(err, true, true)
+	}
+
+	bound, checkErr := apiExportHasBindings(ctx, kcpClient, "crossplane.services.openmcp.cloud")
+	if checkErr != nil {
+		log.Error().Err(checkErr).Msg("failed to check APIBindings for Crossplane APIExport")
+		return ctrl.Result{}, errors.NewOperatorError(checkErr, true, true)
+	}
+	if bound {
+		log.Info().Msg("APIBindings still reference crossplane.services.openmcp.cloud, waiting before Crossplane deletion")
+		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+	}
+
 	crossplane := &crossplanev1alpha1.Crossplane{}
-	err := r.onboardingClient.Get(ctx, types.NamespacedName{Name: clusterID, Namespace: r.cfg.MCP.Namespace}, crossplane)
+	err = r.onboardingClient.Get(ctx, types.NamespacedName{Name: clusterID, Namespace: r.cfg.MCP.Namespace}, crossplane)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			log.Info().Str("name", clusterID).Msg("Crossplane already deleted, finalizer can be removed")

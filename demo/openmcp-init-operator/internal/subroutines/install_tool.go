@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"time"
 
 	goHelm "github.com/mittwald/go-helm-client"
 	"github.com/platform-mesh/golang-commons/controller/lifecycle/runtimeobject"
@@ -199,6 +200,23 @@ func (s *InstallToolSubroutine) Process(ctx context.Context, runtimeObj runtimeo
 
 func (s *InstallToolSubroutine) Finalize(ctx context.Context, _ runtimeobject.RuntimeObject) (ctrl.Result, errors.OperatorError) {
 	log := logger.LoadLoggerFromContext(ctx)
+
+	if s.toolCfg.APIExportName != "" {
+		kcpClient, err := s.kcpProvider.KCPClientFromContext(ctx)
+		if err != nil {
+			return ctrl.Result{}, errors.NewOperatorError(err, true, true)
+		}
+
+		bound, checkErr := apiExportHasBindings(ctx, kcpClient, s.toolCfg.APIExportName)
+		if checkErr != nil {
+			log.Error().Err(checkErr).Str("tool", s.toolCfg.Name).Msg("InstallTool: failed to check APIBindings")
+			return ctrl.Result{}, errors.NewOperatorError(checkErr, true, true)
+		}
+		if bound {
+			log.Info().Str("apiExport", s.toolCfg.APIExportName).Str("tool", s.toolCfg.Name).Msg("InstallTool: APIBindings still reference tool APIExport, waiting before uninstall")
+			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+		}
+	}
 
 	mcpKubeconfig, result, operatorError := getMcpKubeconfig(ctx, s.onboardingClient, defaultMCPNamespace, s.cfg.MCP.HostOverride)
 	if mcpKubeconfig == nil {

@@ -7,6 +7,7 @@ import (
 	"embed"
 	"fmt"
 	"io"
+	"time"
 
 	apisv1alpha2 "github.com/kcp-dev/sdk/apis/apis/v1alpha2"
 	"github.com/platform-mesh/golang-commons/controller/lifecycle/runtimeobject"
@@ -125,6 +126,19 @@ func (d *DeployAPIResourceSchemasSubroutine) Finalize(ctx context.Context, runti
 	kcpClient, err := d.kcpProvider.KCPClientFromContext(ctx)
 	if err != nil {
 		return ctrl.Result{}, errors.NewOperatorError(err, true, true)
+	}
+
+	// Wait for all APIBindings referencing this tool's APIExport to be removed before
+	// deleting schemas. Other controllers (e.g. security-operator) may need to read the
+	// APIResourceSchemas referenced by the APIExport during their own finalization.
+	bound, checkErr := apiExportHasBindings(ctx, kcpClient, d.apiExportName)
+	if checkErr != nil {
+		log.Error().Err(checkErr).Str("apiExport", d.apiExportName).Msg("DeploySchemas: failed to check APIBindings")
+		return ctrl.Result{}, errors.NewOperatorError(checkErr, true, true)
+	}
+	if bound {
+		log.Info().Str("apiExport", d.apiExportName).Msg("DeploySchemas: APIBindings still reference APIExport, waiting before deleting schemas")
+		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
 	// Clear the APIExport resources (revert to empty export)

@@ -1,7 +1,7 @@
 import { ApolloFactory, LuigiContext } from './apollo-factory';
 import { Injectable, inject } from '@angular/core';
 import { Apollo } from 'apollo-angular';
-import { Observable, map, of, catchError } from 'rxjs';
+import { Observable, map, of, catchError, throwError } from 'rxjs';
 import { gql } from '@apollo/client/core';
 
 export interface PermissionClaim {
@@ -338,6 +338,28 @@ export class CrossplaneOnboardingService {
       .pipe(
         map((result) => result.data!.apis_kcp_io.v1alpha2.createAPIBinding),
       );
+  }
+
+  public deleteAPIBinding(bindingName: string): Observable<void> {
+    const mutation = gql`
+      mutation {
+        apis_kcp_io {
+          v1alpha2 {
+            deleteAPIBinding(name: "${bindingName}")
+          }
+        }
+      }
+    `;
+
+    return this.apollo.mutate({ mutation }).pipe(
+      map(() => void 0),
+      catchError((err) => {
+        if (err.message?.includes('not found')) {
+          return of(void 0);
+        }
+        return throwError(() => err);
+      }),
+    );
   }
 
   public acceptPermissionClaim(

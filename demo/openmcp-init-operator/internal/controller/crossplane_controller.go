@@ -30,8 +30,10 @@ type CrossplaneReconciler struct {
 func NewCrossplaneReconciler(cfg config.OperatorConfig, mgr mcmanager.Manager, onboardingClient client.Client, log *logger.Logger) *CrossplaneReconciler {
 	var subs []subroutine.Subroutine
 
+	provider := &mcManagerKCPAdapter{mgr: mgr}
+
 	if cfg.Subroutines.CreateCrossplane.Enabled {
-		subs = append(subs, subroutines.NewCreateCrossplaneSubroutine(onboardingClient, &cfg))
+		subs = append(subs, subroutines.NewCreateCrossplaneSubroutine(provider, onboardingClient, &cfg))
 	}
 	if cfg.Subroutines.InitializePublishedResources.Enabled {
 		subs = append(subs, subroutines.NewInitializePublishedResourcesSubroutine(onboardingClient, &cfg))

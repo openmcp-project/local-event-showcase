@@ -225,6 +225,13 @@ interface PermissionClaimWithBinding extends PermissionClaim {
       margin-top: 0.5rem;
     }
 
+    .status-version-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
     .status-badge {
       display: inline-flex;
       align-items: center;
@@ -421,7 +428,7 @@ interface PermissionClaimWithBinding extends PermissionClaim {
               </div>
               <div class="tile-description">{{ tool.description }}</div>
               <div class="tile-footer">
-                <div>
+                <div class="status-version-row">
                   <span class="status-badge" [class]="tool.state">
                     @switch (tool.state) {
                       @case ('active') { Active }
@@ -874,6 +881,11 @@ export class FeaturesComponent implements OnDestroy {
     this.updateToolState(toolId, 'disabling');
     this.error.set('');
 
+    const exportName = this.toolExportNames[toolId];
+    if (!exportName) {
+      return;
+    }
+
     let delete$: Observable<void>;
     switch (toolId) {
       case 'crossplane':
@@ -892,7 +904,9 @@ export class FeaturesComponent implements OnDestroy {
         return;
     }
 
-    delete$.subscribe({
+    this.crossplaneService.deleteAPIBinding(exportName).pipe(
+      switchMap(() => delete$),
+    ).subscribe({
       next: () => {
         this.setToolStatus(toolId, {});
         this.updateToolState(toolId, 'not-enabled');

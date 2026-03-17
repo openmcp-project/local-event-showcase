@@ -229,6 +229,18 @@ func RunController(_ *cobra.Command, _ []string) {
 		os.Exit(1)
 	}
 
+	apiExportReconciler := controller.NewAPIExportReconciler(mgr, log)
+	if err = apiExportReconciler.SetupWithManager(mgr, defaultCfg, log); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "APIExportReconciler")
+		os.Exit(1)
+	}
+
+	apiResourceSchemaReconciler := controller.NewAPIResourceSchemaReconciler(mgr, log)
+	if err = apiResourceSchemaReconciler.SetupWithManager(mgr, defaultCfg, log); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "APIResourceSchemaReconciler")
+		os.Exit(1)
+	}
+
 	// +kubebuilder:scaffold:builder
 	if metricsCertWatcher != nil {
 		setupLog.Info("Adding metrics certificate watcher to local manager")

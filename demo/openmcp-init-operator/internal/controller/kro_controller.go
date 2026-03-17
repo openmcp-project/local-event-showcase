@@ -34,6 +34,7 @@ var (
 		Namespace:       "kro-system",
 		FinalizerPrefix: "kro.openmcp.io",
 		HelmReleaseName: "kro",
+		APIExportName:   "kro.services.openmcp.cloud",
 	}
 
 	kroContentConfigs = []tool.ContentConfigEntry{

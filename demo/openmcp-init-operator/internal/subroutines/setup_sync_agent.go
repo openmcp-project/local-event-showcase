@@ -261,6 +261,9 @@ func (r *SetupSyncAgentSubroutine) ensureWorkspaceAPIExport(ctx context.Context)
 
 		log.Info().Str("apiExportName", exportName).Msg("ensureWorkspaceAPIExport: creating or updating APIExport")
 		result, createErr := controllerutil.CreateOrUpdate(ctx, kcpClient, apiExport, func() error {
+			if !controllerutil.ContainsFinalizer(apiExport, APIExportFinalizerName) {
+				controllerutil.AddFinalizer(apiExport, APIExportFinalizerName)
+			}
 			return nil
 		})
 		if createErr != nil {

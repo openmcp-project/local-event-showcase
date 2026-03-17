@@ -21,6 +21,15 @@ type ToolConfig struct {
 	ContentConfigs  []ContentConfigEntry
 }
 
+// ManagedControlPlanePreDeleteAPIExports lists the per-tool APIExport names
+// that must have no APIBindings before a ManagedControlPlane may be deleted.
+var ManagedControlPlanePreDeleteAPIExports = []string{
+	"crossplane.services.openmcp.cloud",
+	"flux.services.openmcp.cloud",
+	"kro.services.openmcp.cloud",
+	"ocm.services.openmcp.cloud",
+}
+
 // ContentConfigEntry describes a single ContentConfiguration to deploy for UI navigation.
 type ContentConfigEntry struct {
 	Group         string
