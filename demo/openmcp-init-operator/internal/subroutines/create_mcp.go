@@ -55,19 +55,21 @@ func (r *CreateMCPSubroutine) Finalize(ctx context.Context, _ runtimeobject.Runt
 		return ctrl.Result{}, errors.NewOperatorError(errors.New("could not get cluster ID from context"), false, true)
 	}
 
-	// Block deletion until no openmcp.cloud tool CRs (Crossplane, Flux, KRO, OCMController) remain.
+	// Block deletion until no APIBindings reference any tool-specific APIExports.
 	kcpClient, err := r.kcpProvider.KCPClientFromContext(ctx)
 	if err != nil {
 		return ctrl.Result{}, errors.NewOperatorError(err, true, true)
 	}
-	remaining, checkErr := checkRemainingResources(ctx, kcpClient, tool.ManagedControlPlanePreDeleteChecks)
-	if checkErr != nil {
-		log.Error().Err(checkErr).Msg("failed to check remaining tool resources before ManagedControlPlane deletion")
-		return ctrl.Result{}, errors.NewOperatorError(checkErr, true, true)
-	}
-	if remaining > 0 {
-		log.Info().Int("remaining", remaining).Msg("Crossplane/Flux/KRO/OCMController resources still exist in workspace, waiting before ManagedControlPlane deletion")
-		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+	for _, exportName := range tool.ManagedControlPlanePreDeleteAPIExports {
+		bound, checkErr := apiExportHasBindings(ctx, kcpClient, exportName)
+		if checkErr != nil {
+			log.Error().Err(checkErr).Str("apiExport", exportName).Msg("failed to check APIBindings before ManagedControlPlane deletion")
+			return ctrl.Result{}, errors.NewOperatorError(checkErr, true, true)
+		}
+		if bound {
+			log.Info().Str("apiExport", exportName).Msg("APIBindings still reference tool APIExport, waiting before ManagedControlPlane deletion")
+			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+		}
 	}
 
 	// Check if MCP still exists

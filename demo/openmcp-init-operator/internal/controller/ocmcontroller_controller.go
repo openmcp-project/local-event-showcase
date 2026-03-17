@@ -34,12 +34,7 @@ var (
 		Namespace:       "ocm-system",
 		FinalizerPrefix: "ocm.openmcp.io",
 		HelmReleaseName: "ocm-controller",
-		PreDeleteChecks: []tool.PreDeleteResourceCheck{
-			{Group: "delivery.ocm.software", Version: "v1alpha1", Resource: "components"},
-			{Group: "delivery.ocm.software", Version: "v1alpha1", Resource: "resources"},
-			{Group: "delivery.ocm.software", Version: "v1alpha1", Resource: "repositories"},
-			{Group: "delivery.ocm.software", Version: "v1alpha1", Resource: "deployers"},
-		},
+		APIExportName:   "ocm.services.openmcp.cloud",
 	}
 
 	ocmContentConfigs = []tool.ContentConfigEntry{

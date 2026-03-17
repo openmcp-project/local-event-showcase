@@ -34,13 +34,7 @@ var (
 		Namespace:       "flux-system",
 		FinalizerPrefix: "flux.openmcp.io",
 		HelmReleaseName: "flux",
-		PreDeleteChecks: []tool.PreDeleteResourceCheck{
-			{Group: "source.toolkit.fluxcd.io", Version: "v1", Resource: "gitrepositories"},
-			{Group: "source.toolkit.fluxcd.io", Version: "v1", Resource: "helmrepositories"},
-			{Group: "source.toolkit.fluxcd.io", Version: "v1beta2", Resource: "ocirepositories"},
-			{Group: "kustomize.toolkit.fluxcd.io", Version: "v1", Resource: "kustomizations"},
-			{Group: "helm.toolkit.fluxcd.io", Version: "v2", Resource: "helmreleases"},
-		},
+		APIExportName:   "flux.services.openmcp.cloud",
 	}
 
 	fluxContentConfigs = []tool.ContentConfigEntry{

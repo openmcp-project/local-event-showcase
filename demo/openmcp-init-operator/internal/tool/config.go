@@ -6,14 +6,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// PreDeleteResourceCheck describes a resource type (by GVR) that must have zero
-// instances in the KCP workspace before the tool's Helm release may be uninstalled.
-type PreDeleteResourceCheck struct {
-	Group    string // e.g. "kro.run"
-	Version  string // e.g. "v1alpha1"
-	Resource string // plural form, e.g. "resourcegraphdefinitions"
-}
-
 // ToolConfig parameterizes the generic subroutines for deploying a tool
 // (CRDs into KCP workspace, Helm chart onto MCP cluster, content configs for UI).
 type ToolConfig struct {
@@ -27,17 +19,15 @@ type ToolConfig struct {
 	HelmValuesFunc  func(version string, kcpKubeconfig string, platformMeshIP string) map[string]any
 	PostInstallFunc func(ctx context.Context, mcpClient client.Client, kubeconfigSecret string, platformMeshIP string) error
 	ContentConfigs  []ContentConfigEntry
-	PreDeleteChecks []PreDeleteResourceCheck // Resources to check before allowing uninstall
 }
 
-// ManagedControlPlanePreDeleteChecks lists the openmcp.cloud APIExport tool resources
-// that must have zero instances before a ManagedControlPlane may be deleted:
-// Crossplane, Flux, KRO, and OCM Controller (the CRs we introduce, not their downstream resources).
-var ManagedControlPlanePreDeleteChecks = []PreDeleteResourceCheck{
-	{Group: "crossplane.services.openmcp.cloud", Version: "v1alpha1", Resource: "crossplanes"},
-	{Group: "flux.services.openmcp.cloud", Version: "v1alpha1", Resource: "fluxes"},
-	{Group: "kro.services.openmcp.cloud", Version: "v1alpha1", Resource: "kros"},
-	{Group: "ocm.services.openmcp.cloud", Version: "v1alpha1", Resource: "ocmcontrollers"},
+// ManagedControlPlanePreDeleteAPIExports lists the per-tool APIExport names
+// that must have no APIBindings before a ManagedControlPlane may be deleted.
+var ManagedControlPlanePreDeleteAPIExports = []string{
+	"crossplane.services.openmcp.cloud",
+	"flux.services.openmcp.cloud",
+	"kro.services.openmcp.cloud",
+	"ocm.services.openmcp.cloud",
 }
 
 // ContentConfigEntry describes a single ContentConfiguration to deploy for UI navigation.

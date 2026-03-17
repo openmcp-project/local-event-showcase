@@ -34,9 +34,7 @@ var (
 		Namespace:       "kro-system",
 		FinalizerPrefix: "kro.openmcp.io",
 		HelmReleaseName: "kro",
-		PreDeleteChecks: []tool.PreDeleteResourceCheck{
-			{Group: "kro.run", Version: "v1alpha1", Resource: "resourcegraphdefinitions"},
-		},
+		APIExportName:   "kro.services.openmcp.cloud",
 	}
 
 	kroContentConfigs = []tool.ContentConfigEntry{
