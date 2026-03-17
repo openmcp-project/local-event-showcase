@@ -8,10 +8,7 @@ spec:
     apiVersion: v1alpha1
     kind: GraphQLGateway
     spec:
-      # Required: Reference to existing Crossplane ProviderConfig for the shoot
-      shootProviderConfigName: "string"
-
-      # Required: Shoot kubeconfig reference (for HelmRelease targeting)
+      # Required: Shoot kubeconfig reference (for HelmRelease and ProviderConfig)
       shootKubeconfigSecretName: "string"
       shootKubeconfigSecretKey: "string | default=value"
 
@@ -52,7 +49,22 @@ spec:
           ref:
             semver: "0.34.11"
 
-    # 2. HelmRelease targeting the shoot cluster
+    # 2. ProviderConfig for targeting the shoot cluster
+    - id: shootProviderConfig
+      template:
+        apiVersion: kubernetes.crossplane.io/v1alpha1
+        kind: ProviderConfig
+        metadata:
+          name: shoot-${schema.metadata.namespace}-${schema.metadata.name}
+        spec:
+          credentials:
+            source: Secret
+            secretRef:
+              name: ${schema.spec.shootKubeconfigSecretName}
+              namespace: ${schema.metadata.namespace}
+              key: ${schema.spec.shootKubeconfigSecretKey}
+
+    # 3. HelmRelease targeting the shoot cluster
     - id: helmRelease
       readyWhen:
         - ${helmRelease.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
@@ -93,7 +105,7 @@ spec:
               httpRoute:
                 enabled: false
 
-    # 3. ClusterRoleBinding for gateway SA (cluster-admin access)
+    # 4. ClusterRoleBinding for gateway SA (cluster-admin access)
     - id: gatewayClusterRoleBinding
       readyWhen:
         - ${has(gatewayClusterRoleBinding.status.atProvider.manifest)}
@@ -104,7 +116,7 @@ spec:
           name: gw-crb-${schema.metadata.namespace}-${schema.metadata.name}
         spec:
           providerConfigRef:
-            name: ${schema.spec.shootProviderConfigName}
+            name: ${shootProviderConfig.metadata.name}
           forProvider:
             manifest:
               apiVersion: rbac.authorization.k8s.io/v1
@@ -120,7 +132,7 @@ spec:
                 name: cluster-admin
                 apiGroup: rbac.authorization.k8s.io
 
-    # 4. ClusterAccess resource created IN the shoot (after HelmRelease is Ready)
+    # 5. ClusterAccess resource created IN the shoot (after HelmRelease is Ready)
     - id: clusterAccess
       readyWhen:
         - ${has(clusterAccess.status.atProvider.manifest)}
@@ -131,7 +143,7 @@ spec:
           name: clusteraccess-${schema.metadata.namespace}-${schema.metadata.name}
         spec:
           providerConfigRef:
-            name: ${schema.spec.shootProviderConfigName}
+            name: ${shootProviderConfig.metadata.name}
           forProvider:
             manifest:
               apiVersion: gateway.platform-mesh.io/v1alpha1

@@ -4,6 +4,5 @@ metadata:
   name: my-gateway
   namespace: default
 spec:
-  shootProviderConfigName: gardener-default-my-shoot2
   shootKubeconfigSecretName: my-cluster-kubeconfig
   shootKubeconfigSecretKey: kubeconfig
