@@ -1,7 +1,7 @@
 apiVersion: apis.kcp.io/v1alpha1
 kind: APIResourceSchema
 metadata:
-  name: v260312-e1a46fc.resourcegraphdefinitions.kro.run
+  name: v260317-72b672d.resourcegraphdefinitions.kro.run
 spec:
   group: kro.run
   names:
