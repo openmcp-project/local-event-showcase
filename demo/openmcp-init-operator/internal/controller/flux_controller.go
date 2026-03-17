@@ -34,6 +34,13 @@ var (
 		Namespace:       "flux-system",
 		FinalizerPrefix: "flux.openmcp.io",
 		HelmReleaseName: "flux",
+		PreDeleteChecks: []tool.PreDeleteResourceCheck{
+			{Group: "source.toolkit.fluxcd.io", Version: "v1", Resource: "gitrepositories"},
+			{Group: "source.toolkit.fluxcd.io", Version: "v1", Resource: "helmrepositories"},
+			{Group: "source.toolkit.fluxcd.io", Version: "v1beta2", Resource: "ocirepositories"},
+			{Group: "kustomize.toolkit.fluxcd.io", Version: "v1", Resource: "kustomizations"},
+			{Group: "helm.toolkit.fluxcd.io", Version: "v2", Resource: "helmreleases"},
+		},
 	}
 
 	fluxContentConfigs = []tool.ContentConfigEntry{
@@ -41,7 +48,7 @@ var (
 		{Group: "source.toolkit.fluxcd.io", Version: "v1", Kind: "HelmRepository", Plural: "HelmRepositories", DisplayLabel: "Helm Repositories", Icon: "database", Order: 110, PathSegment: "helmrepositories", CategoryID: "flux-sources", CategoryLabel: "Flux Sources", CategoryOrder: 810, Scope: "Namespaced"},
 		{Group: "source.toolkit.fluxcd.io", Version: "v1beta2", Kind: "OCIRepository", Plural: "OCIRepositories", DisplayLabel: "OCI Repositories", Icon: "shipping-status", Order: 120, PathSegment: "ocirepositories", CategoryID: "flux-sources", CategoryLabel: "Flux Sources", CategoryOrder: 810, Scope: "Namespaced"},
 		{Group: "kustomize.toolkit.fluxcd.io", Version: "v1", Kind: "Kustomization", Plural: "Kustomizations", DisplayLabel: "Kustomizations", Icon: "customize", Order: 200, PathSegment: "kustomizations", CategoryID: "flux-delivery", CategoryLabel: "Flux Delivery", CategoryOrder: 820, Scope: "Namespaced"},
-		{Group: "helm.toolkit.fluxcd.io", Version: "v2", Kind: "HelmRelease", Plural: "HelmReleases", DisplayLabel: "Helm Releases", Icon: "deploy", Order: 210, PathSegment: "helmreleases", CategoryID: "flux-delivery", CategoryLabel: "Flux Delivery", CategoryOrder: 820, Scope: "Namespaced"},
+		{Group: "helm.toolkit.fluxcd.io", Version: "v2", Kind: "HelmRelease", Plural: "HelmReleases", DisplayLabel: "Helm Releases", Icon: "product", Order: 210, PathSegment: "helmreleases", CategoryID: "flux-delivery", CategoryLabel: "Flux Delivery", CategoryOrder: 820, Scope: "Namespaced"},
 	}
 )
 

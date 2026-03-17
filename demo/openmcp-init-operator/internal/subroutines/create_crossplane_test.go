@@ -20,12 +20,12 @@ import (
 )
 
 func TestCreateCrossplaneSubroutine_GetName(t *testing.T) {
-	sub := NewCreateCrossplaneSubroutine(nil, nil)
+	sub := NewCreateCrossplaneSubroutine(nil, nil, nil)
 	assert.Equal(t, "CreateCrossplane", sub.GetName())
 }
 
 func TestCreateCrossplaneSubroutine_Finalizers(t *testing.T) {
-	sub := NewCreateCrossplaneSubroutine(nil, nil)
+	sub := NewCreateCrossplaneSubroutine(nil, nil, nil)
 	finalizers := sub.Finalizers(nil)
 	require.Len(t, finalizers, 1)
 	assert.Equal(t, "crossplane.openmcp.io/managed-crossplane", finalizers[0])
@@ -162,7 +162,7 @@ func TestCreateCrossplaneSubroutine_Process(t *testing.T) {
 			cfg := &config.OperatorConfig{}
 			cfg.MCP.Namespace = mcpNamespace
 
-			sub := NewCreateCrossplaneSubroutine(mcpClient, cfg)
+			sub := NewCreateCrossplaneSubroutine(nil, mcpClient, cfg)
 
 			log, err := logger.New(logger.DefaultConfig())
 			require.NoError(t, err)
@@ -200,7 +200,7 @@ func TestCreateCrossplaneSubroutine_Process_MissingClusterID(t *testing.T) {
 	cfg := &config.OperatorConfig{}
 	cfg.MCP.Namespace = "mcp-namespace"
 
-	sub := NewCreateCrossplaneSubroutine(mcpClient, cfg)
+	sub := NewCreateCrossplaneSubroutine(nil, mcpClient, cfg)
 
 	log, err := logger.New(logger.DefaultConfig())
 	require.NoError(t, err)
@@ -262,10 +262,14 @@ func TestCreateCrossplaneSubroutine_Finalize(t *testing.T) {
 			}
 			mcpClient := clientBuilder.Build()
 
+			// KCP client for pre-delete resource checks (empty workspace = no remaining resources)
+			kcpClient := fake.NewClientBuilder().WithScheme(scheme).Build()
+			kcpProvider := &mockKCPClientProvider{kcpClient: kcpClient}
+
 			cfg := &config.OperatorConfig{}
 			cfg.MCP.Namespace = mcpNamespace
 
-			sub := NewCreateCrossplaneSubroutine(mcpClient, cfg)
+			sub := NewCreateCrossplaneSubroutine(kcpProvider, mcpClient, cfg)
 
 			log, err := logger.New(logger.DefaultConfig())
 			require.NoError(t, err)
@@ -303,7 +307,7 @@ func TestCreateCrossplaneSubroutine_Finalize_MissingClusterID(t *testing.T) {
 	cfg := &config.OperatorConfig{}
 	cfg.MCP.Namespace = "mcp-namespace"
 
-	sub := NewCreateCrossplaneSubroutine(mcpClient, cfg)
+	sub := NewCreateCrossplaneSubroutine(nil, mcpClient, cfg)
 
 	log, err := logger.New(logger.DefaultConfig())
 	require.NoError(t, err)

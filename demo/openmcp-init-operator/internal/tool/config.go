@@ -6,6 +6,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// PreDeleteResourceCheck describes a resource type (by GVR) that must have zero
+// instances in the KCP workspace before the tool's Helm release may be uninstalled.
+type PreDeleteResourceCheck struct {
+	Group    string // e.g. "kro.run"
+	Version  string // e.g. "v1alpha1"
+	Resource string // plural form, e.g. "resourcegraphdefinitions"
+}
+
 // ToolConfig parameterizes the generic subroutines for deploying a tool
 // (CRDs into KCP workspace, Helm chart onto MCP cluster, content configs for UI).
 type ToolConfig struct {
@@ -19,6 +27,7 @@ type ToolConfig struct {
 	HelmValuesFunc  func(version string, kcpKubeconfig string, platformMeshIP string) map[string]any
 	PostInstallFunc func(ctx context.Context, mcpClient client.Client, kubeconfigSecret string, platformMeshIP string) error
 	ContentConfigs  []ContentConfigEntry
+	PreDeleteChecks []PreDeleteResourceCheck // Resources to check before allowing uninstall
 }
 
 // ContentConfigEntry describes a single ContentConfiguration to deploy for UI navigation.

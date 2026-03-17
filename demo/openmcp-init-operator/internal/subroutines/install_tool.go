@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"time"
 
 	goHelm "github.com/mittwald/go-helm-client"
 	"github.com/platform-mesh/golang-commons/controller/lifecycle/runtimeobject"
@@ -14,6 +15,8 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -200,6 +203,23 @@ func (s *InstallToolSubroutine) Process(ctx context.Context, runtimeObj runtimeo
 func (s *InstallToolSubroutine) Finalize(ctx context.Context, _ runtimeobject.RuntimeObject) (ctrl.Result, errors.OperatorError) {
 	log := logger.LoadLoggerFromContext(ctx)
 
+	if len(s.toolCfg.PreDeleteChecks) > 0 {
+		kcpClient, err := s.kcpProvider.KCPClientFromContext(ctx)
+		if err != nil {
+			return ctrl.Result{}, errors.NewOperatorError(err, true, true)
+		}
+
+		remaining, checkErr := checkRemainingResources(ctx, kcpClient, s.toolCfg.PreDeleteChecks)
+		if checkErr != nil {
+			log.Error().Err(checkErr).Str("tool", s.toolCfg.Name).Msg("InstallTool: failed to check remaining resources")
+			return ctrl.Result{}, errors.NewOperatorError(checkErr, true, true)
+		}
+		if remaining > 0 {
+			log.Info().Int("remaining", remaining).Str("tool", s.toolCfg.Name).Msg("InstallTool: resources still exist in workspace, waiting before uninstall")
+			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+		}
+	}
+
 	mcpKubeconfig, result, operatorError := getMcpKubeconfig(ctx, s.onboardingClient, defaultMCPNamespace, s.cfg.MCP.HostOverride)
 	if mcpKubeconfig == nil {
 		return result, operatorError
@@ -292,6 +312,37 @@ func mapToYAML(values map[string]any) string {
 		return ""
 	}
 	return renderYAMLMap(values, 0)
+}
+
+// checkRemainingResources lists resources in the KCP workspace for each PreDeleteResourceCheck.
+// Returns the total count of remaining resources across all checks.
+func checkRemainingResources(ctx context.Context, kcpClient client.Client, checks []tool.PreDeleteResourceCheck) (int, error) {
+	log := logger.LoadLoggerFromContext(ctx)
+	total := 0
+
+	for _, check := range checks {
+		list := &unstructured.UnstructuredList{}
+		list.SetGroupVersionKind(schema.GroupVersionKind{
+			Group:   check.Group,
+			Version: check.Version,
+			Kind:    check.Resource, // plural works as Kind for unstructured list
+		})
+
+		if err := kcpClient.List(ctx, list); err != nil {
+			if apierrors.IsNotFound(err) || apierrors.IsMethodNotSupported(err) {
+				continue
+			}
+			return 0, fmt.Errorf("listing %s/%s/%s: %w", check.Group, check.Version, check.Resource, err)
+		}
+
+		count := len(list.Items)
+		if count > 0 {
+			log.Warn().Str("group", check.Group).Str("version", check.Version).Str("resource", check.Resource).Int("count", count).Msg("remaining resources found")
+			total += count
+		}
+	}
+
+	return total, nil
 }
 
 func renderYAMLMap(m map[string]any, indent int) string {

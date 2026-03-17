@@ -264,6 +264,7 @@ interface PermissionClaimWithBinding extends PermissionClaim {
     .version-label {
       font-size: var(--sapFontSmallSize, 0.75rem);
       color: var(--sapContent_LabelColor, #6a6d70);
+      margin-left: 0.5rem;
     }
 
     .tile-section {
