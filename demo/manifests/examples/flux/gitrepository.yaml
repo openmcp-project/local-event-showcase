@@ -7,4 +7,4 @@ spec:
   interval: 1m
   url: https://github.com/openmcp-project/local-event-showcase
   ref:
-    branch: main
+    branch: feat/kgg-deploy

@@ -6,3 +6,4 @@ metadata:
 spec:
   shootProviderConfigName: gardener-default-my-shoot2
   shootKubeconfigSecretName: my-cluster-kubeconfig
+  shootKubeconfigSecretKey: kubeconfig
