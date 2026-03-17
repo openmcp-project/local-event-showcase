@@ -13,12 +13,12 @@ spec:
         crd: {}
     - group: crossplane.services.openmcp.cloud
       name: crossplanes
-      schema: v260218-a16964f.crossplanes.crossplane.services.openmcp.cloud
+      schema: v260317-c6866d8.crossplanes.crossplane.services.openmcp.cloud
       storage:
         crd: {}
     - group: core.openmcp.cloud
       name: managedcontrolplanes
-      schema: v260308-d0e7cae.managedcontrolplanes.core.openmcp.cloud
+      schema: v260317-c6866d8.managedcontrolplanes.core.openmcp.cloud
       storage:
         crd: {}
     - group: kro.services.openmcp.cloud
@@ -28,7 +28,7 @@ spec:
         crd: {}
     - group: kro.services.openmcp.cloud
       name: kros
-      schema: v260311-2892093.kros.kro.services.openmcp.cloud
+      schema: v260317-c6866d8.kros.kro.services.openmcp.cloud
       storage:
         crd: {}
     - group: flux.services.openmcp.cloud
@@ -38,7 +38,7 @@ spec:
         crd: {}
     - group: flux.services.openmcp.cloud
       name: fluxes
-      schema: v260311-2892093.fluxes.flux.services.openmcp.cloud
+      schema: v260317-c6866d8.fluxes.flux.services.openmcp.cloud
       storage:
         crd: {}
     - group: ocm.services.openmcp.cloud
@@ -48,7 +48,7 @@ spec:
         crd: {}
     - group: ocm.services.openmcp.cloud
       name: ocmcontrollers
-      schema: v260311-2892093.ocmcontrollers.ocm.services.openmcp.cloud
+      schema: v260317-c6866d8.ocmcontrollers.ocm.services.openmcp.cloud
       storage:
         crd: {}
   permissionClaims:
@@ -64,7 +64,7 @@ spec:
       resource: contentconfigurations
       verbs:
         - '*'
-      identityHash: b0f6a2fc4fe0bc69b43ae3f247b6abae5017a75b78d235426a8a5dd8e406c2c7
+      identityHash: 24e5fd7c1b69bf215be8cdbe907796296a2513f43527497cb97ad2ae5809c0c4
     - group: rbac.authorization.k8s.io
       resource: clusterroles
       verbs:

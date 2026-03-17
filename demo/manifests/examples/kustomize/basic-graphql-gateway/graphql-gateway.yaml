@@ -1,0 +1,8 @@
+apiVersion: gateway.platform-mesh.io/v1alpha1
+kind: GraphQLGateway
+metadata:
+  name: my-gateway
+  namespace: default
+spec:
+  shootProviderConfigName: gardener-default-my-shoot2
+  shootKubeconfigSecretName: my-cluster-kubeconfig
