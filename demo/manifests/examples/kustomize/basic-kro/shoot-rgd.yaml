@@ -1,0 +1,154 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: shoots.gardener.cloud
+spec:
+  schema:
+    group: gardener.cloud
+    apiVersion: v1alpha1
+    kind: Shoot
+    spec:
+      name: "string | default=local"
+      region: "string | default=local"
+      providerType: "string | default=local"
+      cloudProfileName: "string | default=local"
+      networkingType: "string | default=calico"
+      networkingNodes: "string | default=10.0.0.0/16"
+      workerName: "string | default=local"
+      machineType: "string | default=local"
+      minWorkers: "integer | default=1"
+      maxWorkers: "integer | default=2"
+      maxSurge: "integer | default=1"
+      maxUnavailable: "integer | default=0"
+    status:
+      phase: ${gardenerProject.status.phase}
+      projectNamespace: ${gardenerProject.status.?projectNamespace}
+    additionalPrinterColumns:
+      - jsonPath: .status.phase
+        name: Phase
+        type: string
+      - jsonPath: .status.projectNamespace
+        name: ProjectNamespace
+        type: string
+
+  resources:
+    - id: gardenerProject
+      readyWhen:
+        - ${gardenerProject.status.phase == "Ready"}
+        - ${has(gardenerProject.status.projectNamespace) && gardenerProject.status.projectNamespace != ""}
+      template:
+        apiVersion: gardener.cloud/v1alpha1
+        kind: GardenerProject
+        metadata:
+          name: ${schema.metadata.name}
+          namespace: ${schema.metadata.namespace}
+
+    - id: providerConfig
+      template:
+        apiVersion: kubernetes.crossplane.io/v1alpha1
+        kind: ProviderConfig
+        metadata:
+          name: gardener-${schema.metadata.namespace}-${schema.metadata.name}
+        spec:
+          credentials:
+            source: Secret
+            secretRef:
+              name: gardener-project-${schema.metadata.name}-kubeconfig
+              namespace: ${schema.metadata.namespace}
+              key: kubeconfig
+
+    - id: localSecret
+      template:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        metadata:
+          name: secret-${schema.metadata.namespace}-${schema.spec.name}
+        spec:
+          providerConfigRef:
+            name: ${providerConfig.metadata.name}
+          forProvider:
+            manifest:
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                labels:
+                  provider.shoot.gardener.cloud/local: "true"
+                  reference.gardener.cloud/credentialsbinding: "true"
+                  reference.gardener.cloud/secretbinding: "true"
+                name: ${schema.spec.name}
+                namespace: ${gardenerProject.status.projectNamespace}
+              type: Opaque
+
+    - id: credentialsBinding
+      template:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        metadata:
+          name: credentialsbinding-${schema.metadata.namespace}-${schema.spec.name}
+        spec:
+          providerConfigRef:
+            name: ${providerConfig.metadata.name}
+          forProvider:
+            manifest:
+              apiVersion: security.gardener.cloud/v1alpha1
+              kind: CredentialsBinding
+              metadata:
+                labels:
+                  provider.extensions.gardener.cloud/local: "true"
+                name: ${schema.spec.name}
+                namespace: ${gardenerProject.status.projectNamespace}
+              credentialsRef:
+                apiVersion: v1
+                kind: Secret
+                name: ${schema.spec.name}
+                namespace: ${gardenerProject.status.projectNamespace}
+              provider:
+                type: ${schema.spec.providerType}
+
+    - id: shoot
+      template:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        metadata:
+          name: shoot-${schema.metadata.namespace}-${schema.spec.name}
+        spec:
+          providerConfigRef:
+            name: ${providerConfig.metadata.name}
+          forProvider:
+            manifest:
+              apiVersion: core.gardener.cloud/v1beta1
+              kind: Shoot
+              metadata:
+                name: ${schema.spec.name}
+                namespace: ${gardenerProject.status.projectNamespace}
+                annotations:
+                  shoot.gardener.cloud/cloud-config-execution-max-delay-seconds: "0"
+                  authentication.gardener.cloud/issuer: managed
+              spec:
+                cloudProfile:
+                  name: ${schema.spec.cloudProfileName}
+                credentialsBindingName: ${schema.spec.name}
+                region: ${schema.spec.region}
+                networking:
+                  type: ${schema.spec.networkingType}
+                  nodes: ${schema.spec.networkingNodes}
+                provider:
+                  type: ${schema.spec.providerType}
+                  workers:
+                    - name: ${schema.spec.workerName}
+                      machine:
+                        type: ${schema.spec.machineType}
+                      cri:
+                        name: containerd
+                      minimum: ${schema.spec.minWorkers}
+                      maximum: ${schema.spec.maxWorkers}
+                      maxSurge: ${schema.spec.maxSurge}
+                      maxUnavailable: ${schema.spec.maxUnavailable}
+                kubernetes:
+                  kubelet:
+                    seccompDefault: true
+                    serializeImagePulls: false
+                    registryPullQPS: 10
+                    registryBurst: 20
+                    protectKernelDefaults: true
+                    streamingConnectionIdleTimeout: 5m

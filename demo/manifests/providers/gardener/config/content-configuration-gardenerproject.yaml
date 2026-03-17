@@ -1,0 +1,51 @@
+apiVersion: ui.platform-mesh.io/v1alpha1
+kind: ContentConfiguration
+metadata:
+  labels:
+    ui.platform-mesh.io/entity: core_platform-mesh_io_account
+    ui.platform-mesh.io/content-for: gardener.cloud
+  name: gardener-gardenerproject
+spec:
+  inlineConfiguration:
+    contentType: json
+    content: |-
+      {
+        "name": "gardener-gardenerproject",
+        "luigiConfigFragment": {
+          "data": {
+            "nodes": [
+              {
+                "label": "Gardener Project",
+                "pathSegment": "gardenerprojects",
+                "navigationContext": "gardenerprojects",
+                "icon": "https://dashboard.garden.canary.k8s.ondemand.com/static/assets/logo.svg",
+                "order": 100,
+                "hideSideNav": false,
+                "keepSelectedForChildren": true,
+                "virtualTree": true,
+                "entityType": "main.core_platform-mesh_io_account",
+                "category": {
+                  "id": "gardener",
+                  "isGroup": true,
+                  "label": "Gardener",
+                  "order": 900
+                },
+                "loadingIndicator": {
+                  "enabled": false
+                },
+                "url": "https://{context.organization}.portal.localhost:8443/ui/generic-resource/#/",
+                "context": {
+                  "resourceDefinition": {
+                    "group": "gardener.cloud",
+                    "version": "v1alpha1",
+                    "kind": "GardenerProject",
+                    "plural": "GardenerProjects",
+                    "singular": "gardenerproject",
+                    "scope": "Namespaced"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }

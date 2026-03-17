@@ -1,0 +1,114 @@
+{
+  "name": "openmcp-onboarding",
+  "luigiConfigFragment": {
+    "data": {
+      "nodes": [
+        {
+          "label": "OpenMCP",
+          "pathSegment": "openmcp",
+          "icon": "cloud",
+          "order": 800,
+          "entityType": "main.core_platform-mesh_io_account",
+          "keepSelectedForChildren": false,
+          "defineEntity": {
+            "id": "core_openmcp_cloud_managedcontrolplane",
+            "contextKey": "core_openmcp_cloud_managedcontrolplaneId"
+          },
+          "context": {
+            "core_openmcp_cloud_managedcontrolplaneId": "default"
+          },
+          "navHeader": {
+            "label": "default",
+            "type": "OpenMCP"
+          },
+          "loadingIndicator": {
+            "enabled": false
+          },
+          "url": "/ui/openmcp/wc/main.js",
+          "webcomponent": {
+            "selfRegistered": true,
+            "type": "module",
+            "tagName": "features-view"
+          },
+          "children": [
+            {
+              "label": "Features",
+              "pathSegment": "features",
+              "icon": "grid",
+              "order": 50,
+              "entityType": "main.core_platform-mesh_io_account.core_openmcp_cloud_managedcontrolplane",
+              "loadingIndicator": {
+                "enabled": false
+              },
+              "url": "/ui/openmcp/wc/main.js",
+              "webcomponent": {
+                "selfRegistered": true,
+                "type": "module",
+                "tagName": "features-view"
+              }
+            },
+            {
+              "label": "Crossplane",
+              "pathSegment": "crossplane",
+              "hideFromNav": true,
+              "entityType": "main.core_platform-mesh_io_account.core_openmcp_cloud_managedcontrolplane",
+              "loadingIndicator": {
+                "enabled": false
+              },
+              "url": "/ui/openmcp/wc/main.js",
+              "webcomponent": {
+                "selfRegistered": true,
+                "type": "module"
+              }
+            },
+            {
+              "label": "KRO",
+              "pathSegment": "kro",
+              "hideFromNav": true,
+              "entityType": "main.core_platform-mesh_io_account.core_openmcp_cloud_managedcontrolplane",
+              "loadingIndicator": {
+                "enabled": false
+              },
+              "url": "/ui/openmcp/wc/main.js",
+              "webcomponent": {
+                "selfRegistered": true,
+                "type": "module",
+                "tagName": "kro-onboarding"
+              }
+            },
+            {
+              "label": "Flux",
+              "pathSegment": "flux",
+              "hideFromNav": true,
+              "entityType": "main.core_platform-mesh_io_account.core_openmcp_cloud_managedcontrolplane",
+              "loadingIndicator": {
+                "enabled": false
+              },
+              "url": "/ui/openmcp/wc/main.js",
+              "webcomponent": {
+                "selfRegistered": true,
+                "type": "module",
+                "tagName": "flux-onboarding"
+              }
+            },
+            {
+              "label": "OCM Controller",
+              "pathSegment": "ocm-controller",
+              "hideFromNav": true,
+              "entityType": "main.core_platform-mesh_io_account.core_openmcp_cloud_managedcontrolplane",
+              "loadingIndicator": {
+                "enabled": false
+              },
+              "url": "/ui/openmcp/wc/main.js",
+              "webcomponent": {
+                "selfRegistered": true,
+                "type": "module",
+                "tagName": "ocm-onboarding"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

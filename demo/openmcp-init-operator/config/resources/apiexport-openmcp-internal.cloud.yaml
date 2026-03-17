@@ -1,0 +1,27 @@
+apiVersion: apis.kcp.io/v1alpha2
+kind: APIExport
+metadata:
+  name: openmcp-internal.cloud
+spec:
+  resources:
+    - group: crossplane.services.openmcp.cloud
+      name: crossplanecatalogs
+      schema: v260308-657c3cf.crossplanecatalogs.crossplane.services.openmcp.cloud
+      storage:
+        crd: {}
+    - group: kro.services.openmcp.cloud
+      name: krocatalogs
+      schema: v260311-2892093.krocatalogs.kro.services.openmcp.cloud
+      storage:
+        crd: {}
+    - group: flux.services.openmcp.cloud
+      name: fluxcatalogs
+      schema: v260311-2892093.fluxcatalogs.flux.services.openmcp.cloud
+      storage:
+        crd: {}
+    - group: ocm.services.openmcp.cloud
+      name: ocmcontrollercatalogs
+      schema: v260311-2892093.ocmcontrollercatalogs.ocm.services.openmcp.cloud
+      storage:
+        crd: {}
+status: {}

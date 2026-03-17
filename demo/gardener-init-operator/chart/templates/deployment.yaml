@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.operator.deployment.replicas }}
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-operator
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-operator
+        control-plane: controller-manager
+        service: {{ .Release.Name }}
+    spec:
+      serviceAccountName: {{ .Release.Name }}
+      {{- with .Values.kcp.platformMeshIP }}
+      hostAliases:
+      - ip: {{ . }}
+        hostnames:
+        - localhost
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: manager
+          image: {{ .Values.image.name }}:{{ .Values.image.tag }}
+          {{- with .Values.image.pullPolicy }}
+          imagePullPolicy: {{ . }}
+          {{- end }}
+          securityContext:
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            seccompProfile:
+              type: RuntimeDefault
+          args:
+          - operator
+          - "--health-probe-bind-address=:{{ .Values.health.port }}"
+          - "--log-level={{ .Values.log.level }}"
+          {{- if .Values.log.noJson }}
+          - "--no-json"
+          {{- end }}
+          - "--kcp-kubeconfig=/var/opt/kcp/kubeconfig"
+          - "--kcp-api-export-endpoint-slice-name={{ .Values.kcp.apiExportEndpointSliceName }}"
+          - "--kcp-platform-mesh-ip={{ .Values.kcp.platformMeshIP }}"
+          {{- with .Values.kcp.hostOverride }}
+          - "--kcp-host-override={{ . }}"
+          {{- end }}
+          {{- with .Values.gardener.kubeconfigSecret }}
+          - "--gardener-kubeconfig=/var/opt/gardener/kubeconfig"
+          {{- end }}
+          {{- with .Values.gardener.ip }}
+          - "--gardener-ip={{ . }}"
+          {{- end }}
+          - "--runtime-namespace={{ .Values.runtime.namespace }}"
+          ports:
+          - containerPort: 8080
+            name: metrics
+            protocol: TCP
+          - name: health-port
+            containerPort: {{ .Values.health.port }}
+            protocol: TCP
+          {{- include "common.operatorHealthAndReadyness" . | nindent 10 }}
+          {{- include "common.resources" . | nindent 10 }}
+          volumeMounts:
+          {{- with .Values.gardener.kubeconfigSecret }}
+          - name: gardener-kubeconfig
+            mountPath: /var/opt/gardener
+          {{- end }}
+          - name: kcp-kubeconfig
+            mountPath: /var/opt/kcp
+          - name: tmp
+            mountPath: /tmp
+      terminationGracePeriodSeconds: 10
+      volumes:
+      {{- with .Values.gardener.kubeconfigSecret }}
+      - name: gardener-kubeconfig
+        secret:
+          secretName: {{ . }}
+      {{- end }}
+      - name: kcp-kubeconfig
+        secret:
+          secretName: kcp-openmfp-system-kubeconfig
+      - name: tmp
+        emptyDir: {}

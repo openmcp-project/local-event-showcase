@@ -1,0 +1,10 @@
+apiVersion: gardener.cloud/v1alpha1
+kind: Shoot
+metadata:
+  name: my-shoot2
+  namespace: default
+spec:
+  name: my-cluster
+  region: local
+  minWorkers: 1
+  maxWorkers: 1

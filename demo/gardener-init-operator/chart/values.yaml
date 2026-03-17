@@ -1,0 +1,56 @@
+image:
+  name: ghcr.io/openmcp/gardener-init-operator
+  tag: latest
+  imagePullSecret: ghcr
+  pullPolicy: ""
+
+kcp:
+  apiExportEndpointSliceName: gardener.cloud
+  platformMeshIP: ""
+  hostOverride: ""
+
+gardener:
+  kubeconfigSecret: ""
+  ip: ""
+
+runtime:
+  namespace: default
+
+# Health probe configuration (used by common.operatorHealthAndReadyness)
+health:
+  port: 8081
+  periodSeconds: 10
+  readiness:
+    path: "/readyz"
+    initialDelaySeconds: 5
+  liveness:
+    path: "/healthz"
+    failureThreshold: 3
+  startup:
+    path: "/readyz"
+    failureThreshold: 30
+
+# Log configuration
+log:
+  level: info
+  noJson: false
+
+# Resource configuration (used by common.resources)
+deployment:
+  resources:
+    limits:
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+# Security context (used by common.pod.securityContext and common.container.securityContext)
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 3000
+  fsGroup: 2000
+
+# Operator deployment settings
+operator:
+  deployment:
+    replicas: 1

@@ -1,0 +1,141 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.operator.deployment.replicas }}
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-operator
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-operator
+        control-plane: controller-manager
+        service: {{ .Release.Name }}
+      annotations:
+        sidecar.opentelemetry.io/inject: "true"
+    spec:
+      serviceAccountName: {{ .Release.Name }}
+      {{- with .Values.kcp.platformMeshIP }}
+      hostAliases:
+      - ip: {{ . }}
+        hostnames:
+        - localhost
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: manager
+          image: {{ .Values.image.name }}:{{ .Values.image.tag }}
+          {{- with .Values.image.pullPolicy }}
+          imagePullPolicy: {{ . }}
+          {{- end }}
+          securityContext:
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            seccompProfile:
+              type: RuntimeDefault
+          args:
+          - operator
+          - "--health-probe-bind-address=:{{ .Values.health.port }}"
+          - "--log-level={{ .Values.log.level }}"
+          {{- if .Values.log.noJson }}
+          - "--no-json"
+          {{- end }}
+          - "--kcp-kubeconfig=/var/opt/kcp/kubeconfig"
+          - "--kcp-api-export-endpoint-slice-name={{ .Values.kcp.apiExportEndpointSliceName }}"
+          - "--kcp-platform-mesh-ip={{ .Values.kcp.platformMeshIP }}"
+          {{- with .Values.kcp.hostOverride }}
+          - "--kcp-host-override={{ . }}"
+          {{- end }}
+          {{- with .Values.syncAgent.chartURL }}
+          - "--sync-agent-chart-url={{ . }}"
+          {{- end }}
+          {{- with .Values.syncAgent.imageRepository }}
+          - "--sync-agent-image-repository={{ . }}"
+          {{- end }}
+          {{- with .Values.syncAgent.imageTag }}
+          - "--sync-agent-image-tag={{ . }}"
+          {{- end }}
+          {{- range .Values.syncAgent.apiExportHostPortOverrides }}
+          - "--sync-agent-apiexport-hostport-override={{ . }}"
+          {{- end }}
+          {{- with .Values.kro.chartURL }}
+          - "--kro-chart-url={{ . }}"
+          {{- end }}
+          {{- with .Values.kro.imageRepository }}
+          - "--kro-image-repository={{ . }}"
+          {{- end }}
+          {{- with .Values.kro.imageTag }}
+          - "--kro-image-tag={{ . }}"
+          {{- end }}
+          {{- with .Values.flux.chartURL }}
+          - "--flux-chart-url={{ . }}"
+          {{- end }}
+          {{- with .Values.flux.imageRepository }}
+          - "--flux-image-repository={{ . }}"
+          {{- end }}
+          {{- with .Values.flux.imageTag }}
+          - "--flux-image-tag={{ . }}"
+          {{- end }}
+          {{- with .Values.ocm.chartURL }}
+          - "--ocm-chart-url={{ . }}"
+          {{- end }}
+          {{- with .Values.ocm.imageRepository }}
+          - "--ocm-image-repository={{ . }}"
+          {{- end }}
+          {{- with .Values.ocm.imageTag }}
+          - "--ocm-image-tag={{ . }}"
+          {{- end }}
+          {{- with .Values.mcp.kubeconfigSecret }}
+          - "--mcp-kubeconfig=/var/opt/mcp/config"
+          {{- end }}
+          {{- with .Values.mcp.issuerURL }}
+          - "--mcp-issuer-url={{ . }}"
+          {{- end }}
+          - "--mcp-service-account={{ .Values.mcp.serviceAccount }}"
+          - "--mcp-namespace={{ .Values.mcp.namespace }}"
+          {{- with .Values.mcp.hostOverride }}
+          - "--mcp-host-override={{ . }}"
+          {{- end }}
+          - "--runtime-namespace={{ .Values.runtime.namespace }}"
+          ports:
+          - containerPort: 8080
+            name: metrics
+            protocol: TCP
+          - name: health-port
+            containerPort: {{ .Values.health.port }}
+            protocol: TCP
+          {{- with .Values.tracing.enabled }}
+          env:
+          {{- include "common.collectorEnvironment" $ | nindent 10 }}
+          {{- end }}
+          {{- include "common.operatorHealthAndReadyness" . | nindent 10 }}
+          {{- include "common.resources" . | nindent 10 }}
+          volumeMounts:
+          {{- with .Values.mcp.kubeconfigSecret }}
+          - name: mcp-kubeconfig
+            mountPath: /var/opt/mcp
+          {{- end }}
+          - name: kcp-kubeconfig
+            mountPath: /var/opt/kcp
+          - name: tmp
+            mountPath: /tmp
+      terminationGracePeriodSeconds: 10
+      volumes:
+      {{- with .Values.mcp.kubeconfigSecret }}
+      - name: mcp-kubeconfig
+        secret:
+          secretName: {{ . }}
+      {{- end }}
+      - name: kcp-kubeconfig
+        secret:
+          secretName: kcp-openmfp-system-kubeconfig
+      - name: tmp
+        emptyDir: {}

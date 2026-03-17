@@ -1,0 +1,4 @@
+apiVersion: mcp.openmfp.org/v1alpha1
+kind: OpenMCPInit
+metadata:
+  name: mcp

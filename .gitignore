@@ -1,1 +1,12 @@
 .tmp
+.secret
+.env
+.claude
+CLAUDE.md
+CLAUDE.local.md
+bin
+.idea
+demo/external
+.envrc
+hack/kubeconfigs/
+node_modules/

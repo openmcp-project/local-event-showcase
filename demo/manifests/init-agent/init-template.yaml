@@ -1,0 +1,10 @@
+apiVersion: initialization.kcp.io/v1alpha1
+kind: InitTemplate
+metadata:
+  name: openmcp-managed-control-plane
+spec:
+  template: |
+    apiVersion: core.openmcp.cloud/v1alpha1
+    kind: ManagedControlPlane
+    metadata:
+      name: default

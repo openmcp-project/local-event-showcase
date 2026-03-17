@@ -1,0 +1,11 @@
+apiVersion: initialization.kcp.io/v1alpha1
+kind: InitTarget
+metadata:
+  name: openmcp-account-init
+spec:
+  workspaceTypeRef:
+    name: openmcp-init
+    path: root
+  sources:
+    - template:
+        name: openmcp-managed-control-plane

@@ -1,0 +1,8 @@
+apiVersion: kro.services.openmcp.cloud/v1alpha1
+kind: KROCatalog
+metadata:
+  name: default
+spec:
+  versions:
+    - version: "v0.8.5"
+      chartVersion: "0.8.5"

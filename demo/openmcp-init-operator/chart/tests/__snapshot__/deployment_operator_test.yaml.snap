@@ -1,0 +1,90 @@
+operator match the snapshot:
+  1: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: RELEASE-NAME
+      namespace: NAMESPACE
+    spec:
+      replicas: 1
+      revisionHistoryLimit: 3
+      selector:
+        matchLabels:
+          app: RELEASE-NAME-operator
+      template:
+        metadata:
+          annotations:
+            sidecar.opentelemetry.io/inject: "true"
+          labels:
+            app: RELEASE-NAME-operator
+            control-plane: controller-manager
+            service: RELEASE-NAME
+        spec:
+          containers:
+            - args:
+                - operator
+                - --health-probe-bind-address=:8081
+                - --log-level=debug
+                - --kcp-kubeconfig=/var/opt/kcp/kubeconfig
+                - --kcp-api-export-endpoint-slice-name=openmcp.cloud
+                - --kcp-platform-mesh-ip=
+                - --mcp-issuer-url=https://issuer.test.example.com
+                - --mcp-service-account=test-sa
+                - --mcp-namespace=default
+                - --runtime-namespace=test-namespace
+              image: test-image:test-image-tag
+              livenessProbe:
+                failureThreshold: 3
+                httpGet:
+                  path: /healthz
+                  port: 8081
+                periodSeconds: 10
+              name: manager
+              ports:
+                - containerPort: 8080
+                  name: metrics
+                  protocol: TCP
+                - containerPort: 8081
+                  name: health-port
+                  protocol: TCP
+              readinessProbe:
+                httpGet:
+                  path: /readyz
+                  port: 8081
+                initialDelaySeconds: 5
+                periodSeconds: 10
+              resources:
+                limits:
+                  memory: 512Mi
+                requests:
+                  cpu: 50m
+                  memory: 256Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                runAsNonRoot: true
+                seccompProfile:
+                  type: RuntimeDefault
+              startupProbe:
+                failureThreshold: 30
+                httpGet:
+                  path: /readyz
+                  port: 8081
+                periodSeconds: 10
+              volumeMounts:
+                - mountPath: /var/opt/kcp
+                  name: kcp-kubeconfig
+                - mountPath: /tmp
+                  name: tmp
+          securityContext:
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          serviceAccountName: RELEASE-NAME
+          terminationGracePeriodSeconds: 10
+          volumes:
+            - name: kcp-kubeconfig
+              secret:
+                secretName: kcp-openmfp-system-kubeconfig
+            - emptyDir: {}
+              name: tmp
