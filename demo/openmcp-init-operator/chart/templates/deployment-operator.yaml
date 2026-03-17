@@ -104,6 +104,9 @@ spec:
           {{- with .Values.mcp.hostOverride }}
           - "--mcp-host-override={{ . }}"
           {{- end }}
+          {{- with .Values.gardener.ip }}
+          - "--gardener-ip={{ . }}"
+          {{- end }}
           - "--runtime-namespace={{ .Values.runtime.namespace }}"
           ports:
           - containerPort: 8080

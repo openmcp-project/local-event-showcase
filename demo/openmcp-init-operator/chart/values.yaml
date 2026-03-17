@@ -37,6 +37,9 @@ mcp:
   namespace: default
   hostOverride: ""
 
+gardener:
+  ip: ""
+
 runtime:
   namespace: default
 

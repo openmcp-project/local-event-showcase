@@ -32,7 +32,6 @@ const (
 
 	gardenerProxyName      = "gardener-api-proxy"
 	gardenerProxyNamespace = "kube-system"
-	gardenerNodeIP         = "172.18.0.8"
 	gardenerNodePort       = 30443
 
 	coreDNSBlockMarker = "local.gardener.cloud:53"
@@ -119,7 +118,7 @@ func (r *ConfigureCoreDNSSubroutine) Process(ctx context.Context, _ runtimeobjec
 		ep.Subsets = []corev1.EndpointSubset{ //nolint:staticcheck // see above
 			{
 				Addresses: []corev1.EndpointAddress{
-					{IP: gardenerNodeIP},
+					{IP: r.cfg.Gardener.IP},
 				},
 				Ports: []corev1.EndpointPort{
 					{

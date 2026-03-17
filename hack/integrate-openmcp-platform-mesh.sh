@@ -378,6 +378,16 @@ log "Platform-mesh control plane IP: ${PLATFORM_MESH_IP}"
 echo "${PLATFORM_MESH_IP}" > "${KUBECONFIGS_DIR}/platform-mesh-ip.txt"
 log "Saved platform-mesh IP to ${KUBECONFIGS_DIR}/platform-mesh-ip.txt ✓"
 
+# Get gardener-local control plane Docker IP (needed by openmcp-init-operator for CoreDNS proxy)
+GARDENER_CLUSTER=$(kind get clusters 2>/dev/null | grep -E "^gardener-local$" || true)
+GARDENER_IP=""
+if [[ -n "${GARDENER_CLUSTER}" ]]; then
+    GARDENER_IP=$(docker inspect gardener-local-control-plane --format '{{.NetworkSettings.Networks.kind.IPAddress}}')
+    log "Gardener Docker IP: ${GARDENER_IP}"
+else
+    warn "gardener-local kind cluster not found, gardener IP will not be set"
+fi
+
 # Build and deploy the openmcp-init-operator
 if [[ -z "${ONBOARDING_CLUSTER}" ]]; then
     error "Cannot deploy operator: no onboarding cluster found"
@@ -455,6 +465,7 @@ helm upgrade --install openmcp-init-operator "${OPERATOR_DIR}/chart" \
     --set kcp.apiExportEndpointSliceName="openmcp.cloud" \
     --set kcp.platformMeshIP="${PLATFORM_MESH_IP}" \
     --set kcp.hostOverride="localhost:31000" \
+    --set gardener.ip="${GARDENER_IP}" \
     --set syncAgent.imageRepository="kind-registry:5002/kcp-dev/api-syncagent" \
     --set syncAgent.imageTag="${API_SYNCAGENT_TAG}" \
     --set "syncAgent.apiExportHostPortOverrides={localhost:8443=localhost:31000}" \
@@ -473,7 +484,6 @@ KUBECONFIG="${ONBOARDING_KUBECONFIG}" kubectl rollout status deployment/openmcp-
 log "Operator is ready ✓"
 
 # ─── Gardener Init Operator (deployed to gardener-local cluster) ───
-GARDENER_CLUSTER=$(kind get clusters 2>/dev/null | grep -E "^gardener-local$" || true)
 if [[ -n "${GARDENER_CLUSTER}" ]]; then
     log "Found gardener-local cluster, deploying gardener-init-operator..."
 
@@ -481,9 +491,6 @@ if [[ -n "${GARDENER_CLUSTER}" ]]; then
     GARDENER_RAW_KUBECONFIG="${KUBECONFIGS_DIR}/gardener-local.kubeconfig"
     kind get kubeconfig --name gardener-local > "${GARDENER_RAW_KUBECONFIG}"
     log "Exported gardener-local kubeconfig ✓"
-
-    GARDENER_IP=$(docker inspect gardener-local-control-plane --format '{{.NetworkSettings.Networks.kind.IPAddress}}')
-    log "Gardener Docker IP: ${GARDENER_IP}"
 
     # The operator runs ON gardener-local, so it can reach Gardener at localhost:443
     # No cross-cluster Docker IP kubeconfig needed for the Gardener API itself

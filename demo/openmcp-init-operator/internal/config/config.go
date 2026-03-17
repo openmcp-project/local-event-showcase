@@ -34,6 +34,10 @@ type KCPConfig struct {
 	HostOverride               string
 }
 
+type GardenerConfig struct {
+	IP string
+}
+
 type MCPConfig struct {
 	Kubeconfig     string
 	IssuerURL      string
@@ -52,6 +56,7 @@ type OperatorConfig struct {
 	Subroutines      SubroutinesConfig
 	KCP              KCPConfig
 	MCP              MCPConfig
+	Gardener         GardenerConfig
 	SyncAgent        SyncAgentConfig
 	KRO              ToolHelmConfig
 	Flux             ToolHelmConfig
@@ -109,6 +114,7 @@ func (c *OperatorConfig) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&c.MCP.ServiceAccount, "mcp-service-account", c.MCP.ServiceAccount, "Service account name for MCP operations")
 	fs.StringVar(&c.MCP.Namespace, "mcp-namespace", c.MCP.Namespace, "Namespace for MCP resources")
 	fs.StringVar(&c.MCP.HostOverride, "mcp-host-override", c.MCP.HostOverride, "Override host in MCP kubeconfig")
+	fs.StringVar(&c.Gardener.IP, "gardener-ip", c.Gardener.IP, "Docker IP of gardener-local control plane")
 	fs.StringVar(&c.SyncAgent.ChartURL, "sync-agent-chart-url", c.SyncAgent.ChartURL, "Helm chart URL for the api-syncagent")
 	fs.StringVar(&c.SyncAgent.ImageRepository, "sync-agent-image-repository", c.SyncAgent.ImageRepository, "Override image repository for the api-syncagent")
 	fs.StringVar(&c.SyncAgent.ImageTag, "sync-agent-image-tag", c.SyncAgent.ImageTag, "Override image tag for the api-syncagent")

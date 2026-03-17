@@ -12,5 +12,5 @@ spec:
   prune: true
   kubeConfig:
     secretRef:
-      name: gardener-project-my-shoot2-kubeconfig
+      name: my-cluster-kubeconfig
       key: kubeconfig
