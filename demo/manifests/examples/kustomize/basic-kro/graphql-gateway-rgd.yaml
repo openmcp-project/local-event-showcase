@@ -89,6 +89,9 @@ spec:
               enabled: false
             crds:
               enabled: true
+            gatewayApi:
+              httpRoute:
+                enabled: false
 
     # 3. ClusterRoleBinding for gateway SA (cluster-admin access)
     - id: gatewayClusterRoleBinding
