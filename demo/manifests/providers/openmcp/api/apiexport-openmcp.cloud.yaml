@@ -69,7 +69,7 @@ spec:
       resource: contentconfigurations
       verbs:
         - '*'
-      identityHash: b0f6a2fc4fe0bc69b43ae3f247b6abae5017a75b78d235426a8a5dd8e406c2c7
+      identityHash: b9398ea4ca259dfa455b381f35d08f74074ec056939f4c02297c6a427b2c58ca
     - group: rbac.authorization.k8s.io
       resource: clusterroles
       verbs:
