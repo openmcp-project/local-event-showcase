@@ -214,10 +214,8 @@ sequenceDiagram
 
     User->>Portal: navigate to OpenMCP → KRO / Flux / OCM Controller
     Portal->>UI: load tool onboarding UI (Angular WebComponent)
-    UI->>GQL: check catalog (KROCatalog / FluxCatalog / OCMControllerCatalog)
-    GQL->>KCP: get catalog resource (via openmcp-internal.cloud binding)
-    KCP-->>GQL: catalog with available versions
-    GQL-->>UI: available versions
+    UI->>GQL: check tool availability
+    GQL-->>UI: available versions (hardcoded in UI assets)
 
     UI-->>User: show tool configuration (version selector)
     User->>UI: select version and confirm
@@ -280,8 +278,7 @@ sequenceDiagram
 - Network routing from MCP clusters to KCP uses `hostAliases` to map `localhost` to the `platform-mesh` Docker container IP, since KCP listens on `localhost:31000` (NodePort) inside the kind network.
 - Published resources (`ProviderConfig`, `Object`, `ObservedObjectCollection`) are only initialized once the target Crossplane on the onboarding cluster reports all `*Ready` conditions as `True`.
 - **Crossplane vs. KRO/Flux/OCM architecture**: Crossplane uses a sync-agent bridge — the `api-syncagent` runs on the MCP cluster and bridges resources between KCP and MCP via a dynamic `crossplane.services.openmcp.cloud` APIExport. KRO, Flux, and OCM Controller use a simpler direct pattern: the operator deploys the tool's upstream CRDs directly into the user's KCP workspace, then installs the tool controller on the MCP cluster with a kubeconfig that points at that KCP workspace. The tool controller reconciles against KCP directly, with no sync-agent in between.
-- Catalog resources (`KROCatalog`, `FluxCatalog`, `OCMControllerCatalog`) are published via the `openmcp-internal.cloud` APIExport and are intended to be replicated via `CachedResource` (read-only, provider-managed). CachedResources are currently non-functional; catalog data is hardcoded in the onboarding UI assets until the feature is fixed.
-- Each new tool API group is a separate KCP service domain: `kro.services.openmcp.cloud`, `flux.services.openmcp.cloud`, and `ocm.services.openmcp.cloud`. All three are published via the existing `openmcp.cloud` APIExport (enablement resources) and `openmcp-internal.cloud` APIExport (catalog resources).
+- Each new tool API group is a separate KCP service domain: `kro.services.openmcp.cloud`, `flux.services.openmcp.cloud`, and `ocm.services.openmcp.cloud`. All three are published via the existing `openmcp.cloud` APIExport.
 
 ---
 
@@ -401,27 +398,24 @@ Each phase is independently deployable and verifiable before moving to the next.
 
 ### Phase 6 — KRO, Flux, OCM Controller Tools
 
-**Goal:** Extend the demo with three new tools — KRO, Flux, and OCM Controller — following a direct CRD + controller-on-MCP pattern (no sync-agent). Each tool has a user-facing onboarding UI, a catalog resource for version discovery, and three operator subroutines.
+**Goal:** Extend the demo with three new tools — KRO, Flux, and OCM Controller — following a direct CRD + controller-on-MCP pattern (no sync-agent). Each tool has a user-facing onboarding UI and three operator subroutines.
 
 **Changes:**
 - Define new API groups in `openmcp-init-operator/api/`:
-  - `kro.services.openmcp.cloud`: `KRO` (enablement), `KROCatalog` (version catalog)
-  - `flux.services.openmcp.cloud`: `Flux` (enablement), `FluxCatalog` (version catalog)
-  - `ocm.services.openmcp.cloud`: `OCMController` (enablement), `OCMControllerCatalog` (version catalog)
+  - `kro.services.openmcp.cloud`: `KRO` (enablement)
+  - `flux.services.openmcp.cloud`: `Flux` (enablement)
+  - `ocm.services.openmcp.cloud`: `OCMController` (enablement)
 - Add `KROReconciler`, `FluxReconciler`, `OCMControllerReconciler` to `openmcp-init-operator`; each reconciler runs three subroutines:
   - `DeployCRDsSubroutine`: deploy the tool's upstream CRDs directly into the user's KCP workspace
   - `InstallToolSubroutine`: Helm install the tool controller on the MCP cluster with a kubeconfig targeting the user's KCP workspace
   - `DeployToolContentConfigurationsSubroutine`: create ContentConfiguration resources in the KCP workspace for portal navigation
-- Register new `APIResourceSchemas` for all six types in the `root:providers:openmcp` workspace; publish enablement types via the existing `openmcp.cloud` APIExport and catalog types via `openmcp-internal.cloud` APIExport
-- Create `CachedResource` manifests for catalog types (replicate catalog data to KCP cache; currently non-functional — catalog data is hardcoded in UI assets as a workaround)
-- Create catalog instance manifests (`KROCatalog`, `FluxCatalog`, `OCMControllerCatalog`) in the provider workspace
+- Register new `APIResourceSchemas` for the three enablement types in the `root:providers:openmcp` workspace; publish via the existing `openmcp.cloud` APIExport
 - Add Angular WebComponent onboarding UIs (`kro-onboarding`, `flux-onboarding`, `ocm-onboarding`) to `openmcp-onboarding-ui`:
-  - Read catalog resource to populate version selector
   - Create enablement resource (`KRO` / `Flux` / `OCMController`) on confirmation
 - Update integration script to apply new manifests and register new ContentConfigurations
 
 **Validate:**
-- New `APIResourceSchemas` and updated `openmcp.cloud` / `openmcp-internal.cloud` APIExports are present in `root:providers:openmcp`
+- New `APIResourceSchemas` and updated `openmcp.cloud` APIExport are present in `root:providers:openmcp`
 - Navigate to portal → OpenMCP → KRO (/ Flux / OCM Controller) → onboarding UI loads, version selector populated
 - Confirm selection → enablement resource created in account workspace
 - Operator picks up resource → DeployCRDs runs (CRDs visible in KCP workspace) → InstallTool runs (tool controller running on MCP, targeting KCP) → DeployToolContentConfigurations runs (ContentConfigurations visible in workspace)

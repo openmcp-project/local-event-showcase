@@ -53,7 +53,7 @@ tasks:
   rename-apiexport:
     internal: true
     cmds:
-      - rm -f ./config/resources/apiexport-opencp.cloud.yaml ./config/resources/apiexport-opencp-internal.cloud.yaml
+      - rm -f ./config/resources/apiexport-opencp.cloud.yaml
       # Start from the crossplane APIExport as a base (has spec.resources with crossplane entries)
       - cp ./config/resources/apiexport-crossplane.services.opencp.cloud.yaml ./config/resources/apiexport-opencp.cloud.yaml
       # Merge spec.resources from per-group APIExports into the combined file
@@ -73,12 +73,6 @@ tasks:
       - "yq -i '.metadata.name = \"opencp.cloud\"' ./config/resources/apiexport-opencp.cloud.yaml"
       - "yq -i '.metadata.labels.\"ui.platform-mesh.io/content-for\" = \"opencp.cloud\"' ./config/resources/apiexport-opencp.cloud.yaml"
       - "yq -i '.spec.permissionClaims = [{\"group\": \"apis.kcp.io\", \"resource\": \"apiexports\", \"verbs\": [\"*\"]}, {\"group\": \"apis.kcp.io\", \"resource\": \"apiresourceschemas\", \"verbs\": [\"*\"]}, {\"group\": \"apis.kcp.io\", \"resource\": \"apibindings\", \"verbs\": [\"get\", \"list\"]}, {\"group\": \"ui.platform-mesh.io\", \"resource\": \"contentconfigurations\", \"verbs\": [\"*\"]}, {\"group\": \"rbac.authorization.k8s.io\", \"resource\": \"clusterroles\", \"verbs\": [\"*\"]}, {\"group\": \"rbac.authorization.k8s.io\", \"resource\": \"clusterrolebindings\", \"verbs\": [\"*\"]}, {\"group\": \"apiextensions.k8s.io\", \"resource\": \"customresourcedefinitions\", \"verbs\": [\"*\"]}]' ./config/resources/apiexport-opencp.cloud.yaml"
-      # Create internal APIExport (only crossplanecatalogs, CRD-backed, self-bound in provider workspace)
-      - cp ./config/resources/apiexport-opencp.cloud.yaml ./config/resources/apiexport-opencp-internal.cloud.yaml
-      - "yq -i '.metadata.name = \"opencp-internal.cloud\"' ./config/resources/apiexport-opencp-internal.cloud.yaml"
-      - "yq -i 'del(.metadata.labels)' ./config/resources/apiexport-opencp-internal.cloud.yaml"
-      - "yq -i 'del(.spec.permissionClaims)' ./config/resources/apiexport-opencp-internal.cloud.yaml"
-      - "yq -i '.spec.resources = [.spec.resources[] | select(.name == \"crossplanecatalogs\" or .name == \"krocatalogs\" or .name == \"fluxcatalogs\" or .name == \"ocmcontrollercatalogs\")]' ./config/resources/apiexport-opencp-internal.cloud.yaml"
       - rm -f ./config/resources/apiexport-crossplane.services.opencp.cloud.yaml ./config/resources/apiexport-core.opencp.cloud.yaml ./config/resources/apiexport-kro.services.opencp.cloud.yaml ./config/resources/apiexport-flux.services.opencp.cloud.yaml ./config/resources/apiexport-ocm.services.opencp.cloud.yaml
   generate-tool-schemas:
     desc: "Generate APIResourceSchemas from tool CRDs using apigen"

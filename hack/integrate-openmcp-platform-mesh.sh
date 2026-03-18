@@ -126,7 +126,6 @@ MANIFESTS_DIR="${SCRIPT_DIR}/../demo/manifests"
 OPENCP_MANIFESTS_DIR="${MANIFESTS_DIR}/providers/opencp"
 OPENCP_API_DIR="${OPENCP_MANIFESTS_DIR}/api"
 OPENCP_CONFIG_DIR="${OPENCP_MANIFESTS_DIR}/config"
-OPENCP_INSTANCES_DIR="${OPENCP_MANIFESTS_DIR}/instances"
 log "Copying opencp API resources to ${OPENCP_API_DIR}..."
 cp "${OPERATOR_DIR}/config/resources/"*.yaml "${OPENCP_API_DIR}/"
 log "Copied opencp API resources ✓"
@@ -149,7 +148,6 @@ log "Found identityHash: ${CONTENT_CONFIG_IDENTITY_HASH}"
 
 # Patch copied consumer APIExport with contentconfigurations identityHash
 APIEXPORT_FILE="${OPENCP_API_DIR}/apiexport-opencp.cloud.yaml"
-APIEXPORT_INTERNAL_FILE="${OPENCP_API_DIR}/apiexport-opencp-internal.cloud.yaml"
 log "Patching consumer APIExport with contentconfigurations identityHash..."
 yq -i "(.spec.permissionClaims[] | select(.resource == \"contentconfigurations\")).identityHash = \"${CONTENT_CONFIG_IDENTITY_HASH}\"" "${APIEXPORT_FILE}"
 log "Patched consumer APIExport file ✓"
@@ -163,106 +161,12 @@ for f in "${OPENCP_API_DIR}"/apiresourceschema-*.yaml; do
 done
 log "Applied APIResourceSchemas ✓"
 
-# Step 2: Apply internal APIExport (all CRD-backed)
-log "Applying internal APIExport to opencp provider workspace..."
-KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${APIEXPORT_INTERNAL_FILE}" --server="${OPENCP_WORKSPACE_URL}" --server-side --force-conflicts
-log "Applied internal APIExport ✓"
-
-# Step 3: Self-bind to internal export (all CRD-backed — crossplanecatalogs, krocatalogs, fluxcatalogs, ocmcontrollercatalogs)
-log "Applying APIBinding to internal export..."
-cat <<EOF | KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply --server="${OPENCP_WORKSPACE_URL}" -f -
-apiVersion: apis.kcp.io/v1alpha2
-kind: APIBinding
-metadata:
-  name: opencp-internal.cloud
-spec:
-  reference:
-    export:
-      path: root:providers:opencp
-      name: opencp-internal.cloud
-EOF
-log "Applied self-binding ✓"
-
-log "Waiting for APIBinding to be ready..."
-KUBECONFIG="${KCP_KUBECONFIG}" kubectl wait --for=condition=Ready apibinding/opencp-internal.cloud \
-    --server="${OPENCP_WORKSPACE_URL}" --timeout=60s
-log "APIBinding ready ✓"
-
-# Step 4: Apply instances (CrossplaneCatalog via CRD-backed internal binding)
-log "Applying instance manifests..."
-KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${OPENCP_INSTANCES_DIR}" --server="${OPENCP_WORKSPACE_URL}" --server-side --force-conflicts
-log "Applied instance manifests ✓"
-
-# Step 5: Apply CachedResources (replicates CRD data to cache for consumer read-only access)
-# NOTE: CachedResources are currently broken in local KCP. These steps are commented out
-# but ready to enable once the CachedResource controller works in the local setup.
-# When re-enabling, also uncomment Steps 6 and 7 below.
-
-# log "Applying CachedResources..."
-# KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${OPENCP_API_DIR}/cachedresource-crossplanecatalogs.yaml" \
-#     --server="${OPENCP_WORKSPACE_URL}" --server-side --force-conflicts
-# KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${OPENCP_API_DIR}/cachedresource-krocatalogs.yaml" \
-#     --server="${OPENCP_WORKSPACE_URL}" --server-side --force-conflicts
-# KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${OPENCP_API_DIR}/cachedresource-fluxcatalogs.yaml" \
-#     --server="${OPENCP_WORKSPACE_URL}" --server-side --force-conflicts
-# KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${OPENCP_API_DIR}/cachedresource-ocmcontrollercatalogs.yaml" \
-#     --server="${OPENCP_WORKSPACE_URL}" --server-side --force-conflicts
-# log "Applied CachedResources ✓"
-warn "Skipping CachedResource apply (broken in local KCP)"
-
-# Step 6: Wait for CachedResource identityHash
-# NOTE: Commented out — depends on CachedResources (Step 5) which are broken in local KCP.
-# When CachedResources work, uncomment this block for each catalog type.
-
-# log "Waiting for CachedResource identityHash..."
-# for CACHED_RESOURCE_NAME in crossplanecatalogs-v1alpha1 krocatalogs-v1alpha1 fluxcatalogs-v1alpha1 ocmcontrollercatalogs-v1alpha1; do
-#     for i in $(seq 1 30); do
-#         CACHED_IDENTITY_HASH=$(KUBECONFIG="${KCP_KUBECONFIG}" kubectl get cachedresource "${CACHED_RESOURCE_NAME}" \
-#             --server="${OPENCP_WORKSPACE_URL}" \
-#             -o jsonpath='{.status.identityHash}' 2>/dev/null)
-#         if [ -n "${CACHED_IDENTITY_HASH}" ]; then
-#             break
-#         fi
-#         if [ "$i" -eq 30 ]; then
-#             error "Timed out waiting for CachedResource identityHash for ${CACHED_RESOURCE_NAME}"
-#             exit 1
-#         fi
-#         sleep 2
-#     done
-#     log "CachedResource ${CACHED_RESOURCE_NAME} identityHash: ${CACHED_IDENTITY_HASH}"
-# done
-warn "Skipping CachedResource identityHash wait (broken in local KCP)"
-
-# Step 7: Patch consumer APIExport with virtual storage identityHash
-# NOTE: Commented out — depends on CachedResources (Step 5) which are broken in local KCP.
-# When CachedResources work, uncomment and repeat for each catalog type:
-# crossplanecatalogs, krocatalogs, fluxcatalogs, ocmcontrollercatalogs
-
-# log "Patching consumer APIExport with virtual storage for catalogs..."
-# for CATALOG_NAME in crossplanecatalogs krocatalogs fluxcatalogs ocmcontrollercatalogs; do
-#     CACHED_IDENTITY_HASH=$(KUBECONFIG="${KCP_KUBECONFIG}" kubectl get cachedresource "${CATALOG_NAME}-v1alpha1" \
-#         --server="${OPENCP_WORKSPACE_URL}" \
-#         -o jsonpath='{.status.identityHash}' 2>/dev/null)
-#     yq -i '(.spec.resources[] | select(.name == "'"${CATALOG_NAME}"'")).storage = {
-#       "virtual": {
-#         "reference": {
-#           "apiGroup": "cache.kcp.io",
-#           "kind": "CachedResourceEndpointSlice",
-#           "name": "'"${CATALOG_NAME}"'-v1alpha1"
-#         },
-#         "identityHash": "'"${CACHED_IDENTITY_HASH}"'"
-#       }
-#     }' "${APIEXPORT_FILE}"
-# done
-# KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${APIEXPORT_FILE}" --server="${OPENCP_WORKSPACE_URL}" --server-side --force-conflicts
-# log "Applied consumer APIExport with virtual storage ✓"
-
-# Instead, just apply the consumer APIExport as-is (CRD-backed storage, no virtual storage)
-log "Applying consumer APIExport (CRD-backed, no virtual storage)..."
+# Step 2: Apply consumer APIExport
+log "Applying consumer APIExport..."
 KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${APIEXPORT_FILE}" --server="${OPENCP_WORKSPACE_URL}" --server-side --force-conflicts
 log "Applied consumer APIExport ✓"
 
-# Step 8: Config manifests (ContentConfiguration, RBAC) for opencp provider
+# Step 3: Config manifests (ContentConfiguration, RBAC) for opencp provider
 log "Applying config manifests..."
 KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${OPENCP_CONFIG_DIR}" --server="${OPENCP_WORKSPACE_URL}" --server-side --force-conflicts
 log "Applied config manifests ✓"
