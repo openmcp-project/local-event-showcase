@@ -28,7 +28,8 @@ graph TB
     mcp -- "sync crossplane resources" --> aw
     mcp -- "reconcile flux/kro/ocm" --> aw
     aw -- "create projects" --> gardener
-    aw -- "create shoots" --> gardener
+    aw -- "create shoots" --> mcp
+    mcp -- "create shoots" --> gardener
 ```
 
 ### Related Projects
