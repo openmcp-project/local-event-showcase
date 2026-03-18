@@ -12,19 +12,19 @@ The demo wires together an OpenMCP onboarding cluster with a [Platform Mesh](htt
 
 ```mermaid
 graph TB
-    platform["OpenMCP - Platform<br/><i>kind cluster</i>"]
-    gardener["gardener-local<br/><i>kind cluster</i>"]
-    onboarding["OpenMCP - Onboarding<br/><i>kind cluster</i>"]
+    platform["OpenMCP - Platform\n(kind cluster)"]
+    gardener["gardener-local\n(kind cluster)"]
+    onboarding["OpenMCP - Onboarding\n(kind cluster)"]
 
-    subgraph pmesh["platform-mesh-system &lt;kind cluster&gt;"]
-        aw["Account Workspace<br/><i>KCP</i>"]
+    subgraph pmesh["platform-mesh-system (kind cluster)"]
+        aw["Account Workspace\n(KCP)"]
     end
 
-    mcp["OpenMCP - MCP<br/><i>kind cluster (per account)</i>"]
+    mcp["OpenMCP - MCP\n(kind cluster, per account)"]
 
     onboarding -- "requests clusters" --> platform
     platform -- "creates clusters" --> mcp
-    aw -- "order MCPs<br/>configure tools" --> onboarding
+    aw -- "order MCPs\nconfigure tools" --> onboarding
     mcp -- "sync crossplane resources" --> aw
     mcp -- "reconcile flux/kro/ocm" --> aw
     aw -- "create projects" --> gardener
