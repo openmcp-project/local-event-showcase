@@ -10,6 +10,27 @@ This repository contains scripts and documentation for setting up a local platfo
 
 The demo wires together an OpenMCP onboarding cluster with a [Platform Mesh](https://platform-mesh.io) KCP installation so that every new account workspace gets a dedicated MCP instance. Users onboard tools (Crossplane, KRO, Flux, OCM Controller) through dedicated UIs that guide them through activation and configuration.
 
+```mermaid
+graph TB
+    platform["OpenMCP - Platform<br/><i>kind cluster</i>"]
+    gardener["gardener-local<br/><i>kind cluster</i>"]
+    onboarding["OpenMCP - Onboarding<br/><i>kind cluster</i>"]
+
+    subgraph pmesh["platform-mesh-system &lt;kind cluster&gt;"]
+        aw["Account Workspace<br/><i>KCP</i>"]
+    end
+
+    mcp["OpenMCP - MCP<br/><i>kind cluster (per account)</i>"]
+
+    onboarding -- "requests clusters" --> platform
+    platform -- "creates clusters" --> mcp
+    aw -- "order MCPs<br/>configure tools" --> onboarding
+    mcp -- "sync crossplane resources" --> aw
+    mcp -- "reconcile flux/kro/ocm" --> aw
+    aw -- "create projects" --> gardener
+    aw -- "create shoots" --> gardener
+```
+
 ### Related Projects
 
 | Project | Documentation |
