@@ -1,8 +1,0 @@
-apiVersion: cache.kcp.io/v1alpha1
-kind: CachedResource
-metadata:
-  name: ocmcontrollercatalogs-v1alpha1
-spec:
-  group: ocm.services.opencp.cloud
-  version: v1alpha1
-  resource: ocmcontrollercatalogs

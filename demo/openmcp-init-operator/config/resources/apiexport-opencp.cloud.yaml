@@ -7,11 +7,6 @@ metadata:
 spec:
   resources:
     - group: crossplane.services.opencp.cloud
-      name: crossplanecatalogs
-      schema: v260308-657c3cf.crossplanecatalogs.crossplane.services.opencp.cloud
-      storage:
-        crd: {}
-    - group: crossplane.services.opencp.cloud
       name: crossplanes
       schema: v260218-a16964f.crossplanes.crossplane.services.opencp.cloud
       storage:
@@ -22,28 +17,13 @@ spec:
       storage:
         crd: {}
     - group: kro.services.opencp.cloud
-      name: krocatalogs
-      schema: v260311-2892093.krocatalogs.kro.services.opencp.cloud
-      storage:
-        crd: {}
-    - group: kro.services.opencp.cloud
       name: kros
       schema: v260311-2892093.kros.kro.services.opencp.cloud
       storage:
         crd: {}
     - group: flux.services.opencp.cloud
-      name: fluxcatalogs
-      schema: v260311-2892093.fluxcatalogs.flux.services.opencp.cloud
-      storage:
-        crd: {}
-    - group: flux.services.opencp.cloud
       name: fluxes
       schema: v260311-2892093.fluxes.flux.services.opencp.cloud
-      storage:
-        crd: {}
-    - group: ocm.services.opencp.cloud
-      name: ocmcontrollercatalogs
-      schema: v260311-2892093.ocmcontrollercatalogs.ocm.services.opencp.cloud
       storage:
         crd: {}
     - group: ocm.services.opencp.cloud
