@@ -404,7 +404,7 @@ interface PermissionClaimWithBinding extends PermissionClaim {
       @case ('loading') {
         <div class="loading-container">
           <fd-busy-indicator [loading]="true" size="m"></fd-busy-indicator>
-          <span>Checking OpenCP services...</span>
+          <span>Checking OpenControlPlane services...</span>
         </div>
       }
 

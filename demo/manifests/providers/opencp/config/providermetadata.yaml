@@ -3,7 +3,7 @@ kind: ProviderMetadata
 metadata:
   name: opencp.cloud
 spec:
-  displayName: OpenCP
+  displayName: OpenControlPlane
   description: |
     Open Control Planes (OpenCP) enables extensible Infrastructure- and Configuration-as-Data capabilities as a Service. Part of ApeiroRA, leveraging the Kubernetes Resource Model to make cloud-edge resources accessible through declarative APIs and controllers.
   tags:
@@ -13,11 +13,11 @@ spec:
   - multi-cluster
   - gitops
   contacts:
-  - displayName: OpenCP Team
+  - displayName: OpenControlPlane Team
     email: ManagedControlPlane@sap.com
     role: ["Technical Support"]
   documentation:
-  - displayName: OpenCP Documentation
+  - displayName: OpenControlPlane Documentation
     url: https://github.com/openmcp-project
   links:
   - displayName: GitHub Organization

@@ -15,7 +15,7 @@ spec:
           "data": {
             "nodes": [
               {
-                "label": "OpenCP",
+                "label": "OpenControlPlane",
                 "pathSegment": "openmcp",
                 "icon": "https://avatars.githubusercontent.com/u/173142503?s=200&v=4",
                 "order": 800,
@@ -30,7 +30,7 @@ spec:
                 },
                 "navHeader": {
                   "label": "default",
-                  "type": "OpenCP"
+                  "type": "OpenControlPlane"
                 },
                 "loadingIndicator": {
                   "enabled": false
