@@ -113,7 +113,7 @@ func (d *DeployToolContentConfigurationsSubroutine) Finalize(ctx context.Context
 }
 
 func toolContentConfigName(toolName, kind string) string {
-	return fmt.Sprintf("openmcp-%s-%s", toolName, strings.ToLower(kind))
+	return fmt.Sprintf("opencp-%s-%s", toolName, strings.ToLower(kind))
 }
 
 func buildToolContentConfiguration(toolName string, contentFor string, entry tool.ContentConfigEntry) (*unstructured.Unstructured, error) {

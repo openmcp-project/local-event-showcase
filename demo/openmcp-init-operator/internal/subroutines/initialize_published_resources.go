@@ -13,6 +13,7 @@ import (
 	"github.com/platform-mesh/golang-commons/logger"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -28,7 +29,7 @@ import (
 
 const (
 	InitializePublishedResourcesSubroutineName = "InitializePublishedResourcesSubroutine"
-	InitializePublishedResourcesFinalizerName  = "publishedresources.openmcp.io/managed-published-resources"
+	InitializePublishedResourcesFinalizerName  = "publishedresources.opencp.io/managed-published-resources"
 )
 
 var mcpScheme = func() *runtime.Scheme {
@@ -107,7 +108,8 @@ func (i *InitializePublishedResourcesSubroutine) Process(ctx context.Context, ru
 	// Read the target Crossplane from the onboarding cluster to check readiness.
 	// The source Crossplane (from KCP) has the spec but no conditions;
 	// the target (created by CreateCrossplaneSubroutine) has the conditions.
-	targetCrossplane := &crossplanev1alpha1.Crossplane{}
+	// The onboarding cluster uses the openmcp API group, so we use unstructured.
+	targetCrossplane := newOnboardingCrossplane(clusterID, i.cfg.MCP.Namespace)
 	if err := i.onboardingClient.Get(ctx, types.NamespacedName{Name: clusterID, Namespace: i.cfg.MCP.Namespace}, targetCrossplane); err != nil {
 		if apierrors.IsNotFound(err) {
 			log.Info().Str("clusterID", clusterID).Msg("target Crossplane not found yet, waiting")
@@ -116,7 +118,11 @@ func (i *InitializePublishedResourcesSubroutine) Process(ctx context.Context, ru
 		return ctrl.Result{}, errors.NewOperatorError(err, true, true)
 	}
 
-	if !allReadyConditionsMet(targetCrossplane.Status.Conditions) {
+	conditions, err := extractConditions(targetCrossplane)
+	if err != nil {
+		return ctrl.Result{}, errors.NewOperatorError(err, true, true)
+	}
+	if !allReadyConditionsMet(conditions) {
 		log.Info().Str("clusterID", clusterID).Msg("Crossplane is not ready yet, waiting for all Ready conditions to be met")
 		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 	}
@@ -162,6 +168,30 @@ func allReadyConditionsMet(conditions []metav1.Condition) bool {
 		}
 	}
 	return true
+}
+
+// extractConditions reads the .status.conditions field from an unstructured Crossplane resource.
+func extractConditions(obj *unstructured.Unstructured) ([]metav1.Condition, error) {
+	raw, found, err := unstructured.NestedSlice(obj.Object, "status", "conditions")
+	if err != nil || !found {
+		return nil, err
+	}
+	var conditions []metav1.Condition
+	for _, item := range raw {
+		m, ok := item.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		c := metav1.Condition{}
+		if t, ok := m["type"].(string); ok {
+			c.Type = t
+		}
+		if s, ok := m["status"].(string); ok {
+			c.Status = metav1.ConditionStatus(s)
+		}
+		conditions = append(conditions, c)
+	}
+	return conditions, nil
 }
 
 func (i *InitializePublishedResourcesSubroutine) initializeResources(ctx context.Context, mcpClient client.Client, crossplane *crossplanev1alpha1.Crossplane) (ctrl.Result, errors.OperatorError) {

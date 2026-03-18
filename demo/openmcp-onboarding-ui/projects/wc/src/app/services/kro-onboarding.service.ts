@@ -17,7 +17,7 @@ export interface KROEvent {
 
 const CHECK_KRO = gql`
   query {
-    kro_services_openmcp_cloud {
+    kro_services_opencp_cloud {
       v1alpha1 {
         KRO(name: "default") {
           metadata {
@@ -37,7 +37,7 @@ const CHECK_KRO = gql`
 
 const WATCH_KRO = gql`
   subscription {
-    kro_services_openmcp_cloud_v1alpha1_kro(name: "default") {
+    kro_services_opencp_cloud_v1alpha1_kro(name: "default") {
       type
       object {
         metadata {
@@ -68,7 +68,7 @@ export class KROOnboardingService {
   public checkKRO(): Observable<KROStatus | null> {
     return this.apollo
       .query<{
-        kro_services_openmcp_cloud: {
+        kro_services_opencp_cloud: {
           v1alpha1: { KRO: KROStatus | null };
         };
       }>({
@@ -76,7 +76,7 @@ export class KROOnboardingService {
         fetchPolicy: 'network-only',
       })
       .pipe(
-        map((result) => result.data!.kro_services_openmcp_cloud.v1alpha1.KRO),
+        map((result) => result.data!.kro_services_opencp_cloud.v1alpha1.KRO),
         catchError((err) => {
           if (err.message?.includes('not found')) {
             return of(null);
@@ -90,7 +90,7 @@ export class KROOnboardingService {
     const chartVersionInput = chartVersion ? `chartVersion: "${chartVersion}"` : '';
     const mutation = gql`
       mutation {
-        kro_services_openmcp_cloud {
+        kro_services_opencp_cloud {
           v1alpha1 {
             createKRO(
               object: {
@@ -111,7 +111,7 @@ export class KROOnboardingService {
     `;
     return this.apollo
       .mutate<{
-        kro_services_openmcp_cloud: {
+        kro_services_opencp_cloud: {
           v1alpha1: {
             createKRO: { metadata: { name: string } };
           };
@@ -120,26 +120,26 @@ export class KROOnboardingService {
         mutation,
       })
       .pipe(
-        map((result) => result.data!.kro_services_openmcp_cloud.v1alpha1.createKRO),
+        map((result) => result.data!.kro_services_opencp_cloud.v1alpha1.createKRO),
       );
   }
 
   public watchKRO(): Observable<KROEvent> {
     return this.apollo
       .subscribe<{
-        kro_services_openmcp_cloud_v1alpha1_kro: KROEvent;
+        kro_services_opencp_cloud_v1alpha1_kro: KROEvent;
       }>({
         query: WATCH_KRO,
       })
       .pipe(
-        map((result) => result.data!.kro_services_openmcp_cloud_v1alpha1_kro),
+        map((result) => result.data!.kro_services_opencp_cloud_v1alpha1_kro),
       );
   }
 
   public deleteKRO(): Observable<void> {
     const mutation = gql`
       mutation {
-        kro_services_openmcp_cloud {
+        kro_services_opencp_cloud {
           v1alpha1 {
             deleteKRO(name: "default")
           }

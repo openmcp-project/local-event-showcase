@@ -27,7 +27,7 @@ type KCPClientProvider interface {
 
 const (
 	DeployContentConfigurationsSubroutineName = "DeployContentConfigurationsSubroutine"
-	DeployContentConfigurationsFinalizerName  = "contentconfigurations.openmcp.io/managed-content-configurations"
+	DeployContentConfigurationsFinalizerName  = "contentconfigurations.opencp.io/managed-content-configurations"
 
 	contentConfigAPIVersion = "ui.platform-mesh.io/v1alpha1"
 	contentConfigKind       = "ContentConfiguration"
@@ -200,7 +200,7 @@ var contentConfigMetadataByProvider = map[string]map[string]contentConfigMeta{
 }
 
 func contentConfigName(prefix, kind string) string {
-	return fmt.Sprintf("openmcp-crossplane-%s-%s", prefix, strings.ToLower(kind))
+	return fmt.Sprintf("opencp-crossplane-%s-%s", prefix, strings.ToLower(kind))
 }
 
 func buildContentConfiguration(prefix string, resource ResourcesToPublish, meta contentConfigMeta) (*unstructured.Unstructured, error) {

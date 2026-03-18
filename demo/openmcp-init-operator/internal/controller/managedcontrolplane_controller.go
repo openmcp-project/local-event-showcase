@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	operatorName                      = "openmcp-init-operator"
+	operatorName                      = "opencp-init-operator"
 	managedControlPlaneReconcilerName = "ManagedControlPlaneReconciler"
 )
 

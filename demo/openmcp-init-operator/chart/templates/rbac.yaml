@@ -16,7 +16,7 @@ rules:
   - "update"
   - "patch"
 - apiGroups:
-  - "core.opencp.cloud"
+  - "core.openmcp.cloud"
   resources:
   - managedcontrolplanev2s
   verbs:
@@ -46,6 +46,18 @@ rules:
   verbs:
   - "update"
   - "patch"
+- apiGroups:
+  - "crossplane.services.openmcp.cloud"
+  resources:
+  - crossplanes
+  verbs:
+  - "get"
+  - "list"
+  - "watch"
+  - "create"
+  - "update"
+  - "patch"
+  - "delete"
 - apiGroups:
   - "core.opencp.cloud"
   resources:

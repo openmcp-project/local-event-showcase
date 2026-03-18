@@ -172,7 +172,7 @@ func RunController(_ *cobra.Command, _ []string) {
 		Metrics:                metricsServerOptions,
 		HealthProbeBindAddress: defaultCfg.HealthProbeBindAddress,
 		LeaderElection:         defaultCfg.LeaderElectionEnabled,
-		LeaderElectionID:       "1da1c418.openmcp.io",
+		LeaderElectionID:       "1da1c418.opencp.io",
 		BaseContext: func() context.Context {
 			return ctx
 		},

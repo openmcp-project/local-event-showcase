@@ -17,7 +17,7 @@ export interface OCMControllerEvent {
 
 const CHECK_OCM_CONTROLLER = gql`
   query {
-    ocm_services_openmcp_cloud {
+    ocm_services_opencp_cloud {
       v1alpha1 {
         OCMController(name: "default") {
           metadata {
@@ -37,7 +37,7 @@ const CHECK_OCM_CONTROLLER = gql`
 
 const WATCH_OCM_CONTROLLER = gql`
   subscription {
-    ocm_services_openmcp_cloud_v1alpha1_ocmcontroller(name: "default") {
+    ocm_services_opencp_cloud_v1alpha1_ocmcontroller(name: "default") {
       type
       object {
         metadata {
@@ -68,7 +68,7 @@ export class OCMOnboardingService {
   public checkOCMController(): Observable<OCMControllerStatus | null> {
     return this.apollo
       .query<{
-        ocm_services_openmcp_cloud: {
+        ocm_services_opencp_cloud: {
           v1alpha1: { OCMController: OCMControllerStatus | null };
         };
       }>({
@@ -76,7 +76,7 @@ export class OCMOnboardingService {
         fetchPolicy: 'network-only',
       })
       .pipe(
-        map((result) => result.data!.ocm_services_openmcp_cloud.v1alpha1.OCMController),
+        map((result) => result.data!.ocm_services_opencp_cloud.v1alpha1.OCMController),
         catchError((err) => {
           if (err.message?.includes('not found')) {
             return of(null);
@@ -93,7 +93,7 @@ export class OCMOnboardingService {
     const chartVersionInput = chartVersion ? `chartVersion: "${chartVersion}"` : '';
     const mutation = gql`
       mutation {
-        ocm_services_openmcp_cloud {
+        ocm_services_opencp_cloud {
           v1alpha1 {
             createOCMController(
               object: {
@@ -114,7 +114,7 @@ export class OCMOnboardingService {
     `;
     return this.apollo
       .mutate<{
-        ocm_services_openmcp_cloud: {
+        ocm_services_opencp_cloud: {
           v1alpha1: {
             createOCMController: { metadata: { name: string } };
           };
@@ -123,26 +123,26 @@ export class OCMOnboardingService {
         mutation,
       })
       .pipe(
-        map((result) => result.data!.ocm_services_openmcp_cloud.v1alpha1.createOCMController),
+        map((result) => result.data!.ocm_services_opencp_cloud.v1alpha1.createOCMController),
       );
   }
 
   public watchOCMController(): Observable<OCMControllerEvent> {
     return this.apollo
       .subscribe<{
-        ocm_services_openmcp_cloud_v1alpha1_ocmcontroller: OCMControllerEvent;
+        ocm_services_opencp_cloud_v1alpha1_ocmcontroller: OCMControllerEvent;
       }>({
         query: WATCH_OCM_CONTROLLER,
       })
       .pipe(
-        map((result) => result.data!.ocm_services_openmcp_cloud_v1alpha1_ocmcontroller),
+        map((result) => result.data!.ocm_services_opencp_cloud_v1alpha1_ocmcontroller),
       );
   }
 
   public deleteOCMController(): Observable<void> {
     const mutation = gql`
       mutation {
-        ocm_services_openmcp_cloud {
+        ocm_services_opencp_cloud {
           v1alpha1 {
             deleteOCMController(name: "default")
           }

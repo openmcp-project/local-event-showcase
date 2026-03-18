@@ -26,7 +26,7 @@ import (
 
 const (
 	CreateMCPSubroutineName = "CreateMCP"
-	CreateMCPFinalizerName  = "mcp.openmcp.io/managed-control-plane"
+	CreateMCPFinalizerName  = "mcp.opencp.io/managed-control-plane"
 )
 
 type CreateMCPSubroutine struct {

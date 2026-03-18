@@ -55,7 +55,7 @@ fi
 
 log "platform-mesh resource is ready ✓"
 
-# Patch platform-mesh resource with extraDefaultAPIBindings for openmcp and gardener
+# Patch platform-mesh resource with extraDefaultAPIBindings for opencp and gardener
 # gardener.cloud binding now points to the separate root:providers:gardener workspace
 log "Patching platform-mesh with extraDefaultAPIBindings..."
 KUBECONFIG="${PLATFORM_MESH_KUBECONFIG}" kubectl patch platformmesh platform-mesh -n platform-mesh-system --type=merge -p '
@@ -65,8 +65,8 @@ KUBECONFIG="${PLATFORM_MESH_KUBECONFIG}" kubectl patch platformmesh platform-mes
       "extraDefaultAPIBindings": [
         {
           "workspaceTypePath": "root:account",
-          "export": "openmcp.cloud",
-          "path": "root:providers:openmcp"
+          "export": "opencp.cloud",
+          "path": "root:providers:opencp"
         },
         {
           "workspaceTypePath": "root:account",
@@ -116,20 +116,20 @@ log "Generated gardener-init-operator manifests ✓"
 # Prepare provider workspaces
 KCP_KUBECONFIG="${KUBECONFIGS_DIR}/kcp-admin.kubeconfig"
 KUBECONFIG="${KCP_KUBECONFIG}" kubectl create-workspace providers --type=root:providers --ignore-existing --server="https://localhost:8443/clusters/root"
-KUBECONFIG="${KCP_KUBECONFIG}" kubectl create-workspace openmcp --type=root:provider --ignore-existing --server="https://localhost:8443/clusters/root:providers"
+KUBECONFIG="${KCP_KUBECONFIG}" kubectl create-workspace opencp --type=root:provider --ignore-existing --server="https://localhost:8443/clusters/root:providers"
 KUBECONFIG="${KCP_KUBECONFIG}" kubectl create-workspace gardener --type=root:provider --ignore-existing --server="https://localhost:8443/clusters/root:providers"
-log "Created provider workspaces (openmcp + gardener) ✓"
+log "Created provider workspaces (opencp + gardener) ✓"
 
 # Copy openmcp-init-operator API resources to demo manifests directory for deployment
 # (gardener resources are NOT copied here — they live in the separate gardener provider dir)
 MANIFESTS_DIR="${SCRIPT_DIR}/../demo/manifests"
-OPENMCP_MANIFESTS_DIR="${MANIFESTS_DIR}/providers/openmcp"
-OPENMCP_API_DIR="${OPENMCP_MANIFESTS_DIR}/api"
-OPENMCP_CONFIG_DIR="${OPENMCP_MANIFESTS_DIR}/config"
-OPENMCP_INSTANCES_DIR="${OPENMCP_MANIFESTS_DIR}/instances"
-log "Copying openmcp API resources to ${OPENMCP_API_DIR}..."
-cp "${OPERATOR_DIR}/config/resources/"*.yaml "${OPENMCP_API_DIR}/"
-log "Copied openmcp API resources ✓"
+OPENCP_MANIFESTS_DIR="${MANIFESTS_DIR}/providers/opencp"
+OPENCP_API_DIR="${OPENCP_MANIFESTS_DIR}/api"
+OPENCP_CONFIG_DIR="${OPENCP_MANIFESTS_DIR}/config"
+OPENCP_INSTANCES_DIR="${OPENCP_MANIFESTS_DIR}/instances"
+log "Copying opencp API resources to ${OPENCP_API_DIR}..."
+cp "${OPERATOR_DIR}/config/resources/"*.yaml "${OPENCP_API_DIR}/"
+log "Copied opencp API resources ✓"
 
 # Copy gardener-init-operator API resources to gardener provider manifests directory
 GARDENER_MANIFESTS_DIR="${MANIFESTS_DIR}/providers/gardener"
@@ -148,49 +148,49 @@ CONTENT_CONFIG_IDENTITY_HASH=$(KUBECONFIG="${KCP_KUBECONFIG}" kubectl get apiexp
 log "Found identityHash: ${CONTENT_CONFIG_IDENTITY_HASH}"
 
 # Patch copied consumer APIExport with contentconfigurations identityHash
-APIEXPORT_FILE="${OPENMCP_API_DIR}/apiexport-openmcp.cloud.yaml"
-APIEXPORT_INTERNAL_FILE="${OPENMCP_API_DIR}/apiexport-openmcp-internal.cloud.yaml"
+APIEXPORT_FILE="${OPENCP_API_DIR}/apiexport-opencp.cloud.yaml"
+APIEXPORT_INTERNAL_FILE="${OPENCP_API_DIR}/apiexport-opencp-internal.cloud.yaml"
 log "Patching consumer APIExport with contentconfigurations identityHash..."
 yq -i "(.spec.permissionClaims[] | select(.resource == \"contentconfigurations\")).identityHash = \"${CONTENT_CONFIG_IDENTITY_HASH}\"" "${APIEXPORT_FILE}"
 log "Patched consumer APIExport file ✓"
 
-OPENMCP_WORKSPACE_URL="https://localhost:8443/clusters/root:providers:openmcp"
+OPENCP_WORKSPACE_URL="https://localhost:8443/clusters/root:providers:opencp"
 
-# Step 1: Apply APIResourceSchemas (openmcp only)
-log "Applying APIResourceSchemas to openmcp provider workspace..."
-for f in "${OPENMCP_API_DIR}"/apiresourceschema-*.yaml; do
-    KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "$f" --server="${OPENMCP_WORKSPACE_URL}" --server-side --force-conflicts
+# Step 1: Apply APIResourceSchemas (opencp only)
+log "Applying APIResourceSchemas to opencp provider workspace..."
+for f in "${OPENCP_API_DIR}"/apiresourceschema-*.yaml; do
+    KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "$f" --server="${OPENCP_WORKSPACE_URL}" --server-side --force-conflicts
 done
 log "Applied APIResourceSchemas ✓"
 
 # Step 2: Apply internal APIExport (all CRD-backed)
-log "Applying internal APIExport to openmcp provider workspace..."
-KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${APIEXPORT_INTERNAL_FILE}" --server="${OPENMCP_WORKSPACE_URL}" --server-side --force-conflicts
+log "Applying internal APIExport to opencp provider workspace..."
+KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${APIEXPORT_INTERNAL_FILE}" --server="${OPENCP_WORKSPACE_URL}" --server-side --force-conflicts
 log "Applied internal APIExport ✓"
 
 # Step 3: Self-bind to internal export (all CRD-backed — crossplanecatalogs, krocatalogs, fluxcatalogs, ocmcontrollercatalogs)
 log "Applying APIBinding to internal export..."
-cat <<EOF | KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply --server="${OPENMCP_WORKSPACE_URL}" -f -
+cat <<EOF | KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply --server="${OPENCP_WORKSPACE_URL}" -f -
 apiVersion: apis.kcp.io/v1alpha2
 kind: APIBinding
 metadata:
-  name: openmcp-internal.cloud
+  name: opencp-internal.cloud
 spec:
   reference:
     export:
-      path: root:providers:openmcp
-      name: openmcp-internal.cloud
+      path: root:providers:opencp
+      name: opencp-internal.cloud
 EOF
 log "Applied self-binding ✓"
 
 log "Waiting for APIBinding to be ready..."
-KUBECONFIG="${KCP_KUBECONFIG}" kubectl wait --for=condition=Ready apibinding/openmcp-internal.cloud \
-    --server="${OPENMCP_WORKSPACE_URL}" --timeout=60s
+KUBECONFIG="${KCP_KUBECONFIG}" kubectl wait --for=condition=Ready apibinding/opencp-internal.cloud \
+    --server="${OPENCP_WORKSPACE_URL}" --timeout=60s
 log "APIBinding ready ✓"
 
 # Step 4: Apply instances (CrossplaneCatalog via CRD-backed internal binding)
 log "Applying instance manifests..."
-KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${OPENMCP_INSTANCES_DIR}" --server="${OPENMCP_WORKSPACE_URL}" --server-side --force-conflicts
+KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${OPENCP_INSTANCES_DIR}" --server="${OPENCP_WORKSPACE_URL}" --server-side --force-conflicts
 log "Applied instance manifests ✓"
 
 # Step 5: Apply CachedResources (replicates CRD data to cache for consumer read-only access)
@@ -199,14 +199,14 @@ log "Applied instance manifests ✓"
 # When re-enabling, also uncomment Steps 6 and 7 below.
 
 # log "Applying CachedResources..."
-# KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${OPENMCP_API_DIR}/cachedresource-crossplanecatalogs.yaml" \
-#     --server="${OPENMCP_WORKSPACE_URL}" --server-side --force-conflicts
-# KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${OPENMCP_API_DIR}/cachedresource-krocatalogs.yaml" \
-#     --server="${OPENMCP_WORKSPACE_URL}" --server-side --force-conflicts
-# KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${OPENMCP_API_DIR}/cachedresource-fluxcatalogs.yaml" \
-#     --server="${OPENMCP_WORKSPACE_URL}" --server-side --force-conflicts
-# KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${OPENMCP_API_DIR}/cachedresource-ocmcontrollercatalogs.yaml" \
-#     --server="${OPENMCP_WORKSPACE_URL}" --server-side --force-conflicts
+# KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${OPENCP_API_DIR}/cachedresource-crossplanecatalogs.yaml" \
+#     --server="${OPENCP_WORKSPACE_URL}" --server-side --force-conflicts
+# KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${OPENCP_API_DIR}/cachedresource-krocatalogs.yaml" \
+#     --server="${OPENCP_WORKSPACE_URL}" --server-side --force-conflicts
+# KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${OPENCP_API_DIR}/cachedresource-fluxcatalogs.yaml" \
+#     --server="${OPENCP_WORKSPACE_URL}" --server-side --force-conflicts
+# KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${OPENCP_API_DIR}/cachedresource-ocmcontrollercatalogs.yaml" \
+#     --server="${OPENCP_WORKSPACE_URL}" --server-side --force-conflicts
 # log "Applied CachedResources ✓"
 warn "Skipping CachedResource apply (broken in local KCP)"
 
@@ -218,7 +218,7 @@ warn "Skipping CachedResource apply (broken in local KCP)"
 # for CACHED_RESOURCE_NAME in crossplanecatalogs-v1alpha1 krocatalogs-v1alpha1 fluxcatalogs-v1alpha1 ocmcontrollercatalogs-v1alpha1; do
 #     for i in $(seq 1 30); do
 #         CACHED_IDENTITY_HASH=$(KUBECONFIG="${KCP_KUBECONFIG}" kubectl get cachedresource "${CACHED_RESOURCE_NAME}" \
-#             --server="${OPENMCP_WORKSPACE_URL}" \
+#             --server="${OPENCP_WORKSPACE_URL}" \
 #             -o jsonpath='{.status.identityHash}' 2>/dev/null)
 #         if [ -n "${CACHED_IDENTITY_HASH}" ]; then
 #             break
@@ -241,7 +241,7 @@ warn "Skipping CachedResource identityHash wait (broken in local KCP)"
 # log "Patching consumer APIExport with virtual storage for catalogs..."
 # for CATALOG_NAME in crossplanecatalogs krocatalogs fluxcatalogs ocmcontrollercatalogs; do
 #     CACHED_IDENTITY_HASH=$(KUBECONFIG="${KCP_KUBECONFIG}" kubectl get cachedresource "${CATALOG_NAME}-v1alpha1" \
-#         --server="${OPENMCP_WORKSPACE_URL}" \
+#         --server="${OPENCP_WORKSPACE_URL}" \
 #         -o jsonpath='{.status.identityHash}' 2>/dev/null)
 #     yq -i '(.spec.resources[] | select(.name == "'"${CATALOG_NAME}"'")).storage = {
 #       "virtual": {
@@ -254,17 +254,17 @@ warn "Skipping CachedResource identityHash wait (broken in local KCP)"
 #       }
 #     }' "${APIEXPORT_FILE}"
 # done
-# KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${APIEXPORT_FILE}" --server="${OPENMCP_WORKSPACE_URL}" --server-side --force-conflicts
+# KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${APIEXPORT_FILE}" --server="${OPENCP_WORKSPACE_URL}" --server-side --force-conflicts
 # log "Applied consumer APIExport with virtual storage ✓"
 
 # Instead, just apply the consumer APIExport as-is (CRD-backed storage, no virtual storage)
 log "Applying consumer APIExport (CRD-backed, no virtual storage)..."
-KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${APIEXPORT_FILE}" --server="${OPENMCP_WORKSPACE_URL}" --server-side --force-conflicts
+KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${APIEXPORT_FILE}" --server="${OPENCP_WORKSPACE_URL}" --server-side --force-conflicts
 log "Applied consumer APIExport ✓"
 
-# Step 8: Config manifests (ContentConfiguration, RBAC) for openmcp provider
+# Step 8: Config manifests (ContentConfiguration, RBAC) for opencp provider
 log "Applying config manifests..."
-KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${OPENMCP_CONFIG_DIR}" --server="${OPENMCP_WORKSPACE_URL}" --server-side --force-conflicts
+KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${OPENCP_CONFIG_DIR}" --server="${OPENCP_WORKSPACE_URL}" --server-side --force-conflicts
 log "Applied config manifests ✓"
 
 # ─── Gardener Provider Workspace Setup ───
@@ -288,22 +288,22 @@ log "Applying gardener config manifests..."
 KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${GARDENER_CONFIG_DIR}" --server="${GARDENER_WORKSPACE_URL}" --server-side --force-conflicts
 log "Applied gardener config manifests ✓"
 
-# Apply openmcp-init WorkspaceType to root workspace
+# Apply opencp-init WorkspaceType to root workspace
 # This type carries initializer: true so the init-agent can watch for new account workspaces
 INIT_AGENT_MANIFESTS_DIR="${MANIFESTS_DIR}/init-agent"
 ROOT_WORKSPACE_URL="https://localhost:8443/clusters/root"
-log "Applying openmcp-init WorkspaceType to root workspace..."
-KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${INIT_AGENT_MANIFESTS_DIR}/workspace-type-openmcp-init.yaml" \
+log "Applying opencp-init WorkspaceType to root workspace..."
+KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${INIT_AGENT_MANIFESTS_DIR}/workspace-type-opencp-init.yaml" \
     --server="${ROOT_WORKSPACE_URL}"
-log "Applied openmcp-init WorkspaceType ✓"
+log "Applied opencp-init WorkspaceType ✓"
 
-# Patch account WorkspaceType to extend from openmcp-init
-# This ensures new account workspaces get the root:openmcp-init initializer via transitive extend.with
-log "Patching account WorkspaceType to extend from openmcp-init..."
+# Patch account WorkspaceType to extend from opencp-init
+# This ensures new account workspaces get the root:opencp-init initializer via transitive extend.with
+log "Patching account WorkspaceType to extend from opencp-init..."
 KUBECONFIG="${KCP_KUBECONFIG}" kubectl patch workspacetype account \
     --server="${ROOT_WORKSPACE_URL}" \
     --type=json \
-    -p '[{"op": "add", "path": "/spec/extend/with/-", "value": {"name": "openmcp-init", "path": "root"}}]'
+    -p '[{"op": "add", "path": "/spec/extend/with/-", "value": {"name": "opencp-init", "path": "root"}}]'
 log "Patched account WorkspaceType ✓"
 
 # Apply init-agent manifests (InitTemplate + InitTarget) to the config workspace
@@ -312,7 +312,7 @@ log "Applying init-agent manifests to platform-mesh-system workspace..."
 KUBECONFIG="${KCP_KUBECONFIG}" kubectl apply -f "${INIT_AGENT_MANIFESTS_DIR}" --server="${PLATFORM_MESH_SYSTEM_URL}"
 log "Applied init-agent manifests to ${PLATFORM_MESH_SYSTEM_URL} ✓"
 
-# Create operator kubeconfig pointing to the openmcp workspace
+# Create operator kubeconfig pointing to the opencp workspace
 OPERATOR_KUBECONFIG="${KUBECONFIGS_DIR}/operator.kubeconfig"
 
 # Extract credentials from the admin kubeconfig (using kcp-admin user)
@@ -320,14 +320,14 @@ CLIENT_CERT=$(KUBECONFIG="${KCP_KUBECONFIG}" kubectl config view --raw -o jsonpa
 CLIENT_KEY=$(KUBECONFIG="${KCP_KUBECONFIG}" kubectl config view --raw -o jsonpath='{.users[?(@.name=="kcp-admin")].user.client-key-data}')
 CA_DATA=$(KUBECONFIG="${KCP_KUBECONFIG}" kubectl config view --raw -o jsonpath='{.clusters[?(@.name=="workspace.kcp.io/current")].cluster.certificate-authority-data}')
 
-# Create a clean kubeconfig with single cluster/context pointing to openmcp workspace
+# Create a clean kubeconfig with single cluster/context pointing to opencp workspace
 cat > "${OPERATOR_KUBECONFIG}" <<EOF
 apiVersion: v1
 kind: Config
 clusters:
 - name: openmcp
   cluster:
-    server: ${OPENMCP_WORKSPACE_URL}
+    server: ${OPENCP_WORKSPACE_URL}
     certificate-authority-data: ${CA_DATA}
 contexts:
 - name: openmcp
@@ -396,7 +396,7 @@ fi
 
 ONBOARDING_KUBECONFIG="${KUBECONFIGS_DIR}/onboarding.kubeconfig"
 
-# Install Flux on the platform cluster (openmcp prerequisite)
+# Install Flux on the platform cluster (opencp prerequisite)
 PLATFORM_KUBECONFIG="${KUBECONFIGS_DIR}/platform.kubeconfig"
 kind get kubeconfig --name platform > "${PLATFORM_KUBECONFIG}"
 log "Installing Flux on platform cluster..."
@@ -462,7 +462,7 @@ helm upgrade --install openmcp-init-operator "${OPERATOR_DIR}/chart" \
     --set image.tag="${OPERATOR_IMAGE#*:}" \
     --set image.imagePullSecret="" \
     --set image.pullPolicy="Never" \
-    --set kcp.apiExportEndpointSliceName="openmcp.cloud" \
+    --set kcp.apiExportEndpointSliceName="opencp.cloud" \
     --set kcp.platformMeshIP="${PLATFORM_MESH_IP}" \
     --set kcp.hostOverride="localhost:31000" \
     --set gardener.ip="${GARDENER_IP}" \
