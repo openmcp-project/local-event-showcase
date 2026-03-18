@@ -1,9 +1,8 @@
 version: "3"
 
-dotenv:
-  - .env
-
 vars:
+  OPENMCP_OCM_REPOSITORY: ghcr.io/openmcp-project/components
+  OPENMCP_OCM_COMPONENT_NAME: github.com/openmcp-project/openmcp
   REG_NAME: kind-registry
   REG_PORT: "5002"
   LOCAL_OCI_REGISTRY: localhost:{{.REG_PORT}}
@@ -134,11 +133,6 @@ tasks:
     desc: Clones the openmcp distro you want to install
     deps:
       - local-registry
-    vars:
-      OPENMCP_OCM_REPOSITORY:
-        sh: echo "${OPENMCP_OCM_REPOSITORY:-ghcr.io/openmcp-project/components}"
-      OPENMCP_OCM_COMPONENT_NAME:
-        sh: echo "${OPENMCP_OCM_COMPONENT_NAME:-github.com/openmcp-project/openmcp}"
     cmds:
       - |
         ocm --config $(pwd)/{{.OCM_CONFIG}} transfer component \
