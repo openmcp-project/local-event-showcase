@@ -27,7 +27,7 @@ type KCPClientProvider interface {
 
 const (
 	DeployContentConfigurationsSubroutineName = "DeployContentConfigurationsSubroutine"
-	DeployContentConfigurationsFinalizerName  = "contentconfigurations.openmcp.io/managed-content-configurations"
+	DeployContentConfigurationsFinalizerName  = "contentconfigurations.opencp.io/managed-content-configurations"
 
 	contentConfigAPIVersion = "ui.platform-mesh.io/v1alpha1"
 	contentConfigKind       = "ContentConfiguration"
@@ -35,7 +35,7 @@ const (
 	entityLabel     = "ui.platform-mesh.io/entity"
 	entityValue     = "core_platform-mesh_io_account"
 	contentForLabel = "ui.platform-mesh.io/content-for"
-	contentForValue = "crossplane.services.openmcp.cloud"
+	contentForValue = "crossplane.services.opencp.cloud"
 )
 
 //+kubebuilder:rbac:groups=ui.platform-mesh.io,resources=contentconfigurations,verbs=get;list;watch;create;update;patch;delete
@@ -200,7 +200,7 @@ var contentConfigMetadataByProvider = map[string]map[string]contentConfigMeta{
 }
 
 func contentConfigName(prefix, kind string) string {
-	return fmt.Sprintf("openmcp-crossplane-%s-%s", prefix, strings.ToLower(kind))
+	return fmt.Sprintf("opencp-crossplane-%s-%s", prefix, strings.ToLower(kind))
 }
 
 func buildContentConfiguration(prefix string, resource ResourcesToPublish, meta contentConfigMeta) (*unstructured.Unstructured, error) {
@@ -215,7 +215,7 @@ func buildContentConfiguration(prefix string, resource ResourcesToPublish, meta 
 		"hideSideNav":             false,
 		"keepSelectedForChildren": true,
 		"virtualTree":             true,
-		"entityType":              "main.core_platform-mesh_io_account.core_openmcp_cloud_managedcontrolplane",
+		"entityType":              "main.core_platform-mesh_io_account.core_opencp_cloud_managedcontrolplane",
 		"loadingIndicator":        map[string]any{"enabled": false},
 		"category": map[string]any{
 			"id":      prefix + "-provider",

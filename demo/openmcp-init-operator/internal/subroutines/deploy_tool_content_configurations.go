@@ -113,7 +113,7 @@ func (d *DeployToolContentConfigurationsSubroutine) Finalize(ctx context.Context
 }
 
 func toolContentConfigName(toolName, kind string) string {
-	return fmt.Sprintf("openmcp-%s-%s", toolName, strings.ToLower(kind))
+	return fmt.Sprintf("opencp-%s-%s", toolName, strings.ToLower(kind))
 }
 
 func buildToolContentConfiguration(toolName string, contentFor string, entry tool.ContentConfigEntry) (*unstructured.Unstructured, error) {
@@ -128,7 +128,7 @@ func buildToolContentConfiguration(toolName string, contentFor string, entry too
 		"hideSideNav":             false,
 		"keepSelectedForChildren": true,
 		"virtualTree":             true,
-		"entityType":              "main.core_platform-mesh_io_account.core_openmcp_cloud_managedcontrolplane",
+		"entityType":              "main.core_platform-mesh_io_account.core_opencp_cloud_managedcontrolplane",
 		"loadingIndicator":        map[string]any{"enabled": false},
 		"category": map[string]any{
 			"id":      entry.CategoryID,

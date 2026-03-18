@@ -30,8 +30,8 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "openmcp-init-operator",
-	Short: "operator for OpenMCP workspace initialization",
+	Use:   "opencp-init-operator",
+	Short: "operator for OpenCP workspace initialization",
 }
 
 func init() {

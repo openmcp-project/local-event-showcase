@@ -4,22 +4,22 @@
     "data": {
       "nodes": [
         {
-          "label": "OpenMCP",
+          "label": "OpenCP",
           "pathSegment": "openmcp",
           "icon": "cloud",
           "order": 800,
           "entityType": "main.core_platform-mesh_io_account",
           "keepSelectedForChildren": false,
           "defineEntity": {
-            "id": "core_openmcp_cloud_managedcontrolplane",
-            "contextKey": "core_openmcp_cloud_managedcontrolplaneId"
+            "id": "core_opencp_cloud_managedcontrolplane",
+            "contextKey": "core_opencp_cloud_managedcontrolplaneId"
           },
           "context": {
-            "core_openmcp_cloud_managedcontrolplaneId": "default"
+            "core_opencp_cloud_managedcontrolplaneId": "default"
           },
           "navHeader": {
             "label": "default",
-            "type": "OpenMCP"
+            "type": "OpenCP"
           },
           "loadingIndicator": {
             "enabled": false
@@ -36,7 +36,7 @@
               "pathSegment": "features",
               "icon": "grid",
               "order": 50,
-              "entityType": "main.core_platform-mesh_io_account.core_openmcp_cloud_managedcontrolplane",
+              "entityType": "main.core_platform-mesh_io_account.core_opencp_cloud_managedcontrolplane",
               "loadingIndicator": {
                 "enabled": false
               },
@@ -51,7 +51,7 @@
               "label": "Crossplane",
               "pathSegment": "crossplane",
               "hideFromNav": true,
-              "entityType": "main.core_platform-mesh_io_account.core_openmcp_cloud_managedcontrolplane",
+              "entityType": "main.core_platform-mesh_io_account.core_opencp_cloud_managedcontrolplane",
               "loadingIndicator": {
                 "enabled": false
               },
@@ -65,7 +65,7 @@
               "label": "KRO",
               "pathSegment": "kro",
               "hideFromNav": true,
-              "entityType": "main.core_platform-mesh_io_account.core_openmcp_cloud_managedcontrolplane",
+              "entityType": "main.core_platform-mesh_io_account.core_opencp_cloud_managedcontrolplane",
               "loadingIndicator": {
                 "enabled": false
               },
@@ -80,7 +80,7 @@
               "label": "Flux",
               "pathSegment": "flux",
               "hideFromNav": true,
-              "entityType": "main.core_platform-mesh_io_account.core_openmcp_cloud_managedcontrolplane",
+              "entityType": "main.core_platform-mesh_io_account.core_opencp_cloud_managedcontrolplane",
               "loadingIndicator": {
                 "enabled": false
               },
@@ -95,7 +95,7 @@
               "label": "OCM Controller",
               "pathSegment": "ocm-controller",
               "hideFromNav": true,
-              "entityType": "main.core_platform-mesh_io_account.core_openmcp_cloud_managedcontrolplane",
+              "entityType": "main.core_platform-mesh_io_account.core_opencp_cloud_managedcontrolplane",
               "loadingIndicator": {
                 "enabled": false
               },

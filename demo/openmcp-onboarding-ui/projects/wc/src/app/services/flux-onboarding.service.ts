@@ -17,7 +17,7 @@ export interface FluxEvent {
 
 const CHECK_FLUX = gql`
   query {
-    flux_services_openmcp_cloud {
+    flux_services_opencp_cloud {
       v1alpha1 {
         Flux(name: "default") {
           metadata {
@@ -38,7 +38,7 @@ const CHECK_FLUX = gql`
 
 const WATCH_FLUX = gql`
   subscription {
-    flux_services_openmcp_cloud_v1alpha1_flux(name: "default") {
+    flux_services_opencp_cloud_v1alpha1_flux(name: "default") {
       type
       object {
         metadata {
@@ -70,7 +70,7 @@ export class FluxOnboardingService {
   public checkFlux(): Observable<FluxStatus | null> {
     return this.apollo
       .query<{
-        flux_services_openmcp_cloud: {
+        flux_services_opencp_cloud: {
           v1alpha1: { Flux: FluxStatus | null };
         };
       }>({
@@ -78,7 +78,7 @@ export class FluxOnboardingService {
         fetchPolicy: 'network-only',
       })
       .pipe(
-        map((result) => result.data!.flux_services_openmcp_cloud.v1alpha1.Flux),
+        map((result) => result.data!.flux_services_opencp_cloud.v1alpha1.Flux),
         catchError((err) => {
           if (err.message?.includes('not found')) {
             return of(null);
@@ -95,7 +95,7 @@ export class FluxOnboardingService {
     const chartVersionInput = chartVersion ? `chartVersion: "${chartVersion}"` : '';
     const mutation = gql`
       mutation {
-        flux_services_openmcp_cloud {
+        flux_services_opencp_cloud {
           v1alpha1 {
             createFlux(
               object: {
@@ -116,7 +116,7 @@ export class FluxOnboardingService {
     `;
     return this.apollo
       .mutate<{
-        flux_services_openmcp_cloud: {
+        flux_services_opencp_cloud: {
           v1alpha1: {
             createFlux: { metadata: { name: string } };
           };
@@ -125,26 +125,26 @@ export class FluxOnboardingService {
         mutation,
       })
       .pipe(
-        map((result) => result.data!.flux_services_openmcp_cloud.v1alpha1.createFlux),
+        map((result) => result.data!.flux_services_opencp_cloud.v1alpha1.createFlux),
       );
   }
 
   public watchFlux(): Observable<FluxEvent> {
     return this.apollo
       .subscribe<{
-        flux_services_openmcp_cloud_v1alpha1_flux: FluxEvent;
+        flux_services_opencp_cloud_v1alpha1_flux: FluxEvent;
       }>({
         query: WATCH_FLUX,
       })
       .pipe(
-        map((result) => result.data!.flux_services_openmcp_cloud_v1alpha1_flux),
+        map((result) => result.data!.flux_services_opencp_cloud_v1alpha1_flux),
       );
   }
 
   public deleteFlux(): Observable<void> {
     const mutation = gql`
       mutation {
-        flux_services_openmcp_cloud {
+        flux_services_opencp_cloud {
           v1alpha1 {
             deleteFlux(name: "default")
           }

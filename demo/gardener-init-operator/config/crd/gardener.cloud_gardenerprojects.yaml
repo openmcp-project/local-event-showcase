@@ -5,7 +5,7 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.20.0
   labels:
-    openmcp.cloud/cluster: onboarding
+    opencp.cloud/cluster: onboarding
   name: gardenerprojects.gardener.cloud
 spec:
   group: gardener.cloud

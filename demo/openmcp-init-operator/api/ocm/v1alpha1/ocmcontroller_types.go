@@ -47,7 +47,7 @@ type OCMControllerStatus struct {
 // +kubebuilder:printcolumn:JSONPath=`.spec.version`,name="Version",type=string
 // +kubebuilder:printcolumn:JSONPath=`.status.phase`,name="Phase",type=string
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:metadata:labels="openmcp.cloud/cluster=onboarding"
+// +kubebuilder:metadata:labels="opencp.cloud/cluster=onboarding"
 type OCMController struct {
 	metav1.TypeMeta `json:",inline"`
 

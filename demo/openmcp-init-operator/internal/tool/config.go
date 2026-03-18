@@ -14,7 +14,7 @@ type ToolConfig struct {
 	FinalizerPrefix string
 	HelmChartURL    string
 	HelmReleaseName string
-	APIExportName   string // Name for the per-tool APIExport (e.g. "kro.services.openmcp.cloud")
+	APIExportName   string // Name for the per-tool APIExport (e.g. "kro.services.opencp.cloud")
 	SkipCRDs        bool   // Skip CRD installation via Helm (CRDs deployed separately to KCP workspace)
 	HelmValuesFunc  func(version string, kcpKubeconfig string, platformMeshIP string) map[string]any
 	PostInstallFunc func(ctx context.Context, mcpClient client.Client, kubeconfigSecret string, platformMeshIP string) error
@@ -24,10 +24,10 @@ type ToolConfig struct {
 // ManagedControlPlanePreDeleteAPIExports lists the per-tool APIExport names
 // that must have no APIBindings before a ManagedControlPlane may be deleted.
 var ManagedControlPlanePreDeleteAPIExports = []string{
-	"crossplane.services.openmcp.cloud",
-	"flux.services.openmcp.cloud",
-	"kro.services.openmcp.cloud",
-	"ocm.services.openmcp.cloud",
+	"crossplane.services.opencp.cloud",
+	"flux.services.opencp.cloud",
+	"kro.services.opencp.cloud",
+	"ocm.services.opencp.cloud",
 }
 
 // ContentConfigEntry describes a single ContentConfiguration to deploy for UI navigation.

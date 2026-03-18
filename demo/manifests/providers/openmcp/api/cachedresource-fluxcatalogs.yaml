@@ -1,8 +1,0 @@
-apiVersion: cache.kcp.io/v1alpha1
-kind: CachedResource
-metadata:
-  name: fluxcatalogs-v1alpha1
-spec:
-  group: flux.services.openmcp.cloud
-  version: v1alpha1
-  resource: fluxcatalogs

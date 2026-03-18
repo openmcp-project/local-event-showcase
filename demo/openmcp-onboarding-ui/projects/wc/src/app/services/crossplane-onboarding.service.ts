@@ -55,7 +55,7 @@ const CHECK_API_BINDING = gql`
   query {
     apis_kcp_io {
       v1alpha2 {
-        APIBinding(name: "crossplane.services.openmcp.cloud") {
+        APIBinding(name: "crossplane.services.opencp.cloud") {
           metadata {
             name
             resourceVersion
@@ -131,7 +131,7 @@ const LIST_API_BINDINGS = gql`
 
 const CHECK_CROSSPLANE = gql`
   query {
-    crossplane_services_openmcp_cloud {
+    crossplane_services_opencp_cloud {
       v1alpha1 {
         Crossplane(name: "default") {
           metadata {
@@ -155,7 +155,7 @@ const CHECK_CROSSPLANE = gql`
 
 const WATCH_CROSSPLANE = gql`
   subscription {
-    crossplane_services_openmcp_cloud_v1alpha1_crossplane(name: "default") {
+    crossplane_services_opencp_cloud_v1alpha1_crossplane(name: "default") {
       type
       object {
         metadata {
@@ -178,7 +178,7 @@ const WATCH_CROSSPLANE = gql`
 
 const QUERY_CATALOG = gql`
   query {
-    crossplane_services_openmcp_cloud {
+    crossplane_services_opencp_cloud {
       v1alpha1 {
         CrossplaneCatalog(name: "default") {
           metadata {
@@ -430,7 +430,7 @@ export class CrossplaneOnboardingService {
   public checkCrossplane(): Observable<CrossplaneStatus | null> {
     return this.apollo
       .query<{
-        crossplane_services_openmcp_cloud: {
+        crossplane_services_opencp_cloud: {
           v1alpha1: { Crossplane: CrossplaneStatus | null };
         };
       }>({
@@ -438,7 +438,7 @@ export class CrossplaneOnboardingService {
         fetchPolicy: 'network-only',
       })
       .pipe(
-        map((result) => result.data!.crossplane_services_openmcp_cloud.v1alpha1.Crossplane),
+        map((result) => result.data!.crossplane_services_opencp_cloud.v1alpha1.Crossplane),
         catchError((err) => {
           if (err.message?.includes('not found')) {
             return of(null);
@@ -451,7 +451,7 @@ export class CrossplaneOnboardingService {
   public getCatalog(): Observable<CrossplaneCatalog | null> {
     return this.apollo
       .query<{
-        crossplane_services_openmcp_cloud: {
+        crossplane_services_opencp_cloud: {
           v1alpha1: { CrossplaneCatalog: CrossplaneCatalog | null };
         };
       }>({
@@ -459,7 +459,7 @@ export class CrossplaneOnboardingService {
         fetchPolicy: 'network-only',
       })
       .pipe(
-        map((result) => result.data!.crossplane_services_openmcp_cloud.v1alpha1.CrossplaneCatalog),
+        map((result) => result.data!.crossplane_services_opencp_cloud.v1alpha1.CrossplaneCatalog),
         catchError(() => of(null)),
       );
   }
@@ -473,7 +473,7 @@ export class CrossplaneOnboardingService {
       .join(', ');
     const mutation = gql`
       mutation {
-        crossplane_services_openmcp_cloud {
+        crossplane_services_opencp_cloud {
           v1alpha1 {
             createCrossplane(
               object: {
@@ -494,7 +494,7 @@ export class CrossplaneOnboardingService {
     `;
     return this.apollo
       .mutate<{
-        crossplane_services_openmcp_cloud: {
+        crossplane_services_opencp_cloud: {
           v1alpha1: {
             createCrossplane: { metadata: { name: string } };
           };
@@ -503,26 +503,26 @@ export class CrossplaneOnboardingService {
         mutation,
       })
       .pipe(
-        map((result) => result.data!.crossplane_services_openmcp_cloud.v1alpha1.createCrossplane),
+        map((result) => result.data!.crossplane_services_opencp_cloud.v1alpha1.createCrossplane),
       );
   }
 
   public watchCrossplane(): Observable<CrossplaneEvent> {
     return this.apollo
       .subscribe<{
-        crossplane_services_openmcp_cloud_v1alpha1_crossplane: CrossplaneEvent;
+        crossplane_services_opencp_cloud_v1alpha1_crossplane: CrossplaneEvent;
       }>({
         query: WATCH_CROSSPLANE,
       })
       .pipe(
-        map((result) => result.data!.crossplane_services_openmcp_cloud_v1alpha1_crossplane),
+        map((result) => result.data!.crossplane_services_opencp_cloud_v1alpha1_crossplane),
       );
   }
 
   public deleteCrossplane(): Observable<void> {
     const mutation = gql`
       mutation {
-        crossplane_services_openmcp_cloud {
+        crossplane_services_opencp_cloud {
           v1alpha1 {
             deleteCrossplane(name: "default")
           }

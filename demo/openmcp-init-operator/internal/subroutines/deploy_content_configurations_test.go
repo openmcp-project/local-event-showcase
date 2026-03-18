@@ -70,9 +70,9 @@ func TestDeployContentConfigurationsSubroutine_Process(t *testing.T) {
 			},
 			validate: func(t *testing.T, kcpClient client.Client) {
 				expectedNames := []string{
-					"openmcp-crossplane-k8s-providerconfig",
-					"openmcp-crossplane-k8s-object",
-					"openmcp-crossplane-k8s-observedobjectcollection",
+					"opencp-crossplane-k8s-providerconfig",
+					"opencp-crossplane-k8s-object",
+					"opencp-crossplane-k8s-observedobjectcollection",
 				}
 				ctx := context.Background()
 				for _, name := range expectedNames {
@@ -135,14 +135,14 @@ func TestDeployContentConfigurationsSubroutine_Process(t *testing.T) {
 			},
 			existingObjects: []client.Object{
 				func() *unstructured.Unstructured {
-					obj := newCC("openmcp-crossplane-k8s-object")
+					obj := newCC("opencp-crossplane-k8s-object")
 					obj.SetLabels(map[string]string{"stale-label": "stale-value"})
 					return obj
 				}(),
 			},
 			validate: func(t *testing.T, kcpClient client.Client) {
-				cc := newCC("openmcp-crossplane-k8s-object")
-				err := kcpClient.Get(context.Background(), types.NamespacedName{Name: "openmcp-crossplane-k8s-object"}, cc)
+				cc := newCC("opencp-crossplane-k8s-object")
+				err := kcpClient.Get(context.Background(), types.NamespacedName{Name: "opencp-crossplane-k8s-object"}, cc)
 				require.NoError(t, err)
 
 				labels := cc.GetLabels()
@@ -164,10 +164,10 @@ func TestDeployContentConfigurationsSubroutine_Process(t *testing.T) {
 			},
 			validate: func(t *testing.T, kcpClient client.Client) {
 				expectedNames := []string{
-					"openmcp-crossplane-gardener-auth-adminkubeconfigrequest",
-					"openmcp-crossplane-gardener-auth-providerconfig",
-					"openmcp-crossplane-gardener-auth-providerconfigusage",
-					"openmcp-crossplane-gardener-auth-storeconfig",
+					"opencp-crossplane-gardener-auth-adminkubeconfigrequest",
+					"opencp-crossplane-gardener-auth-providerconfig",
+					"opencp-crossplane-gardener-auth-providerconfigusage",
+					"opencp-crossplane-gardener-auth-storeconfig",
 				}
 				ctx := context.Background()
 				for _, name := range expectedNames {
@@ -189,15 +189,15 @@ func TestDeployContentConfigurationsSubroutine_Process(t *testing.T) {
 			},
 			validate: func(t *testing.T, kcpClient client.Client) {
 				k8sNames := []string{
-					"openmcp-crossplane-k8s-providerconfig",
-					"openmcp-crossplane-k8s-object",
-					"openmcp-crossplane-k8s-observedobjectcollection",
+					"opencp-crossplane-k8s-providerconfig",
+					"opencp-crossplane-k8s-object",
+					"opencp-crossplane-k8s-observedobjectcollection",
 				}
 				gardenerNames := []string{
-					"openmcp-crossplane-gardener-auth-adminkubeconfigrequest",
-					"openmcp-crossplane-gardener-auth-providerconfig",
-					"openmcp-crossplane-gardener-auth-providerconfigusage",
-					"openmcp-crossplane-gardener-auth-storeconfig",
+					"opencp-crossplane-gardener-auth-adminkubeconfigrequest",
+					"opencp-crossplane-gardener-auth-providerconfig",
+					"opencp-crossplane-gardener-auth-providerconfigusage",
+					"opencp-crossplane-gardener-auth-storeconfig",
 				}
 				ctx := context.Background()
 				for _, name := range append(k8sNames, gardenerNames...) {
@@ -272,15 +272,15 @@ func TestDeployContentConfigurationsSubroutine_Finalize(t *testing.T) {
 				{Name: "provider-kubernetes", Version: "0.11.0"},
 			},
 			existingObjects: []client.Object{
-				newCC("openmcp-crossplane-k8s-providerconfig"),
-				newCC("openmcp-crossplane-k8s-object"),
-				newCC("openmcp-crossplane-k8s-observedobjectcollection"),
+				newCC("opencp-crossplane-k8s-providerconfig"),
+				newCC("opencp-crossplane-k8s-object"),
+				newCC("opencp-crossplane-k8s-observedobjectcollection"),
 			},
 			validate: func(t *testing.T, kcpClient client.Client) {
 				deletedNames := []string{
-					"openmcp-crossplane-k8s-providerconfig",
-					"openmcp-crossplane-k8s-object",
-					"openmcp-crossplane-k8s-observedobjectcollection",
+					"opencp-crossplane-k8s-providerconfig",
+					"opencp-crossplane-k8s-object",
+					"opencp-crossplane-k8s-observedobjectcollection",
 				}
 				ctx := context.Background()
 				for _, name := range deletedNames {
@@ -378,7 +378,7 @@ func TestBuildContentConfiguration(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, cc)
 
-	assert.Equal(t, "openmcp-crossplane-k8s-providerconfig", cc.GetName())
+	assert.Equal(t, "opencp-crossplane-k8s-providerconfig", cc.GetName())
 	assert.Equal(t, contentConfigAPIVersion, cc.GetAPIVersion())
 	assert.Equal(t, contentConfigKind, cc.GetKind())
 
@@ -421,9 +421,9 @@ func TestContentConfigName(t *testing.T) {
 		kind     string
 		expected string
 	}{
-		{"k8s", "ProviderConfig", "openmcp-crossplane-k8s-providerconfig"},
-		{"k8s", "Object", "openmcp-crossplane-k8s-object"},
-		{"k8s", "ObservedObjectCollection", "openmcp-crossplane-k8s-observedobjectcollection"},
+		{"k8s", "ProviderConfig", "opencp-crossplane-k8s-providerconfig"},
+		{"k8s", "Object", "opencp-crossplane-k8s-object"},
+		{"k8s", "ObservedObjectCollection", "opencp-crossplane-k8s-observedobjectcollection"},
 	}
 
 	for _, tt := range tests {

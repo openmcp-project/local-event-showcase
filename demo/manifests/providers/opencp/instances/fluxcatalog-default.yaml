@@ -1,0 +1,8 @@
+apiVersion: flux.services.opencp.cloud/v1alpha1
+kind: FluxCatalog
+metadata:
+  name: default
+spec:
+  versions:
+    - version: "v2.4.0"
+      chartVersion: "2.14.0"

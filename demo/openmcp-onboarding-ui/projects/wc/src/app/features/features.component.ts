@@ -404,7 +404,7 @@ interface PermissionClaimWithBinding extends PermissionClaim {
       @case ('loading') {
         <div class="loading-container">
           <fd-busy-indicator [loading]="true" size="m"></fd-busy-indicator>
-          <span>Checking OpenMCP services...</span>
+          <span>Checking OpenControlPlane services...</span>
         </div>
       }
 
@@ -657,10 +657,10 @@ export class FeaturesComponent implements OnDestroy {
   };
 
   private readonly toolExportNames: Record<string, string> = {
-    crossplane: 'crossplane.services.openmcp.cloud',
-    kro: 'kro.services.openmcp.cloud',
-    flux: 'flux.services.openmcp.cloud',
-    'ocm-controller': 'ocm.services.openmcp.cloud',
+    crossplane: 'crossplane.services.opencp.cloud',
+    kro: 'kro.services.opencp.cloud',
+    flux: 'flux.services.opencp.cloud',
+    'ocm-controller': 'ocm.services.opencp.cloud',
   };
 
   tools = signal<ToolCard[]>([
@@ -922,7 +922,7 @@ export class FeaturesComponent implements OnDestroy {
   // --- Private methods ---
 
   private isServiceBinding(binding: APIBindingDetail): boolean {
-    return binding.metadata.name.endsWith('.services.openmcp.cloud');
+    return binding.metadata.name.endsWith('.services.opencp.cloud');
   }
 
   private checkAPIBindings(): void {

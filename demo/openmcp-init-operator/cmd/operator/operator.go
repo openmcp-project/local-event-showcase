@@ -61,7 +61,7 @@ func NewOperatorCmd(opCfg *config.OperatorConfig, cfg *platformmeshconfig.Common
 
 	operatorCmd := &cobra.Command{
 		Use:   "operator",
-		Short: "operator to reconcile ManagedControlPlane and Crossplane resources for OpenMCP initialization",
+		Short: "operator to reconcile ManagedControlPlane and Crossplane resources for OpenCP initialization",
 		Run:   RunController,
 	}
 
@@ -172,7 +172,7 @@ func RunController(_ *cobra.Command, _ []string) {
 		Metrics:                metricsServerOptions,
 		HealthProbeBindAddress: defaultCfg.HealthProbeBindAddress,
 		LeaderElection:         defaultCfg.LeaderElectionEnabled,
-		LeaderElectionID:       "1da1c418.openmcp.io",
+		LeaderElectionID:       "1da1c418.opencp.io",
 		BaseContext: func() context.Context {
 			return ctx
 		},

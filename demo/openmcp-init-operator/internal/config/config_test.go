@@ -16,7 +16,7 @@ func TestNewOperatorConfig_Defaults(t *testing.T) {
 	assert.True(t, cfg.Subroutines.InitializePublishedResources.Enabled)
 	assert.True(t, cfg.Subroutines.CreateCrossplane.Enabled)
 	assert.True(t, cfg.Subroutines.DeployContentConfigurations.Enabled)
-	assert.Equal(t, "openmcp.cloud", cfg.KCP.APIExportEndpointSliceName)
+	assert.Equal(t, "opencp.cloud", cfg.KCP.APIExportEndpointSliceName)
 	assert.Equal(t, "hsp", cfg.MCP.ServiceAccount)
 	assert.Equal(t, "default", cfg.MCP.Namespace)
 	assert.Equal(t, "account", cfg.RuntimeNamespace)

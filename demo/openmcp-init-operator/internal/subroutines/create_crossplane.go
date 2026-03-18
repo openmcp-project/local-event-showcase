@@ -9,7 +9,8 @@ import (
 	"github.com/platform-mesh/golang-commons/errors"
 	"github.com/platform-mesh/golang-commons/logger"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -20,9 +21,17 @@ import (
 	"github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/internal/config"
 )
 
+// onboardingCrossplaneGVK is the GVK for the Crossplane resource on the onboarding cluster.
+// The onboarding cluster runs the openmcp-operator which uses the openmcp.cloud API group.
+var onboardingCrossplaneGVK = schema.GroupVersionKind{
+	Group:   "crossplane.services.openmcp.cloud",
+	Version: "v1alpha1",
+	Kind:    "Crossplane",
+}
+
 const (
 	CreateCrossplaneSubroutineName = "CreateCrossplane"
-	CreateCrossplaneFinalizerName  = "crossplane.openmcp.io/managed-crossplane"
+	CreateCrossplaneFinalizerName  = "crossplane.opencp.io/managed-crossplane"
 )
 
 type CreateCrossplaneSubroutine struct {
@@ -57,17 +66,17 @@ func (r *CreateCrossplaneSubroutine) Finalize(ctx context.Context, _ runtimeobje
 		return ctrl.Result{}, errors.NewOperatorError(err, true, true)
 	}
 
-	bound, checkErr := apiExportHasBindings(ctx, kcpClient, "crossplane.services.openmcp.cloud")
+	bound, checkErr := apiExportHasBindings(ctx, kcpClient, "crossplane.services.opencp.cloud")
 	if checkErr != nil {
 		log.Error().Err(checkErr).Msg("failed to check APIBindings for Crossplane APIExport")
 		return ctrl.Result{}, errors.NewOperatorError(checkErr, true, true)
 	}
 	if bound {
-		log.Info().Msg("APIBindings still reference crossplane.services.openmcp.cloud, waiting before Crossplane deletion")
+		log.Info().Msg("APIBindings still reference crossplane.services.opencp.cloud, waiting before Crossplane deletion")
 		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
-	crossplane := &crossplanev1alpha1.Crossplane{}
+	crossplane := newOnboardingCrossplane(clusterID, r.cfg.MCP.Namespace)
 	err = r.onboardingClient.Get(ctx, types.NamespacedName{Name: clusterID, Namespace: r.cfg.MCP.Namespace}, crossplane)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -78,7 +87,8 @@ func (r *CreateCrossplaneSubroutine) Finalize(ctx context.Context, _ runtimeobje
 		return ctrl.Result{}, errors.NewOperatorError(err, true, true)
 	}
 
-	if crossplane.DeletionTimestamp.IsZero() {
+	deletionTimestamp := crossplane.GetDeletionTimestamp()
+	if deletionTimestamp == nil || deletionTimestamp.IsZero() {
 		log.Info().Str("clusterID", clusterID).Msg("deleting Crossplane")
 		if err := r.onboardingClient.Delete(ctx, crossplane); err != nil {
 			if !apierrors.IsNotFound(err) {
@@ -109,17 +119,26 @@ func (r *CreateCrossplaneSubroutine) Process(ctx context.Context, runtimeObj run
 
 	log.Info().Str("clusterID", clusterID).Msg("creating Crossplane in MCP cluster")
 
-	targetCrossplane := &crossplanev1alpha1.Crossplane{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      clusterID,
-			Namespace: r.cfg.MCP.Namespace,
-		},
-	}
+	targetCrossplane := newOnboardingCrossplane(clusterID, r.cfg.MCP.Namespace)
 
 	_, err := controllerutil.CreateOrUpdate(ctx, r.onboardingClient, targetCrossplane, func() error {
-		targetCrossplane.Spec.Version = sourceCrossplane.Spec.Version
-		targetCrossplane.Spec.Providers = deepCopyProviders(filterManualProviders(sourceCrossplane.Spec.Providers))
-		return nil
+		spec := map[string]interface{}{
+			"version": sourceCrossplane.Spec.Version,
+		}
+		filteredProviders := filterManualProviders(sourceCrossplane.Spec.Providers)
+		if len(filteredProviders) > 0 {
+			providers := make([]interface{}, 0, len(filteredProviders))
+			for _, p := range filteredProviders {
+				if p != nil {
+					providers = append(providers, map[string]interface{}{
+						"name":    p.Name,
+						"version": p.Version,
+					})
+				}
+			}
+			spec["providers"] = providers
+		}
+		return unstructured.SetNestedField(targetCrossplane.Object, spec, "spec")
 	})
 	if err != nil {
 		log.Error().Err(err).Str("name", clusterID).Msg("failed to create or update Crossplane")
@@ -132,18 +151,14 @@ func (r *CreateCrossplaneSubroutine) Process(ctx context.Context, runtimeObj run
 	return ctrl.Result{}, nil
 }
 
-func deepCopyProviders(providers []*crossplanev1alpha1.CrossplaneProviderConfig) []*crossplanev1alpha1.CrossplaneProviderConfig {
-	if providers == nil {
-		return nil
+// newOnboardingCrossplane creates an unstructured Crossplane resource for the onboarding cluster
+// using the openmcp API group (crossplane.services.openmcp.cloud).
+func newOnboardingCrossplane(name, namespace string) *unstructured.Unstructured {
+	obj := &unstructured.Unstructured{}
+	obj.SetGroupVersionKind(onboardingCrossplaneGVK)
+	obj.SetName(name)
+	if namespace != "" {
+		obj.SetNamespace(namespace)
 	}
-	copied := make([]*crossplanev1alpha1.CrossplaneProviderConfig, len(providers))
-	for i, p := range providers {
-		if p != nil {
-			copied[i] = &crossplanev1alpha1.CrossplaneProviderConfig{
-				Name:    p.Name,
-				Version: p.Version,
-			}
-		}
-	}
-	return copied
+	return obj
 }

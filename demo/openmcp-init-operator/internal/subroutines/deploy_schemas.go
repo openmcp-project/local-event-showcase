@@ -76,7 +76,7 @@ func (d *DeployAPIResourceSchemasSubroutine) Process(ctx context.Context, runtim
 	// Apply each APIResourceSchema via server-side apply
 	for _, schema := range schemas {
 		schema.SetManagedFields(nil)
-		applyErr := kcpClient.Patch(ctx, schema, client.Apply, client.FieldOwner("openmcp-init-operator"), client.ForceOwnership) //nolint:staticcheck // Apply() requires typed ApplyConfiguration; Patch+Apply is correct for unstructured SSA
+		applyErr := kcpClient.Patch(ctx, schema, client.Apply, client.FieldOwner("opencp-init-operator"), client.ForceOwnership) //nolint:staticcheck // Apply() requires typed ApplyConfiguration; Patch+Apply is correct for unstructured SSA
 		if applyErr != nil {
 			log.Error().Err(applyErr).Str("name", schema.GetName()).Msg("failed to apply APIResourceSchema")
 			return ctrl.Result{}, errors.NewOperatorError(applyErr, true, true)

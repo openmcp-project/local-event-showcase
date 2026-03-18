@@ -1,8 +1,0 @@
-apiVersion: ocm.services.openmcp.cloud/v1alpha1
-kind: OCMControllerCatalog
-metadata:
-  name: default
-spec:
-  versions:
-    - version: "v0.29.0"
-      chartVersion: "0.0.0-6205a8a"
