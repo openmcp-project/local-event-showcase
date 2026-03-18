@@ -321,9 +321,9 @@ sequenceDiagram
 
         KCP->>Operator: tool enablement resource detected in account workspace
 
-        Note over Operator: DeployCRDsSubroutine
-        Operator->>KCP: deploy tool upstream CRDs into user's KCP workspace
-        KCP-->>Operator: CRDs registered in workspace
+        Note over Operator: DeployAPIResourceSchemasSubroutine
+        Operator->>KCP: deploy APIResourceSchemas and update APIExport<br/>in user's KCP workspace
+        KCP-->>Operator: schemas registered, APIExport updated
 
         Note over Operator: InstallToolSubroutine
         Operator->>MCP: helm install tool<br/>(kubeconfig points to user's KCP workspace)
@@ -367,7 +367,7 @@ sequenceDiagram
 - After Crossplane is ready and PublishedResources are created, the api-syncagent adds the published Crossplane resource APIs (ProviderConfig, Object, ObservedObjectCollection) to the `crossplane.services.opencp.cloud` APIExport, making them available in the workspace.
 - Network routing from MCP clusters to KCP uses `hostAliases` to map `localhost` to the `platform-mesh` Docker container IP, since KCP listens on `localhost:31000` (NodePort) inside the kind network.
 - Published resources (`ProviderConfig`, `Object`, `ObservedObjectCollection`) are only initialized once the target Crossplane on the onboarding cluster reports all `*Ready` conditions as `True`.
-- **Crossplane vs. KRO/Flux/OCM architecture**: Crossplane uses a sync-agent bridge — the `api-syncagent` runs on the MCP cluster and bridges resources between KCP and MCP via a dynamic `crossplane.services.opencp.cloud` APIExport. KRO, Flux, and OCM Controller use a simpler direct pattern: the operator deploys the tool's upstream CRDs directly into the user's KCP workspace, then installs the tool controller on the MCP cluster with a kubeconfig that points at that KCP workspace. The tool controller reconciles against KCP directly, with no sync-agent in between.
+- **Crossplane vs. KRO/Flux/OCM architecture**: Crossplane uses a sync-agent bridge — the `api-syncagent` runs on the MCP cluster and bridges resources between KCP and MCP via a dynamic `crossplane.services.opencp.cloud` APIExport. KRO, Flux, and OCM Controller use a simpler direct pattern: the operator deploys APIResourceSchemas into the user's KCP workspace and updates the tool's APIExport, then installs the tool controller on the MCP cluster with a kubeconfig that points at that KCP workspace. The tool controller reconciles against KCP directly, with no sync-agent in between.
 - Each tool API group is a separate KCP service domain: `kro.services.opencp.cloud`, `flux.services.opencp.cloud`, and `ocm.services.opencp.cloud`. All three are published via the existing `opencp.cloud` APIExport.
 
 ---
