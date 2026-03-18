@@ -6,6 +6,7 @@ CLAUDE.md
 CLAUDE.local.md
 bin
 .idea
+.vscode
 demo/external
 .envrc
 hack/kubeconfigs/
