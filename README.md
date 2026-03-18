@@ -203,7 +203,7 @@ sequenceDiagram
         Operator->>KCP: update ManagedControlPlane status (phase: MCPReady)
 
         Note over Operator: SetupSyncAgentSubroutine
-        Operator->>KCP: create APIExport crossplane.services.opencp.cloud
+        Operator->>KCP: create APIExports in workspace<br/>(crossplane/kro/flux/ocm.services.opencp.cloud)
         Operator->>MCP: create Secret kcp-kubeconfig
         Operator->>MCP: helm install api-syncagent<br/>(bridges MCP ↔ KCP workspace)
         Operator->>KCP: update ManagedControlPlane status (phase: Ready)
