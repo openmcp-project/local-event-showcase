@@ -7,9 +7,8 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { Observable, Subscription, forkJoin, map, switchMap } from 'rxjs';
+import { Observable, Subscription, forkJoin, map, of, switchMap, timer } from 'rxjs';
 import { LuigiClient } from '@luigi-project/client/luigi-element';
-import { sendCustomMessage } from '@luigi-project/client/luigi-client';
 import { ButtonComponent } from '@fundamental-ngx/core/button';
 import { BusyIndicatorComponent } from '@fundamental-ngx/core/busy-indicator';
 import { MessageStripComponent } from '@fundamental-ngx/core/message-strip';
@@ -907,11 +906,7 @@ export class FeaturesComponent implements OnDestroy {
     this.crossplaneService.deleteAPIBinding(exportName).pipe(
       switchMap(() => delete$),
     ).subscribe({
-      next: () => {
-        this.setToolStatus(toolId, {});
-        this.updateToolState(toolId, 'not-enabled');
-        this.sendPortalReloadMessage(toolId);
-      },
+      next: () => this.pollToolDeleted(toolId),
       error: (err: Error) => {
         this.error.set(`Failed to disable ${toolId}: ${err.message}`);
         this.updateToolState(toolId, 'active');
@@ -1090,7 +1085,7 @@ export class FeaturesComponent implements OnDestroy {
         this.setToolStatus(toolId, event.object);
         if (event.object.status?.phase === 'Ready') {
           this.updateToolState(toolId, 'active');
-          this.sendPortalReloadMessage(toolId);
+          this.reloadPortal();
           sub.unsubscribe();
           this.toolWatchSubs.delete(toolId);
           // Close drawer if it's showing this tool
@@ -1124,16 +1119,37 @@ export class FeaturesComponent implements OnDestroy {
     );
   }
 
-  private sendPortalReloadMessage(toolId: string): void {
-    const entityType = this.luigiContext?.entityType ?? '';
-    sendCustomMessage({
-      id: 'openmfp.reload-luigi-config',
-      origin: 'FeaturesOnboarding',
-      action: `provision-${toolId}`,
-      entity: entityType,
-      context: {
-        [entityType]: this.luigiContext?.entityName,
-        user: this.luigiContext?.userId,
+  private reloadPortal(): void {
+    window.location.reload();
+  }
+
+  private getToolCheck(toolId: string): Observable<unknown | null> {
+    switch (toolId) {
+      case 'crossplane': return this.crossplaneService.checkCrossplane();
+      case 'kro': return this.kroService.checkKRO();
+      case 'flux': return this.fluxService.checkFlux();
+      case 'ocm-controller': return this.ocmService.checkOCMController();
+      default: return of(null);
+    }
+  }
+
+  private pollToolDeleted(toolId: string): void {
+    const sub = timer(0, 2000).pipe(
+      switchMap(() => this.getToolCheck(toolId)),
+    ).subscribe({
+      next: (resource) => {
+        if (!resource) {
+          sub.unsubscribe();
+          this.setToolStatus(toolId, {});
+          this.updateToolState(toolId, 'not-enabled');
+          this.reloadPortal();
+        }
+      },
+      error: (err: Error) => {
+        sub.unsubscribe();
+        this.setToolStatus(toolId, {});
+        this.updateToolState(toolId, 'not-enabled');
+        this.reloadPortal();
       },
     });
   }

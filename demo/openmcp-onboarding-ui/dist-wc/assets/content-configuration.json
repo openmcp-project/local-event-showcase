@@ -4,7 +4,7 @@
     "data": {
       "nodes": [
         {
-          "label": "OpenCP",
+          "label": "OpenControlPlane",
           "pathSegment": "openmcp",
           "icon": "cloud",
           "order": 800,
@@ -19,7 +19,7 @@
           },
           "navHeader": {
             "label": "default",
-            "type": "OpenCP"
+            "type": "OpenControlPlane"
           },
           "loadingIndicator": {
             "enabled": false
