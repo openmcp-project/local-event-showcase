@@ -7,7 +7,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { Observable, Subscription, forkJoin, map, switchMap } from 'rxjs';
+import { Observable, Subscription, forkJoin, map, of, switchMap, timer } from 'rxjs';
 import { LuigiClient } from '@luigi-project/client/luigi-element';
 import { ButtonComponent } from '@fundamental-ngx/core/button';
 import { BusyIndicatorComponent } from '@fundamental-ngx/core/busy-indicator';
@@ -906,11 +906,7 @@ export class FeaturesComponent implements OnDestroy {
     this.crossplaneService.deleteAPIBinding(exportName).pipe(
       switchMap(() => delete$),
     ).subscribe({
-      next: () => {
-        this.setToolStatus(toolId, {});
-        this.updateToolState(toolId, 'not-enabled');
-        this.reloadPortal();
-      },
+      next: () => this.pollToolDeleted(toolId),
       error: (err: Error) => {
         this.error.set(`Failed to disable ${toolId}: ${err.message}`);
         this.updateToolState(toolId, 'active');
@@ -1125,5 +1121,36 @@ export class FeaturesComponent implements OnDestroy {
 
   private reloadPortal(): void {
     window.location.reload();
+  }
+
+  private getToolCheck(toolId: string): Observable<unknown | null> {
+    switch (toolId) {
+      case 'crossplane': return this.crossplaneService.checkCrossplane();
+      case 'kro': return this.kroService.checkKRO();
+      case 'flux': return this.fluxService.checkFlux();
+      case 'ocm-controller': return this.ocmService.checkOCMController();
+      default: return of(null);
+    }
+  }
+
+  private pollToolDeleted(toolId: string): void {
+    const sub = timer(0, 2000).pipe(
+      switchMap(() => this.getToolCheck(toolId)),
+    ).subscribe({
+      next: (resource) => {
+        if (!resource) {
+          sub.unsubscribe();
+          this.setToolStatus(toolId, {});
+          this.updateToolState(toolId, 'not-enabled');
+          this.reloadPortal();
+        }
+      },
+      error: (err: Error) => {
+        sub.unsubscribe();
+        this.setToolStatus(toolId, {});
+        this.updateToolState(toolId, 'not-enabled');
+        this.reloadPortal();
+      },
+    });
   }
 }
