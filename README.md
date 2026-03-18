@@ -36,7 +36,7 @@ graph TB
 | Project | Documentation |
 |---------|---------------|
 | **Platform Mesh** | [platform-mesh.io](https://platform-mesh.io) |
-| **OpenMCP** | [openmcp-project.io](https://openmcp-project.io) |
+| **OpenControlPlanes** | [openmcp-project](https://github.com/openmcp-project) |
 | **Gardener** | [gardener.cloud](https://gardener.cloud) |
 
 ---
