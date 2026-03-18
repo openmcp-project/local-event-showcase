@@ -133,16 +133,16 @@ sequenceDiagram
 
         Script->>PlatformMesh: verify platform-mesh resource is Ready
         Script->>KCP: create workspace root:providers
-        Script->>KCP: create workspace root:providers:openmcp
+        Script->>KCP: create workspace root:providers:opencp
         Script->>KCP: create workspace root:providers:gardener
-        Script->>PlatformMesh: patch platform-mesh extraDefaultAPIBindings<br/>(opencp.cloud → root:providers:openmcp, gardener.cloud → root:providers:gardener)
+        Script->>PlatformMesh: patch platform-mesh extraDefaultAPIBindings<br/>(opencp.cloud → root:providers:opencp, gardener.cloud → root:providers:gardener)
     end
 
     rect rgb(235, 230, 255)
         Note over Script,KCP: Register OpenMCP as a provider in KCP
 
         Script->>KCP: lookup identityHash from core.platform-mesh.io APIExport
-        Script->>KCP: apply APIExport, RBAC, ProviderMetadata<br/>to root:providers:openmcp workspace
+        Script->>KCP: apply APIExport, RBAC, ProviderMetadata<br/>to root:providers:opencp workspace
         Script->>KCP: apply gardener.cloud APIExport, RBAC<br/>to root:providers:gardener workspace
     end
 
