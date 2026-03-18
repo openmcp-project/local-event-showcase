@@ -93,15 +93,19 @@ func (d *DeployAPIResourceSchemasSubroutine) Process(ctx context.Context, runtim
 	// Update the existing APIExport with schema resources.
 	// The empty APIExport is pre-created by SetupSyncAgentSubroutine;
 	// the APIBinding is created by the user via the UI.
-	apiExport := &apisv1alpha2.APIExport{
-		ObjectMeta: metav1.ObjectMeta{Name: d.apiExportName},
+	// We intentionally use Get+Update instead of CreateOrUpdate to avoid
+	// recreating the APIExport if it was already deleted (e.g. workspace teardown).
+	apiExport := &apisv1alpha2.APIExport{}
+	if err = kcpClient.Get(ctx, client.ObjectKey{Name: d.apiExportName}, apiExport); err != nil {
+		if apierrors.IsNotFound(err) {
+			log.Info().Str("name", d.apiExportName).Msg("APIExport not found, skipping resource update")
+			return ctrl.Result{}, nil
+		}
+		return ctrl.Result{}, errors.NewOperatorError(err, true, true)
 	}
-	_, err = controllerutil.CreateOrUpdate(ctx, kcpClient, apiExport, func() error {
-		apiExport.Spec.Resources = resources
-		return nil
-	})
-	if err != nil {
-		log.Error().Err(err).Str("name", d.apiExportName).Msg("failed to create/update APIExport")
+	apiExport.Spec.Resources = resources
+	if err = kcpClient.Update(ctx, apiExport); err != nil {
+		log.Error().Err(err).Str("name", d.apiExportName).Msg("failed to update APIExport")
 		return ctrl.Result{}, errors.NewOperatorError(err, true, true)
 	}
 	log.Info().Str("name", d.apiExportName).Msg("APIExport updated with schema resources")
@@ -141,19 +145,27 @@ func (d *DeployAPIResourceSchemasSubroutine) Finalize(ctx context.Context, runti
 		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
-	// Clear the APIExport resources (revert to empty export)
-	apiExport := &apisv1alpha2.APIExport{
-		ObjectMeta: metav1.ObjectMeta{Name: d.apiExportName},
-	}
-	_, err = controllerutil.CreateOrUpdate(ctx, kcpClient, apiExport, func() error {
+	// Clear the APIExport resources (revert to empty export).
+	// Use Get+Update instead of CreateOrUpdate to avoid recreating the APIExport
+	// if it was already deleted during workspace teardown.
+	apiExport := &apisv1alpha2.APIExport{}
+	if err = kcpClient.Get(ctx, client.ObjectKey{Name: d.apiExportName}, apiExport); err != nil {
+		if apierrors.IsNotFound(err) {
+			log.Info().Str("name", d.apiExportName).Msg("APIExport already deleted, skipping resource clear")
+		} else {
+			return ctrl.Result{}, errors.NewOperatorError(err, true, true)
+		}
+	} else {
 		apiExport.Spec.Resources = nil
-		return nil
-	})
-	if err != nil && !apierrors.IsNotFound(err) {
-		log.Error().Err(err).Str("name", d.apiExportName).Msg("failed to clear APIExport resources")
-		return ctrl.Result{}, errors.NewOperatorError(err, true, true)
+		if updateErr := kcpClient.Update(ctx, apiExport); updateErr != nil {
+			if !apierrors.IsNotFound(updateErr) {
+				log.Error().Err(updateErr).Str("name", d.apiExportName).Msg("failed to clear APIExport resources")
+				return ctrl.Result{}, errors.NewOperatorError(updateErr, true, true)
+			}
+		} else {
+			log.Info().Str("name", d.apiExportName).Msg("APIExport resources cleared")
+		}
 	}
-	log.Info().Str("name", d.apiExportName).Msg("APIExport resources cleared")
 
 	// Delete each APIResourceSchema
 	schemas, err := d.loadSchemas(version)
