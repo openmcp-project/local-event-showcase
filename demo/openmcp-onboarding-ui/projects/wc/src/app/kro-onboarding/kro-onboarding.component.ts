@@ -14,7 +14,6 @@ import {
 } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { LuigiClient } from '@luigi-project/client/luigi-element';
-import { sendCustomMessage } from '@luigi-project/client/luigi-client';
 import { ButtonComponent } from '@fundamental-ngx/core/button';
 import { BusyIndicatorComponent } from '@fundamental-ngx/core/busy-indicator';
 import { MessageStripComponent } from '@fundamental-ngx/core/message-strip';
@@ -376,7 +375,7 @@ export class KROOnboardingComponent implements OnDestroy {
         this.kro.set(event.object);
         if (event.object.status?.phase === 'Ready') {
           this.state.set('active');
-          this.sendPortalReloadMessage();
+          this.reloadPortal();
           this.watchSub?.unsubscribe();
         } else {
           this.state.set('provisioning');
@@ -388,17 +387,7 @@ export class KROOnboardingComponent implements OnDestroy {
     });
   }
 
-  private sendPortalReloadMessage(): void {
-    const entityType = this.luigiContext?.entityType ?? '';
-    sendCustomMessage({
-      id: 'openmfp.reload-luigi-config',
-      origin: 'KROOnboarding',
-      action: 'provisionKRO',
-      entity: entityType,
-      context: {
-        [entityType]: this.luigiContext?.entityName,
-        user: this.luigiContext?.userId,
-      },
-    });
+  private reloadPortal(): void {
+    window.location.reload();
   }
 }

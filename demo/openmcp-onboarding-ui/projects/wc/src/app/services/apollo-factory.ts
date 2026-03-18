@@ -24,6 +24,7 @@ export interface LuigiContext {
   entityType?: string;
   entityName?: string;
   userId?: string;
+  accountPath?: string;
 }
 
 class SSELink extends ApolloLink {

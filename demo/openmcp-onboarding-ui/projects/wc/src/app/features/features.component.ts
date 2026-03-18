@@ -9,7 +9,6 @@ import {
 } from '@angular/core';
 import { Observable, Subscription, forkJoin, map, switchMap } from 'rxjs';
 import { LuigiClient } from '@luigi-project/client/luigi-element';
-import { sendCustomMessage } from '@luigi-project/client/luigi-client';
 import { ButtonComponent } from '@fundamental-ngx/core/button';
 import { BusyIndicatorComponent } from '@fundamental-ngx/core/busy-indicator';
 import { MessageStripComponent } from '@fundamental-ngx/core/message-strip';
@@ -910,7 +909,7 @@ export class FeaturesComponent implements OnDestroy {
       next: () => {
         this.setToolStatus(toolId, {});
         this.updateToolState(toolId, 'not-enabled');
-        this.sendPortalReloadMessage(toolId);
+        this.reloadPortal();
       },
       error: (err: Error) => {
         this.error.set(`Failed to disable ${toolId}: ${err.message}`);
@@ -1090,7 +1089,7 @@ export class FeaturesComponent implements OnDestroy {
         this.setToolStatus(toolId, event.object);
         if (event.object.status?.phase === 'Ready') {
           this.updateToolState(toolId, 'active');
-          this.sendPortalReloadMessage(toolId);
+          this.reloadPortal();
           sub.unsubscribe();
           this.toolWatchSubs.delete(toolId);
           // Close drawer if it's showing this tool
@@ -1124,17 +1123,7 @@ export class FeaturesComponent implements OnDestroy {
     );
   }
 
-  private sendPortalReloadMessage(toolId: string): void {
-    const entityType = this.luigiContext?.entityType ?? '';
-    sendCustomMessage({
-      id: 'openmfp.reload-luigi-config',
-      origin: 'FeaturesOnboarding',
-      action: `provision-${toolId}`,
-      entity: entityType,
-      context: {
-        [entityType]: this.luigiContext?.entityName,
-        user: this.luigiContext?.userId,
-      },
-    });
+  private reloadPortal(): void {
+    window.location.reload();
   }
 }

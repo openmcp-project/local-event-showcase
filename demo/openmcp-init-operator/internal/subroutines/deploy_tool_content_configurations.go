@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/platform-mesh/golang-commons/controller/lifecycle/runtimeobject"
 	"github.com/platform-mesh/golang-commons/controller/lifecycle/subroutine"
@@ -13,6 +14,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/openmcp/local-event-showcase/demo/openmcp-init-operator/internal/tool"
@@ -81,6 +83,26 @@ func (d *DeployToolContentConfigurationsSubroutine) Process(ctx context.Context,
 			return ctrl.Result{}, errors.NewOperatorError(createErr, true, true)
 		}
 		log.Info().Str("name", cc.GetName()).Msg("ContentConfiguration created/updated")
+	}
+
+	// Wait for all ContentConfigurations to become Ready before setting tool phase.
+	// The extension-manager-operator reconciles CCs asynchronously; the portal only
+	// serves CCs that have Ready=True, so we must not signal Ready to the UI earlier.
+	for _, entry := range d.entries {
+		name := toolContentConfigName(d.toolName, entry.Kind)
+		cc := &unstructured.Unstructured{}
+		cc.SetAPIVersion(contentConfigAPIVersion)
+		cc.SetKind(contentConfigKind)
+
+		if getErr := kcpClient.Get(ctx, client.ObjectKey{Name: name}, cc); getErr != nil {
+			log.Info().Err(getErr).Str("name", name).Msg("ContentConfiguration not yet available, requeuing")
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		}
+
+		if !isContentConfigReady(cc) {
+			log.Info().Str("name", name).Msg("ContentConfiguration not yet ready, requeuing")
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		}
 	}
 
 	setPhase(runtimeObj, "Ready")
@@ -188,4 +210,23 @@ func buildContext(entry tool.ContentConfigEntry) map[string]any {
 			"scope":    entry.Scope,
 		},
 	}
+}
+
+// isContentConfigReady checks whether an unstructured ContentConfiguration has
+// a Ready condition with status "True".
+func isContentConfigReady(obj *unstructured.Unstructured) bool {
+	conditions, found, err := unstructured.NestedSlice(obj.Object, "status", "conditions")
+	if err != nil || !found {
+		return false
+	}
+	for _, c := range conditions {
+		cond, ok := c.(map[string]any)
+		if !ok {
+			continue
+		}
+		if cond["type"] == "Ready" && cond["status"] == "True" {
+			return true
+		}
+	}
+	return false
 }
