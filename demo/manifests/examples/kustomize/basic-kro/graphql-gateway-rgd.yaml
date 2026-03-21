@@ -23,6 +23,8 @@ spec:
     status:
       helmReleaseReady: ${helmRelease.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
       clusterAccessCreated: ${has(clusterAccess.status.atProvider.manifest)}
+      chartVersion: ${ocmResource.status.additional.tag}
+      imageVersion: ${ocmImageResource.status.additional.tag}
 
     additionalPrinterColumns:
       - jsonPath: .status.helmReleaseReady
@@ -31,9 +33,92 @@ spec:
       - jsonPath: .status.clusterAccessCreated
         name: ClusterAccessCreated
         type: string
+      - jsonPath: .status.chartVersion
+        name: ChartVersion
+        type: string
+      - jsonPath: .status.imageVersion
+        name: ImageVersion
+        type: string
 
   resources:
-    # 1. OCIRepository for the helm chart (pinned to 0.34.11)
+    # 1. OCM Repository — points to the OCI registry hosting the component
+    - id: ocmRepository
+      template:
+        apiVersion: delivery.ocm.software/v1alpha1
+        kind: Repository
+        metadata:
+          name: graphql-gateway-${schema.metadata.namespace}-${schema.metadata.name}
+          namespace: ${schema.metadata.namespace}
+        spec:
+          repositorySpec:
+            baseUrl: ghcr.io/platform-mesh
+            type: OCIRegistry
+          interval: 1m
+
+    # 2. OCM Component — resolves the component version from the repository
+    - id: ocmComponent
+      template:
+        apiVersion: delivery.ocm.software/v1alpha1
+        kind: Component
+        metadata:
+          name: graphql-gateway-${schema.metadata.namespace}-${schema.metadata.name}
+          namespace: ${schema.metadata.namespace}
+        spec:
+          repositoryRef:
+            name: ${ocmRepository.metadata.name}
+          component: github.com/platform-mesh/kubernetes-graphql-gateway
+          semver: "0.34.13"
+          interval: 1m
+
+    # 3. OCM Resource — extracts the Helm chart and exposes its OCI coordinates
+    - id: ocmResource
+      template:
+        apiVersion: delivery.ocm.software/v1alpha1
+        kind: Resource
+        metadata:
+          name: graphql-gateway-chart-${schema.metadata.namespace}-${schema.metadata.name}
+          namespace: ${schema.metadata.namespace}
+          labels:
+            artifact: chart
+        spec:
+          componentRef:
+            name: ${ocmComponent.metadata.name}
+          resource:
+            byReference:
+              resource:
+                name: chart
+          additionalStatusFields:
+            registry: resource.access.imageReference.toOCI().registry
+            repository: resource.access.imageReference.toOCI().repository
+            tag: resource.access.imageReference.toOCI().tag
+          interval: 3m
+          skipVerify: true
+
+    # 4. OCM Resource — extracts the container image and exposes its version
+    - id: ocmImageResource
+      template:
+        apiVersion: delivery.ocm.software/v1alpha1
+        kind: Resource
+        metadata:
+          name: graphql-gateway-image-${schema.metadata.namespace}-${schema.metadata.name}
+          namespace: ${schema.metadata.namespace}
+          labels:
+            artifact: image
+        spec:
+          componentRef:
+            name: ${ocmComponent.metadata.name}
+          resource:
+            byReference:
+              resource:
+                name: image
+          additionalStatusFields:
+            registry: resource.access.imageReference.toOCI().registry
+            repository: resource.access.imageReference.toOCI().repository
+            tag: resource.access.imageReference.toOCI().tag
+          interval: 3m
+          skipVerify: true
+
+    # 5. Flux OCIRepository — fetches the Helm chart using coordinates from OCM
     - id: ociRepository
       readyWhen:
         - ${ociRepository.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
@@ -45,11 +130,11 @@ spec:
           namespace: ${schema.metadata.namespace}
         spec:
           interval: 5m
-          url: oci://ghcr.io/platform-mesh/helm-charts/kubernetes-graphql-gateway
+          url: oci://${ocmResource.status.additional.registry}/${ocmResource.status.additional.repository}
           ref:
-            semver: "0.34.11"
+            tag: ${ocmResource.status.additional.tag}
 
-    # 2. ProviderConfig for targeting the shoot cluster
+    # 6. Crossplane ProviderConfig for targeting the shoot cluster
     - id: shootProviderConfig
       template:
         apiVersion: kubernetes.crossplane.io/v1alpha1
@@ -64,7 +149,7 @@ spec:
               namespace: ${schema.metadata.namespace}
               key: ${schema.spec.shootKubeconfigSecretKey}
 
-    # 3. HelmRelease targeting the shoot cluster
+    # 7. HelmRelease targeting the shoot cluster
     - id: helmRelease
       readyWhen:
         - ${helmRelease.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
@@ -97,6 +182,9 @@ spec:
             remediation:
               retries: 3
           values:
+            image:
+              name: ${ocmImageResource.status.additional.registry}/${ocmImageResource.status.additional.repository}
+              tag: ${ocmImageResource.status.additional.tag}
             kcp:
               enabled: false
             crds:
@@ -105,7 +193,7 @@ spec:
               httpRoute:
                 enabled: false
 
-    # 4. ClusterRoleBinding for gateway SA (cluster-admin access)
+    # 8. ClusterRoleBinding for gateway SA (cluster-admin access)
     - id: gatewayClusterRoleBinding
       readyWhen:
         - ${has(gatewayClusterRoleBinding.status.atProvider.manifest)}
@@ -132,7 +220,7 @@ spec:
                 name: cluster-admin
                 apiGroup: rbac.authorization.k8s.io
 
-    # 5. ClusterAccess resource created IN the shoot (after HelmRelease is Ready)
+    # 9. ClusterAccess resource created IN the shoot (after HelmRelease is Ready)
     - id: clusterAccess
       readyWhen:
         - ${has(clusterAccess.status.atProvider.manifest)}
