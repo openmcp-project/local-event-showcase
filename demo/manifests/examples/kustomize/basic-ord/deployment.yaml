@@ -1,22 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ord-reference-app
+  name: basic-ord
   namespace: default
   labels:
-    app: ord-reference-app
+    app: basic-ord
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: ord-reference-app
+      app: basic-ord
   template:
     metadata:
       labels:
-        app: ord-reference-app
+        app: basic-ord
     spec:
       containers:
-      - name: ord-reference-app
+      - name: basic-ord
         image: ghcr.io/platform-mesh/poc-ord-reference-application:1.1.0
         ports:
         - containerPort: 8080
