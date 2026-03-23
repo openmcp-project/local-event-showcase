@@ -9,3 +9,5 @@ metadata:
 spec:
   shootKubeconfigSecretName: my-cluster-kubeconfig
   shootKubeconfigSecretKey: kubeconfig
+  ocmComponentRef:
+    name: platform-mesh
