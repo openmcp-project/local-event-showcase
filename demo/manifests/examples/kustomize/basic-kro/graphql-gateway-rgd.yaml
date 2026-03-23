@@ -21,7 +21,7 @@ spec:
       clusterAccessHost: "string | default=https://kubernetes.default.svc"
 
       ocmComponentRef:
-        name: "string | default=kubernetes-graphql-gateway"
+        name: "string | default=platform-mesh"
 
     status:
       helmReleaseReady: ${helmRelease.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
