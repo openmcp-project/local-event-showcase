@@ -111,13 +111,15 @@ spec:
 
     - id: shoot
       readyWhen:
-        - ${shoot.status.atProvider.manifest.status.conditions.exists(c, c.type == "SystemComponentsHealthy" && c.status == "True")}
+        - ${shoot.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
       template:
         apiVersion: kubernetes.crossplane.io/v1alpha2
         kind: Object
         metadata:
           name: shoot-${schema.metadata.namespace}-${schema.spec.name}
         spec:
+          readiness:
+            policy: AllTrue
           providerConfigRef:
             name: ${providerConfig.metadata.name}
           forProvider:
