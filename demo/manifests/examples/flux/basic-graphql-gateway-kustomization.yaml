@@ -11,4 +11,6 @@ spec:
   path: ./demo/manifests/examples/kustomize/basic-graphql-gateway
   prune: true
   dependsOn:
-    - name: basic-shoot
+  - name: basic-shoot
+  - name: basic-kro
+  - name: basic-ocm

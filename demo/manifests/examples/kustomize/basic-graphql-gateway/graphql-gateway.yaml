@@ -1,3 +1,6 @@
+# GraphQLGateway instance — deploys the kubernetes-graphql-gateway Helm chart
+# into the shoot cluster. The RGD handles the full OCM → Flux pipeline;
+# the user only provides the shoot kubeconfig secret.
 apiVersion: gateway.platform-mesh.io/v1alpha1
 kind: GraphQLGateway
 metadata:
@@ -6,3 +9,5 @@ metadata:
 spec:
   shootKubeconfigSecretName: my-cluster-kubeconfig
   shootKubeconfigSecretKey: kubeconfig
+  ocmComponentRef:
+    name: platform-mesh

@@ -10,6 +10,8 @@ spec:
     name: local-event-showcase
   path: ./demo/manifests/examples/kustomize/basic-app
   prune: true
+  dependsOn:
+  - name: basic-shoot
   kubeConfig:
     secretRef:
       name: my-cluster-kubeconfig

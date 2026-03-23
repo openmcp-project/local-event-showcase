@@ -10,3 +10,5 @@ spec:
     name: local-event-showcase
   path: ./demo/manifests/examples/kustomize/basic-shoot
   prune: true
+  dependsOn:
+  - name: basic-kro

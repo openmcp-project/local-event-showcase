@@ -20,139 +20,205 @@ spec:
       clusterAccessName: "string | default=local-cluster"
       clusterAccessHost: "string | default=https://kubernetes.default.svc"
 
+      ocmComponentRef:
+        name: "string | default=platform-mesh"
+
     status:
       helmReleaseReady: ${helmRelease.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
       clusterAccessCreated: ${has(clusterAccess.status.atProvider.manifest)}
+      chartVersion: ${ocmResource.status.additional.tag}
+      imageVersion: ${ocmImageResource.status.additional.tag}
 
     additionalPrinterColumns:
-      - jsonPath: .status.helmReleaseReady
-        name: HelmReleaseReady
-        type: string
-      - jsonPath: .status.clusterAccessCreated
-        name: ClusterAccessCreated
-        type: string
+    - jsonPath: .status.helmReleaseReady
+      name: HelmReleaseReady
+      type: string
+    - jsonPath: .status.clusterAccessCreated
+      name: ClusterAccessCreated
+      type: string
+    - jsonPath: .status.chartVersion
+      name: ChartVersion
+      type: string
+    - jsonPath: .status.imageVersion
+      name: ImageVersion
+      type: string
 
   resources:
-    # 1. OCIRepository for the helm chart (pinned to 0.34.11)
-    - id: ociRepository
-      readyWhen:
-        - ${ociRepository.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
-      template:
-        apiVersion: source.toolkit.fluxcd.io/v1beta2
-        kind: OCIRepository
-        metadata:
-          name: graphql-gateway-${schema.metadata.namespace}-${schema.metadata.name}
-          namespace: ${schema.metadata.namespace}
-        spec:
-          interval: 5m
-          url: oci://ghcr.io/platform-mesh/helm-charts/kubernetes-graphql-gateway
-          ref:
-            semver: "0.34.11"
+  # 3. OCM Resource — extracts the Helm chart and exposes its OCI coordinates
+  - id: ocmResource
+    template:
+      apiVersion: delivery.ocm.software/v1alpha1
+      kind: Resource
+      metadata:
+        name: graphql-gateway-chart-${schema.metadata.namespace}-${schema.metadata.name}
+        namespace: ${schema.metadata.namespace}
+        labels:
+          artifact: chart
+      spec:
+        componentRef:
+          name: ${schema.spec.ocmComponentRef.name}
+        resource:
+          byReference:
+            referencePath:
+            - name: kubernetes-graphql-gateway
+            resource:
+              name: chart
+        additionalStatusFields:
+          registry: resource.access.imageReference.toOCI().registry
+          repository: resource.access.imageReference.toOCI().repository
+          tag: resource.access.imageReference.toOCI().tag
+        interval: 3m
+        skipVerify: true
 
-    # 2. ProviderConfig for targeting the shoot cluster
-    - id: shootProviderConfig
-      template:
-        apiVersion: kubernetes.crossplane.io/v1alpha1
-        kind: ProviderConfig
-        metadata:
-          name: shoot-${schema.metadata.namespace}-${schema.metadata.name}
-        spec:
-          credentials:
-            source: Secret
-            secretRef:
-              name: ${schema.spec.shootKubeconfigSecretName}
-              namespace: ${schema.metadata.namespace}
-              key: ${schema.spec.shootKubeconfigSecretKey}
+  # 4. OCM Resource — extracts the container image and exposes its version
+  - id: ocmImageResource
+    template:
+      apiVersion: delivery.ocm.software/v1alpha1
+      kind: Resource
+      metadata:
+        name: graphql-gateway-image-${schema.metadata.namespace}-${schema.metadata.name}
+        namespace: ${schema.metadata.namespace}
+        labels:
+          artifact: image
+      spec:
+        componentRef:
+          name: ${schema.spec.ocmComponentRef.name}
+        resource:
+          byReference:
+            referencePath:
+            - name: kubernetes-graphql-gateway
+            resource:
+              name: image
+        additionalStatusFields:
+          registry: resource.access.imageReference.toOCI().registry
+          repository: resource.access.imageReference.toOCI().repository
+          tag: resource.access.imageReference.toOCI().tag
+        interval: 3m
+        skipVerify: true
 
-    # 3. HelmRelease targeting the shoot cluster
-    - id: helmRelease
-      readyWhen:
-        - ${helmRelease.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
-      template:
-        apiVersion: helm.toolkit.fluxcd.io/v2
-        kind: HelmRelease
-        metadata:
-          name: ${schema.spec.gatewayReleaseName}-${schema.metadata.namespace}-${schema.metadata.name}
-          namespace: ${schema.metadata.namespace}
-        spec:
-          interval: 5m
-          timeout: 10m
-          targetNamespace: ${schema.spec.gatewayNamespace}
-          releaseName: ${schema.spec.gatewayReleaseName}
-          kubeConfig:
-            secretRef:
-              name: ${schema.spec.shootKubeconfigSecretName}
-              key: ${schema.spec.shootKubeconfigSecretKey}
-          chartRef:
-            kind: OCIRepository
-            name: ${ociRepository.metadata.name}
-            namespace: ${ociRepository.metadata.namespace}
-          install:
-            crds: CreateReplace
-            createNamespace: true
-            remediation:
-              retries: 3
-          upgrade:
-            crds: CreateReplace
-            remediation:
-              retries: 3
-          values:
-            kcp:
+  # 5. Flux OCIRepository — fetches the Helm chart using coordinates from OCM
+  - id: ociRepository
+    readyWhen:
+    - ${ociRepository.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
+    template:
+      apiVersion: source.toolkit.fluxcd.io/v1beta2
+      kind: OCIRepository
+      metadata:
+        name: graphql-gateway-${schema.metadata.namespace}-${schema.metadata.name}
+        namespace: ${schema.metadata.namespace}
+      spec:
+        interval: 5m
+        url: oci://${ocmResource.status.additional.registry}/${ocmResource.status.additional.repository}
+        ref:
+          tag: ${ocmResource.status.additional.tag}
+
+  # 6. Crossplane ProviderConfig for targeting the shoot cluster
+  - id: shootProviderConfig
+    template:
+      apiVersion: kubernetes.crossplane.io/v1alpha1
+      kind: ProviderConfig
+      metadata:
+        name: shoot-${schema.metadata.namespace}-${schema.metadata.name}
+      spec:
+        credentials:
+          source: Secret
+          secretRef:
+            name: ${schema.spec.shootKubeconfigSecretName}
+            namespace: ${schema.metadata.namespace}
+            key: ${schema.spec.shootKubeconfigSecretKey}
+
+  # 7. HelmRelease targeting the shoot cluster
+  - id: helmRelease
+    readyWhen:
+    - ${helmRelease.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
+    template:
+      apiVersion: helm.toolkit.fluxcd.io/v2
+      kind: HelmRelease
+      metadata:
+        name: ${schema.spec.gatewayReleaseName}-${schema.metadata.namespace}-${schema.metadata.name}
+        namespace: ${schema.metadata.namespace}
+      spec:
+        interval: 5m
+        timeout: 10m
+        targetNamespace: ${schema.spec.gatewayNamespace}
+        releaseName: ${schema.spec.gatewayReleaseName}
+        kubeConfig:
+          secretRef:
+            name: ${schema.spec.shootKubeconfigSecretName}
+            key: ${schema.spec.shootKubeconfigSecretKey}
+        chartRef:
+          kind: OCIRepository
+          name: ${ociRepository.metadata.name}
+          namespace: ${ociRepository.metadata.namespace}
+        install:
+          crds: CreateReplace
+          createNamespace: true
+          remediation:
+            retries: 3
+        upgrade:
+          crds: CreateReplace
+          remediation:
+            retries: 3
+        values:
+          image:
+            name: ${ocmImageResource.status.additional.registry}/${ocmImageResource.status.additional.repository}
+            tag: ${ocmImageResource.status.additional.tag}
+          kcp:
+            enabled: false
+          crds:
+            enabled: true
+          gatewayApi:
+            httpRoute:
               enabled: false
-            crds:
-              enabled: true
-            gatewayApi:
-              httpRoute:
-                enabled: false
 
-    # 4. ClusterRoleBinding for gateway SA (cluster-admin access)
-    - id: gatewayClusterRoleBinding
-      readyWhen:
-        - ${has(gatewayClusterRoleBinding.status.atProvider.manifest)}
-      template:
-        apiVersion: kubernetes.crossplane.io/v1alpha2
-        kind: Object
-        metadata:
-          name: gw-crb-${schema.metadata.namespace}-${schema.metadata.name}
-        spec:
-          providerConfigRef:
-            name: ${shootProviderConfig.metadata.name}
-          forProvider:
-            manifest:
-              apiVersion: rbac.authorization.k8s.io/v1
-              kind: ClusterRoleBinding
-              metadata:
-                name: ${schema.spec.gatewayReleaseName}-cluster-admin
-              subjects:
-                - kind: ServiceAccount
+  # 8. ClusterRoleBinding for gateway SA (cluster-admin access)
+  - id: gatewayClusterRoleBinding
+    readyWhen:
+    - ${has(gatewayClusterRoleBinding.status.atProvider.manifest)}
+    template:
+      apiVersion: kubernetes.crossplane.io/v1alpha2
+      kind: Object
+      metadata:
+        name: gw-crb-${schema.metadata.namespace}-${schema.metadata.name}
+      spec:
+        providerConfigRef:
+          name: ${shootProviderConfig.metadata.name}
+        forProvider:
+          manifest:
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRoleBinding
+            metadata:
+              name: ${schema.spec.gatewayReleaseName}-cluster-admin
+            subjects:
+            - kind: ServiceAccount
+              name: ${schema.spec.gatewayReleaseName}
+              namespace: ${schema.spec.gatewayNamespace}
+            roleRef:
+              kind: ClusterRole
+              name: cluster-admin
+              apiGroup: rbac.authorization.k8s.io
+
+  # 9. ClusterAccess resource created IN the shoot (after HelmRelease is Ready)
+  - id: clusterAccess
+    readyWhen:
+    - ${has(clusterAccess.status.atProvider.manifest)}
+    template:
+      apiVersion: kubernetes.crossplane.io/v1alpha2
+      kind: Object
+      metadata:
+        name: clusteraccess-${schema.metadata.namespace}-${schema.metadata.name}
+      spec:
+        providerConfigRef:
+          name: ${shootProviderConfig.metadata.name}
+        forProvider:
+          manifest:
+            apiVersion: gateway.platform-mesh.io/v1alpha1
+            kind: ClusterAccess
+            metadata:
+              name: ${schema.spec.clusterAccessName}
+            spec:
+              host: ${schema.spec.clusterAccessHost}
+              auth:
+                serviceAccount:
                   name: ${schema.spec.gatewayReleaseName}
                   namespace: ${schema.spec.gatewayNamespace}
-              roleRef:
-                kind: ClusterRole
-                name: cluster-admin
-                apiGroup: rbac.authorization.k8s.io
-
-    # 5. ClusterAccess resource created IN the shoot (after HelmRelease is Ready)
-    - id: clusterAccess
-      readyWhen:
-        - ${has(clusterAccess.status.atProvider.manifest)}
-      template:
-        apiVersion: kubernetes.crossplane.io/v1alpha2
-        kind: Object
-        metadata:
-          name: clusteraccess-${schema.metadata.namespace}-${schema.metadata.name}
-        spec:
-          providerConfigRef:
-            name: ${shootProviderConfig.metadata.name}
-          forProvider:
-            manifest:
-              apiVersion: gateway.platform-mesh.io/v1alpha1
-              kind: ClusterAccess
-              metadata:
-                name: ${schema.spec.clusterAccessName}
-              spec:
-                host: ${schema.spec.clusterAccessHost}
-                auth:
-                  serviceAccount:
-                    name: ${schema.spec.gatewayReleaseName}
-                    namespace: ${schema.spec.gatewayNamespace}
