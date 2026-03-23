@@ -59,6 +59,8 @@ spec:
           name: ${schema.spec.ocmComponentRef.name}
         resource:
           byReference:
+            referencePath:
+            - name: kubernetes-graphql-gateway
             resource:
               name: chart
         additionalStatusFields:
@@ -83,6 +85,8 @@ spec:
           name: ${schema.spec.ocmComponentRef.name}
         resource:
           byReference:
+            referencePath:
+            - name: kubernetes-graphql-gateway
             resource:
               name: image
         additionalStatusFields:
