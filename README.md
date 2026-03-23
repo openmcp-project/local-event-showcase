@@ -133,6 +133,7 @@ The `demo/manifests/examples/` directory contains ready-to-use manifests that de
 | `kustomize/basic-kro` | KRO `ResourceGraphDefinition`s for the Shoot and GraphQL Gateway lifecycle |
 | `kustomize/basic-ocm` | OCM `Repository`, `Component`, and `Resource` objects for resolving platform-mesh artifacts |
 | `kustomize/basic-graphql-gateway` | A `GraphQLGateway` resource that deploys the kubernetes-graphql-gateway into a shoot via the KRO + OCM pipeline |
+| `kustomize/ord-reference-app` | An ORD reference application (Deployment + Service), deployable to a shoot cluster via Flux |
 | `flux/` | Flux `GitRepository` and `Kustomization` resources that deploy the above kustomize overlays onto target clusters, with dependency ordering (e.g. the gateway waits for the shoot, KRO definitions, and OCM components) |
 | `shoot-manual/` | A step-by-step manual shoot creation flow using Crossplane `Object` resources and a `GardenerProject` — useful for understanding the underlying mechanics without KRO |
 
@@ -142,6 +143,7 @@ To use the Flux-based examples, apply the `GitRepository` first, then the `Kusto
 2. `basic-shoot` — depends on `basic-kro` (needs the Shoot RGD)
 3. `basic-app` — depends on `basic-shoot` (deploys into the provisioned shoot cluster)
 4. `basic-graphql-gateway` — depends on `basic-shoot`, `basic-kro`, and `basic-ocm`
+5. `ord-reference-app` — no dependencies, can be applied independently
 
 ---
 
