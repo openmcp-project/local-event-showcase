@@ -132,7 +132,9 @@ The `demo/manifests/examples/` directory contains ready-to-use manifests that de
 | `kustomize/basic-shoot` | A Gardener `Shoot` resource that provisions a cluster through KRO |
 | `kustomize/basic-kro` | KRO `ResourceGraphDefinition`s for the Shoot and GraphQL Gateway lifecycle |
 | `kustomize/basic-ocm` | OCM `Repository`, `Component`, and `Resource` objects for resolving platform-mesh artifacts |
-| `kustomize/basic-graphql-gateway` | A `GraphQLGateway` resource that deploys the kubernetes-graphql-gateway into a shoot via the KRO + OCM pipeline |
+| `kustomize/basic-graphql-gateway` | A `GraphQLGateway` resource that deploys the kubernetes-graphql-gateway into a shoot via the KRO + OCM pipeline (chart and image versions resolved dynamically from the OCM component) |
+| `kustomize/basic-ord` | ORD + A2A demo: deploys three apps — `basic-ord` (ORD provider), `spaceship-app` (crew agents), and `super-agent` (commander that discovers agents via ORD and delegates via A2A). Deployable to a shoot cluster via Flux |
+| `ord/` | Interactive demo files for the ORD reference app: `demo.http` (step-by-step HTTP requests for ORD discovery and A2A communication) and port-forward instructions |
 | `flux/` | Flux `GitRepository` and `Kustomization` resources that deploy the above kustomize overlays onto target clusters, with dependency ordering (e.g. the gateway waits for the shoot, KRO definitions, and OCM components) |
 | `shoot-manual/` | A step-by-step manual shoot creation flow using Crossplane `Object` resources and a `GardenerProject` — useful for understanding the underlying mechanics without KRO |
 
@@ -142,6 +144,32 @@ To use the Flux-based examples, apply the `GitRepository` first, then the `Kusto
 2. `basic-shoot` — depends on `basic-kro` (needs the Shoot RGD)
 3. `basic-app` — depends on `basic-shoot` (deploys into the provisioned shoot cluster)
 4. `basic-graphql-gateway` — depends on `basic-shoot`, `basic-kro`, and `basic-ocm`
+5. `basic-ord` — no dependencies, can be applied independently
+
+### ORD + A2A Demo
+
+The `basic-ord` example deploys three applications that demonstrate [Open Resource Discovery (ORD)](https://open-resource-discovery.github.io/) and [Agent-to-Agent (A2A)](https://google.github.io/A2A/) communication:
+
+| App | Description |
+|-----|-------------|
+| `basic-ord` | ORD provider — publishes an ORD document describing available resources |
+| `spaceship-app` | Crew agents (Repair Technician, Solar Explorer) reachable via A2A |
+| `super-agent` | Commander agent that discovers crew agents via ORD and delegates tasks via A2A |
+
+After the apps are deployed to a shoot cluster, set up port-forwards to interact with them locally:
+
+```bash
+kubectl port-forward svc/spaceship-app 3001:3000
+kubectl port-forward svc/super-agent 3002:3000
+kubectl port-forward svc/basic-ord 3004:8083
+```
+
+Then use `demo/manifests/examples/ord/demo.http` (compatible with VS Code REST Client or IntelliJ HTTP Client) to walk through the demo:
+
+1. **ORD Discovery** — fetch `/.well-known/open-resource-discovery` and the ORD document
+2. **A2A Agent Calls** — invoke individual crew agents (repair, solar) via JSON-RPC
+3. **Commander Delegation** — ask the commander to handle tasks; it discovers agents via ORD and delegates via A2A
+4. **A2A Editor Playground** — use the visual [A2A Editor](https://open-resource-discovery.github.io/a2a-editor/playground) to interact with agents in the browser
 
 ---
 

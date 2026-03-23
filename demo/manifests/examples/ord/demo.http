@@ -1,0 +1,160 @@
+### ================================================================
+### ORD Agent Discovery → A2A Communication
+###
+### Prerequisites: run demo/demo.sh
+### ================================================================
+
+@spaceship = http://localhost:3001
+@commander = http://localhost:3002
+@ordProviderSuper = http://localhost:3004
+
+### ================================================================
+### Part 1: ORD Discovery
+### ================================================================
+
+### Step 1: ORD well-known entry point
+
+# @name ordWellKnown
+GET {{spaceship}}/.well-known/open-resource-discovery
+Accept: application/json
+
+### Step 2: ORD document — lists agents, apiResources, entityTypes
+
+@ordDocPath = {{ordWellKnown.response.body.openResourceDiscoveryV1.documents[0].url}}
+
+# @name ordDocument
+GET {{spaceship}}{{ordDocPath}}
+Accept: application/json
+
+### ================================================================
+### Part 2: Super Agent ORD Discovery
+### ================================================================
+
+### Step 3: Super Agent ORD well-known entry point
+
+# @name ordWellKnownSuper
+GET {{ordProviderSuper}}/.well-known/open-resource-discovery
+Accept: application/json
+
+### Step 4: Super Agent ORD document — the commander agent
+
+@ordDocPathSuper = {{ordWellKnownSuper.response.body.openResourceDiscoveryV1.documents[0].url}}
+
+# @name ordDocumentSuper
+GET {{ordProviderSuper}}{{ordDocPathSuper}}
+Accept: application/json
+
+### ================================================================
+### Part 3: Agent Card → A2A Call
+### ================================================================
+
+### Step 5: Fetch Repair Technician agent card
+
+# @name repairCard
+GET {{spaceship}}/repair/agent.json
+Accept: application/json
+
+### Step 6: Call Repair agent — "The engines are overheating!"
+
+POST {{spaceship}}/repair
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "message/send",
+  "params": {
+    "message": {
+      "role": "user",
+      "parts": [{"kind": "text", "text": "The engines are overheating!"}],
+      "messageId": "demo-msg-1"
+    }
+  }
+}
+
+### Step 7: Fetch Solar Explorer agent card
+
+# @name solarCard
+GET {{spaceship}}/solar/agent.json
+Accept: application/json
+
+### Step 8: Call Solar agent — "What's the weather like on Jupiter?"
+
+POST {{spaceship}}/solar
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "message/send",
+  "params": {
+    "message": {
+      "role": "user",
+      "parts": [{"kind": "text", "text": "What's the weather like on Jupiter?"}],
+      "messageId": "demo-msg-2"
+    }
+  }
+}
+
+### ================================================================
+### Part 4: Commander — Automated ORD → A2A
+###
+### The commander reads ORD, discovers crew agents, delegates via A2A.
+### ================================================================
+
+### Step 9: Commander agent card
+
+# @name commanderCard
+GET {{commander}}/.well-known/agent.json
+Accept: application/json
+
+### Step 10: Ask commander to handle a repair emergency
+
+POST {{commander}}
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "message/send",
+  "params": {
+    "message": {
+      "role": "user",
+      "parts": [{"kind": "text", "text": "Hull breach on deck 3! Shields are failing!"}],
+      "messageId": "demo-msg-3"
+    }
+  }
+}
+
+### Step 11: Ask commander a navigation question
+
+POST {{commander}}
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "method": "message/send",
+  "params": {
+    "message": {
+      "role": "user",
+      "parts": [{"kind": "text", "text": "What's the weather on Mars? Can we land safely?"}],
+      "messageId": "demo-msg-4"
+    }
+  }
+}
+
+### ================================================================
+### Part 5: A2A Editor Playground
+###
+### Try the full story in the visual A2A Editor:
+###   https://open-resource-discovery.github.io/a2a-editor/playground
+###
+### 1. Click "+ Add" and enter:  http://localhost:3001/repair
+### 2. Send: "The warp drive is making strange noises!"
+### 3. Add another agent:        http://localhost:3001/solar
+### 4. Send: "Tell me a fun fact about Saturn's rings"
+### 5. Add the commander:        http://localhost:3002
+### 6. Send: "We need to land on Mars, check the weather first!"
+###    → Watch the commander discover agents via ORD and delegate.
+### ================================================================
