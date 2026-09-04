@@ -4,8 +4,8 @@ go 1.27.0
 
 require (
 	github.com/kcp-dev/api-syncagent/sdk v0.7.0
-	github.com/kcp-dev/multicluster-provider v0.4.1-0.20260205123258-494f80b8be01
-	github.com/kcp-dev/sdk v0.30.0
+	github.com/kcp-dev/multicluster-provider v0.8.0
+	github.com/kcp-dev/sdk v0.32.0
 	github.com/mittwald/go-helm-client v0.13.3
 	github.com/openmcp-project/openmcp-operator/api v0.18.1
 	github.com/platform-mesh/golang-commons v0.13.11
@@ -17,7 +17,7 @@ require (
 	k8s.io/client-go v0.37.0
 	k8s.io/utils v0.0.0-20260707023825-cf1189d6abe3
 	sigs.k8s.io/controller-runtime v0.24.1
-	sigs.k8s.io/multicluster-runtime v0.23.1
+	sigs.k8s.io/multicluster-runtime v0.24.1
 )
 
 require (
@@ -74,7 +74,7 @@ require (
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gofrs/flock v0.13.0 // indirect
 	github.com/google/btree v1.1.3 // indirect
-	github.com/google/gnostic-models v0.7.0 // indirect
+	github.com/google/gnostic-models v0.7.1 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gosuri/uitable v0.0.4 // indirect
@@ -84,7 +84,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jmoiron/sqlx v1.4.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/kcp-dev/apimachinery/v2 v2.30.0 // indirect
+	github.com/kcp-dev/apimachinery/v2 v2.32.0 // indirect
 	github.com/kcp-dev/logicalcluster/v3 v3.0.5 // indirect
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
 	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect

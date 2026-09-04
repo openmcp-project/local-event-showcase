@@ -3,8 +3,8 @@ module github.com/openmcp/local-event-showcase/demo/gardener-init-operator
 go 1.27.0
 
 require (
-	github.com/kcp-dev/multicluster-provider v0.4.1-0.20260205123258-494f80b8be01
-	github.com/kcp-dev/sdk v0.30.0
+	github.com/kcp-dev/multicluster-provider v0.8.0
+	github.com/kcp-dev/sdk v0.32.0
 	github.com/openmcp-project/openmcp-operator/api v0.18.1
 	github.com/platform-mesh/golang-commons v0.13.11
 	github.com/spf13/cobra v1.10.2
@@ -14,7 +14,7 @@ require (
 	k8s.io/apimachinery v0.37.0
 	k8s.io/client-go v0.37.0
 	sigs.k8s.io/controller-runtime v0.24.1
-	sigs.k8s.io/multicluster-runtime v0.23.1
+	sigs.k8s.io/multicluster-runtime v0.24.1
 )
 
 require (
@@ -47,13 +47,13 @@ require (
 	github.com/go-openapi/swag/stringutils v0.27.1 // indirect
 	github.com/go-openapi/swag/typeutils v0.27.1 // indirect
 	github.com/go-openapi/swag/yamlutils v0.27.1 // indirect
-	github.com/google/gnostic-models v0.7.0 // indirect
+	github.com/google/gnostic-models v0.7.1 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/kcp-dev/apimachinery/v2 v2.30.0 // indirect
+	github.com/kcp-dev/apimachinery/v2 v2.32.0 // indirect
 	github.com/kcp-dev/logicalcluster/v3 v3.0.5 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
@@ -66,7 +66,7 @@ require (
 	github.com/prometheus/client_golang v1.23.2 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.67.5 // indirect
-	github.com/prometheus/procfs v0.19.2 // indirect
+	github.com/prometheus/procfs v0.20.1 // indirect
 	github.com/rs/zerolog v1.34.0 // indirect
 	github.com/sosodev/duration v1.4.0 // indirect
 	github.com/vektah/gqlparser/v2 v2.5.32 // indirect
