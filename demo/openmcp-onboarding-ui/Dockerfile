@@ -7,7 +7,7 @@ RUN npm ci
 
 RUN npm run build
 
-FROM nginx:alpine
+FROM nginx:alpine@sha256:72ba65eb42c10344912a84ff42408db7d34f2feb642204570ab8fc5ffd29f1d3
 
 COPY --from=build /app/dist-wc /usr/share/nginx/html/ui/openmcp/wc
 COPY nginx.conf /etc/nginx/nginx.conf
