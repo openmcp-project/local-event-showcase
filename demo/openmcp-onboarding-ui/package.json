@@ -22,7 +22,7 @@
     "@angular/platform-browser-dynamic": "20.3.12",
     "@angular/router": "20.3.12",
     "@apollo/client": "^4.0.9",
-    "@fundamental-ngx/cdk": "~0.57.5",
+    "@fundamental-ngx/cdk": "~0.64.0",
     "@fundamental-ngx/core": "~0.57.5",
     "@fundamental-ngx/i18n": "~0.57.5",
     "@fundamental-ngx/platform": "~0.57.5",
