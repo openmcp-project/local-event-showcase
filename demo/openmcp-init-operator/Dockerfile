@@ -22,7 +22,7 @@ COPY cmd/ cmd/
 # Build
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags '-w -s' -o manager main.go
 
-FROM gcr.io/distroless/static:nonroot
+FROM gcr.io/distroless/static:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3
 USER 65532:65532
 
 COPY --from=builder --chown=65532:65532  /workspace/manager /operator/manager
