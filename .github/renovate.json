@@ -1,0 +1,25 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "local>openmcp-project/.github:renovate-config"
+  ],
+  "packageRules": [
+    {
+      "description": "Combine all npm patch updates in one PR",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["patch"],
+      "groupName": "npm patch updates"
+    },
+    {
+      "description": "Combine all Dockerfile updates in one PR",
+      "matchManagers": ["dockerfile"],
+      "groupName": "Dockerfile updates"
+    },
+    {
+      "description": "Combine all Go patch updates in one PR",
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["patch"],
+      "groupName": "go patch updates"
+    }
+  ]
+}
