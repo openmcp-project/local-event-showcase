@@ -1,6 +1,6 @@
 module github.com/openmcp/local-event-showcase/demo/openmcp-init-operator
 
-go 1.27.2
+go 1.27.3
 
 require (
 	github.com/kcp-dev/api-syncagent/sdk v0.7.0

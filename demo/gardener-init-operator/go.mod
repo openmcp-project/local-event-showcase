@@ -1,6 +1,6 @@
 module github.com/openmcp/local-event-showcase/demo/gardener-init-operator
 
-go 1.27.2
+go 1.27.3
 
 require (
 	github.com/kcp-dev/multicluster-provider v0.8.0
