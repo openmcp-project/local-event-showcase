@@ -133,8 +133,8 @@ github.com/onsi/ginkgo/v2 v2.27.4 h1:fcEcQW/A++6aZAZQNUmNjvA9PSOzefMJBerHJ4t8v8Y
 github.com/onsi/ginkgo/v2 v2.27.4/go.mod h1:ArE1D/XhNXBXCBkKOLkbsb2c81dQHCRcF5zwn/ykDRo=
 github.com/onsi/gomega v1.39.0 h1:y2ROC3hKFmQZJNFeGAMeHZKkjBL65mIZcvrLQBF9k6Q=
 github.com/onsi/gomega v1.39.0/go.mod h1:ZCU1pkQcXDO5Sl9/VVEGlDyp+zm0m1cmeG5TOzLgdh4=
-github.com/openmcp-project/openmcp-operator/api v1.4.3 h1:QkW1bkiVuEiMBBQl66fd3ZpYcfthoVt1YaQywzJtApA=
-github.com/openmcp-project/openmcp-operator/api v1.4.3/go.mod h1:9xHl3vGIz+8J6Y/ialOH/Iak/n1NUNyyJ8ATKC167wY=
+github.com/openmcp-project/openmcp-operator/api v1.4.4 h1:Ol/dHPVLAClRlWr0KvG9q+ttAjnJz5IwJM+ldGzVdLM=
+github.com/openmcp-project/openmcp-operator/api v1.4.4/go.mod h1:9xHl3vGIz+8J6Y/ialOH/Iak/n1NUNyyJ8ATKC167wY=
 github.com/pingcap/errors v0.11.4 h1:lFuQV/oaUMGcD2tqt+01ROSmJs75VG1ToEOkZIZ4nE4=
 github.com/pingcap/errors v0.11.4/go.mod h1:Oi8TUi2kEtXXLMJk9l1cGmz20kV3TaQ0usTwv5KuLY8=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
