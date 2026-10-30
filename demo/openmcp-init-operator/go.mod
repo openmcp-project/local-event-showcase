@@ -7,7 +7,7 @@ require (
 	github.com/kcp-dev/multicluster-provider v0.8.0
 	github.com/kcp-dev/sdk v0.33.1
 	github.com/mittwald/go-helm-client v0.13.3
-	github.com/openmcp-project/openmcp-operator/api v1.4.3
+	github.com/openmcp-project/openmcp-operator/api v1.4.4
 	github.com/platform-mesh/golang-commons v0.17.27
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
