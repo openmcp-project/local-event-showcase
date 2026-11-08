@@ -3,7 +3,7 @@ module github.com/openmcp/local-event-showcase/demo/openmcp-init-operator
 go 1.27.3
 
 require (
-	github.com/kcp-dev/api-syncagent/sdk v0.7.0
+	github.com/kcp-dev/api-syncagent/sdk v0.8.0
 	github.com/kcp-dev/multicluster-provider v0.8.0
 	github.com/kcp-dev/sdk v0.33.4
 	github.com/mittwald/go-helm-client v0.13.3
