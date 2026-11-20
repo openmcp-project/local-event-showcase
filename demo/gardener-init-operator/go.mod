@@ -3,7 +3,7 @@ module github.com/openmcp/local-event-showcase/demo/gardener-init-operator
 go 1.27.3
 
 require (
-	github.com/kcp-dev/multicluster-provider v0.8.0
+	github.com/kcp-dev/multicluster-provider v0.9.0
 	github.com/kcp-dev/sdk v0.33.6
 	github.com/openmcp-project/openmcp-operator/api v1.4.4
 	github.com/platform-mesh/golang-commons v0.17.27

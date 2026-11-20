@@ -4,7 +4,7 @@ go 1.27.3
 
 require (
 	github.com/kcp-dev/api-syncagent/sdk v0.8.1
-	github.com/kcp-dev/multicluster-provider v0.8.0
+	github.com/kcp-dev/multicluster-provider v0.9.0
 	github.com/kcp-dev/sdk v0.33.6
 	github.com/mittwald/go-helm-client v0.13.3
 	github.com/openmcp-project/openmcp-operator/api v1.4.4
