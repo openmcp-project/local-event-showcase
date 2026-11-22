@@ -10,17 +10,17 @@
     "lint:fix": "ng lint --fix"
   },
   "dependencies": {
-    "@angular/animations": "22.2.6",
+    "@angular/animations": "22.3.0",
     "@angular/cdk": "22.3.0",
-    "@angular/common": "22.2.6",
-    "@angular/compiler": "22.2.6",
-    "@angular/core": "22.2.6",
-    "@angular/elements": "22.2.6",
-    "@angular/forms": "22.2.6",
-    "@angular/localize": "22.2.6",
-    "@angular/platform-browser": "22.2.6",
-    "@angular/platform-browser-dynamic": "22.2.6",
-    "@angular/router": "22.2.6",
+    "@angular/common": "22.3.0",
+    "@angular/compiler": "22.3.0",
+    "@angular/core": "22.3.0",
+    "@angular/elements": "22.3.0",
+    "@angular/forms": "22.3.0",
+    "@angular/localize": "22.3.0",
+    "@angular/platform-browser": "22.3.0",
+    "@angular/platform-browser-dynamic": "22.3.0",
+    "@angular/router": "22.3.0",
     "@apollo/client": "^4.0.9",
     "@fundamental-ngx/cdk": "~0.66.0",
     "@fundamental-ngx/core": "~0.66.0",
@@ -37,7 +37,7 @@
   "devDependencies": {
     "@angular/build": "22.2.7",
     "@angular/cli": "22.2.7",
-    "@angular/compiler-cli": "22.2.6",
+    "@angular/compiler-cli": "22.3.0",
     "typescript": "7.0.2"
   }
 }
