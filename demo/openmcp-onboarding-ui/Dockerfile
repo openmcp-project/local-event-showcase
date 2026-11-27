@@ -1,4 +1,4 @@
-FROM node:26.12@sha256:97fa0f1b59035c6072721a88d55be1371c7cb1cc942b521e1cc5c72ec87655f4 AS build
+FROM node:26.13@sha256:f8e5d4bb28fa55c74f1345166a082a10b7c68f22304350c1ce0d18358ae94996 AS build
 
 COPY ./ /app
 
@@ -7,7 +7,7 @@ RUN npm ci
 
 RUN npm run build
 
-FROM nginx:alpine
+FROM nginx:alpine@sha256:7fc0fb4af7bf006aeb31aea88069976060f8f0a0a86b667126742cc17f4e31ae
 
 COPY --from=build /app/dist-wc /usr/share/nginx/html/ui/openmcp/wc
 COPY nginx.conf /etc/nginx/nginx.conf
